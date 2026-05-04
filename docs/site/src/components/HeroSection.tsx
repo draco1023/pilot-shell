@@ -4,62 +4,58 @@ import Logo from "@/components/Logo";
 
 const HeroSection = () => {
   return (
-    <section className="min-h-[70vh] flex flex-col items-center justify-center px-3 xs:px-4 sm:px-6 relative overflow-hidden pt-16 xs:pt-20 pb-4">
-
+    <section className="min-h-[70vh] flex flex-col items-center justify-center px-4 sm:px-6 relative overflow-hidden pt-14 xs:pt-16 sm:pt-20 pb-6">
       <div className="relative z-10 text-center max-w-4xl mx-auto w-full">
         {/* Logo */}
-        <div className="animate-fade-in-up flex justify-center my-2 xs:my-4 sm:my-6">
+        <div className="animate-fade-in-up flex justify-center mb-4 xs:mb-5 sm:mb-6">
           <Logo variant="hero" />
         </div>
 
-        {/* Subtitle */}
-        <div className="animate-fade-in-up animation-delay-100 mb-6 xs:mb-8 px-1">
-          <h1 className="text-foreground/90 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium max-w-[90%] xs:max-w-xl sm:max-w-2xl mx-auto leading-relaxed">
-            Pilot Shell — how real engineers run Claude Code.
+        {/* Slogan + descriptions */}
+        <div className="animate-fade-in-up animation-delay-100 mb-6 xs:mb-7 sm:mb-9">
+          <h1 className="text-foreground text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight leading-tight max-w-3xl mx-auto">
+            How real engineers run Claude Code.
           </h1>
-          <p className="text-muted-foreground text-[11px] xs:text-xs sm:text-sm md:text-base max-w-[90%] xs:max-w-xl sm:max-w-2xl mx-auto mt-1.5 leading-relaxed">
+          <p className="text-muted-foreground text-sm xs:text-base sm:text-lg md:text-xl mt-3 xs:mt-4 max-w-2xl mx-auto leading-relaxed">
             From requirement to production-grade code — planned, tested, verified.
           </p>
-          <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm md:text-base max-w-[90%] xs:max-w-xl sm:max-w-2xl mx-auto mt-1.5 leading-relaxed">
+          <p className="text-muted-foreground/80 text-xs xs:text-sm sm:text-base mt-2 max-w-2xl mx-auto">
             Spec-driven plans. Enforced quality gates. Persistent knowledge.
           </p>
         </div>
 
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 animate-fade-in-up animation-delay-500 px-2">
+        {/* CTA Buttons — stack on tiny screens, row from xs (475px+) */}
+        <div className="flex flex-col xs:flex-row flex-wrap items-stretch xs:items-center justify-center gap-2 xs:gap-3 animate-fade-in-up animation-delay-500 max-w-md xs:max-w-none mx-auto">
           <Button
-            size="lg"
             asChild
-            className="w-full sm:w-auto text-sm xs:text-base"
+            className="h-10 px-5 text-sm xs:text-base sm:h-11 sm:px-6 w-full xs:w-auto"
           >
             <a
               href="https://github.com/maxritter/pilot-shell"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <GithubIcon className="mr-1.5 xs:mr-2 h-3.5 w-3.5 xs:h-4 xs:w-4" />
+              <GithubIcon className="mr-2 h-4 w-4" />
               View on GitHub
             </a>
           </Button>
           <Button
             variant="outline"
-            size="lg"
             asChild
-            className="w-full sm:w-auto text-sm xs:text-base"
+            className="h-10 px-5 text-sm xs:text-base sm:h-11 sm:px-6 w-full xs:w-auto"
           >
             <a href="/docs">
-              <BookOpen className="mr-1.5 xs:mr-2 h-3.5 w-3.5 xs:h-4 xs:w-4" />
+              <BookOpen className="mr-2 h-4 w-4" />
               Documentation
             </a>
           </Button>
           <Button
             variant="outline"
-            size="lg"
             asChild
-            className="w-full sm:w-auto text-sm xs:text-base"
+            className="h-10 px-5 text-sm xs:text-base sm:h-11 sm:px-6 w-full xs:w-auto"
           >
             <a href="/blog">
-              <Newspaper className="mr-1.5 xs:mr-2 h-3.5 w-3.5 xs:h-4 xs:w-4" />
+              <Newspaper className="mr-2 h-4 w-4" />
               Blog
             </a>
           </Button>
