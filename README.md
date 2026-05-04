@@ -15,8 +15,8 @@ From requirement to production-grade code — planned, tested, verified.</br>
 <p>
   <a href="#install">Install</a> •
   <a href="#features">Features</a> •
-  <a href="#pilot-shell-console">Console</a> •
   <a href="https://pilot-shell.com/docs">Docs</a> •
+  <a href="https://pilot-shell.com/blog">Blog</a> •
   <a href="https://pilot-shell.com">Website</a> •
   <a href="https://pilot.openchangelog.com/">Changelog</a>
 </p>

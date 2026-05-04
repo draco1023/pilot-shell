@@ -1,4 +1,4 @@
-import { GithubIcon, BookOpen } from "lucide-react";
+import { GithubIcon, BookOpen, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/Logo";
 
@@ -49,7 +49,18 @@ const HeroSection = () => {
           >
             <a href="/docs">
               <BookOpen className="mr-1.5 xs:mr-2 h-3.5 w-3.5 xs:h-4 xs:w-4" />
-              Read Documentation
+              Documentation
+            </a>
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            asChild
+            className="w-full sm:w-auto text-sm xs:text-base"
+          >
+            <a href="/blog">
+              <Newspaper className="mr-1.5 xs:mr-2 h-3.5 w-3.5 xs:h-4 xs:w-4" />
+              Blog
             </a>
           </Button>
         </div>
