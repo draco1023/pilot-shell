@@ -50,25 +50,26 @@ html {
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Dark theme */
+  /* Dark theme — navy base to match the Pilot Shell logo's deep-blue edges
+   * so the radial-mask logo fades cleanly into the page background. */
   .dark {
-    --background: 0 0% 7%;
+    --background: 217 40% 6%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 10%;
+    --card: 217 30% 10%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 10%;
+    --popover: 217 30% 10%;
     --popover-foreground: 0 0% 98%;
 
     --primary: 209 72% 63%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 0 0% 15%;
+    --secondary: 217 20% 14%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 217 18% 18%;
+    --muted-foreground: 217 10% 65%;
 
     --accent: 209 72% 63%;
     --accent-foreground: 0 0% 98%;
@@ -76,8 +77,8 @@ html {
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    --border: 217 18% 18%;
+    --input: 217 18% 18%;
     --ring: 209 72% 63%;
 
     --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.2);
@@ -93,6 +94,23 @@ html {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Logo edge fade — only in dark mode. The source image has a dark navy
+   * baked-in background; on the dark theme it blends with the page bg.
+   * In light mode the same mask creates an unwanted dark vignette, so we
+   * leave the rectangular edges visible there. */
+  .dark .logo-fade-mask {
+    -webkit-mask-image: radial-gradient(
+      ellipse 75% 70% at center,
+      black 55%,
+      transparent 100%
+    );
+    mask-image: radial-gradient(
+      ellipse 75% 70% at center,
+      black 55%,
+      transparent 100%
+    );
   }
 
   h1, h2, h3, h4, h5, h6 {

@@ -30,6 +30,18 @@
   --ifm-color-primary-lighter: #cbc4f9;
   --ifm-color-primary-lightest: #efedfd;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+
+  /* Navy backgrounds matching the marketing site + Pilot Shell logo edges
+   * so /docs and /blog feel continuous with the marketing surface. */
+  --ifm-background-color: #090e15;
+  --ifm-background-surface-color: #121821;
+  --ifm-navbar-background-color: #070c12;
+  --ifm-footer-background-color: #070c12;
+  --ifm-color-emphasis-100: #121821;
+  --ifm-color-emphasis-200: #1d2533;
+  --ifm-color-emphasis-300: #2a3344;
+  --ifm-toc-border-color: #1d2533;
+  --ifm-hr-border-color: #1d2533;
 }
 
 html {
