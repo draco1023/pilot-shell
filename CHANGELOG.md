@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [8.5.3] - 2026-05-04
+
+### Bug Fixes
+
+- Prevent 1M context error when extendedContext disabled, optimize site, improve skills
+
 ## [8.5.2] - 2026-04-30
 
 ### Bug Fixes
