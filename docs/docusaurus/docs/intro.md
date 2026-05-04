@@ -2,7 +2,7 @@
 slug: /
 sidebar_position: 0
 title: Introduction
-description: Complete technical reference for Pilot Shell
+description: Complete technical reference for Pilot Shell — the Claude Code engineering platform with spec-driven plans, enforced TDD, persistent memory, and quality hooks.
 ---
 
 # Pilot Shell Documentation

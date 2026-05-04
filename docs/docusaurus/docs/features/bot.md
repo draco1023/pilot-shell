@@ -1,5 +1,7 @@
 ---
 sidebar_position: 2
+title: Pilot Bot
+description: Persistent Pilot Bot agent — scheduled tasks, background jobs, heartbeat monitoring, and 24/7 automation running on Sonnet for cost-effective Claude operations.
 ---
 
 # Pilot Bot

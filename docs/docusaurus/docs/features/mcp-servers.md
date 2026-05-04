@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: MCP Servers
-description: External context always available to every session
+description: Pre-configured MCP servers — context7 for library docs, mem-search for persistent memory, web-search, web-fetch, grep-mcp, and CodeGraph in every session.
 ---
 
 # MCP Servers

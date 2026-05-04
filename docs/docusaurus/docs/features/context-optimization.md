@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: Context Optimization
-description: Keep the context window lean and recover cleanly when it fills up
+description: Keep the Claude context window lean and recover cleanly when it fills up — auto-compaction hooks, memory persistence, and routing for token-heavy tasks.
 ---
 
 # Context Optimization

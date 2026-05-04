@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Open Source Tools
-description: Open-source tools installed alongside Pilot Shell
+description: Open-source tools installed alongside Pilot Shell — Probe, ripgrep, fd, gh, jq, and other developer essentials. Each retains its original license.
 ---
 
 # Open Source Tools

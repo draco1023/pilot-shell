@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: /setup-rules
-description: Generate project rules, audit your codebase, and document MCP servers
+description: Generate project rules and document MCP servers — /setup-rules explores the repo, audits codebase patterns, and produces modular rules tailored to your stack.
 ---
 
 # /setup-rules

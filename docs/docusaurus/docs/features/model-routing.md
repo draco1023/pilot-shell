@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
 title: Model Routing
-description: Opus where reasoning matters, Sonnet where speed and cost matter
+description: Opus where reasoning matters, Sonnet where speed and cost matter — automatic per-skill model routing keeps quality high while controlling token spend.
 ---
 
 # Model Routing

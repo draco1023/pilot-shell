@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: Installation
-description: One-command installation — works with any existing project
+description: One-command installation that works with any existing project — no scaffolding, no restructuring. Run the installer once, then use Pilot across all repos.
 ---
 
 # Installation

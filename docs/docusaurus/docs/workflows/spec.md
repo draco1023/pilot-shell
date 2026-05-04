@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: /spec
-description: Plan, implement, and verify complex features with full automation using Spec-Driven Development
+description: Plan, implement, and verify complex features with full automation — Spec-Driven Development with TDD, plan approval gates, code review, and worktree isolation.
 ---
 
 # /spec

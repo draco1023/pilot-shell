@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: Hooks Pipeline
-description: 15 hooks across 7 lifecycle events — fire automatically at every stage
+description: 15 quality hooks across 7 Claude Code lifecycle events — auto-format, lint, type-check, and TDD enforcement that fire automatically at every stage of work.
 ---
 
 # Hooks Pipeline

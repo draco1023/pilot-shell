@@ -1,7 +1,7 @@
 ---
 sidebar_position: 7
 title: Status Line
-description: Real-time session dashboard rendered below every Claude Code response
+description: Real-time session dashboard rendered below every Claude Code response — token usage, cost, model, branch, plan status, and active hooks at a glance.
 ---
 
 # Status Line

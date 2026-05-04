@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Rules & Standards
-description: Production-tested best practices loaded into every session
+description: Production-tested rules and standards loaded into every Claude Code session — TDD enforcement, language standards, MCP routing, and project conventions.
 ---
 
 # Rules & Standards

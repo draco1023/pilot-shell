@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: Pilot CLI
-description: Command reference for the pilot binary at ~/.pilot/bin/pilot
+description: Command reference for the pilot binary at ~/.pilot/bin/pilot — session management, license activation, statusline, worktree control, and updates.
 ---
 
 # Pilot CLI

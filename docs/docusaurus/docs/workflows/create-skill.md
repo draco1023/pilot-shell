@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: /create-skill
-description: Build reusable skills from any topic — explores the codebase and creates them interactively
+description: Build reusable Claude Code skills from any topic — /create-skill explores the codebase, drafts the SKILL.md interactively, and ships a slash command.
 ---
 
 # /create-skill

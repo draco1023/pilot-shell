@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: /prd
-description: Brainstorm vague ideas into Product Requirements Documents through back-and-forth conversation, then hand off to /spec
+description: Brainstorm vague ideas into Product Requirements Documents through back-and-forth — then hand off to /spec for plan, implement, and verify with TDD enforced.
 ---
 
 # /prd

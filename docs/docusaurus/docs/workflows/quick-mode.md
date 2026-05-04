@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
 title: Quick Mode
-description: Direct execution — no plan file, no approval gate
+description: Direct execution mode — no plan file, no approval gate. Default for trivial changes; Pilot bails out and recommends /spec when scope exceeds quick-lane.
 ---
 
 # Quick Mode

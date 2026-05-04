@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 title: Prerequisites
-description: What you need before installing Pilot Shell
+description: What you need before installing Pilot Shell — Claude Code installed via the native installer, an active Anthropic subscription, and a POSIX shell environment.
 ---
 
 # Prerequisites

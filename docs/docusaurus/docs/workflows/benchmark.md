@@ -1,7 +1,7 @@
 ---
 sidebar_position: 6
 title: /benchmark
-description: Measure the real impact of rules and skills with quantitative before/after comparisons
+description: Measure the real impact of rules and skills with quantitative before/after comparisons — generate scorecards, run paired evaluations, validate workflow gains.
 ---
 
 # /benchmark

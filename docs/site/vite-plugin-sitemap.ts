@@ -22,15 +22,12 @@ interface PageEntry {
   priority: string;
 }
 
+// Only canonical URLs are listed. Hash-anchor URLs (#installation, #features,
+// ...) share the canonical with "/" and were flagged as "non-canonical pages
+// in sitemap" by SEO crawlers. /shared is a paste-only tool page; it lives in
+// robots.txt but not the sitemap so it doesn't surface as an orphan.
 const PAGES: PageEntry[] = [
   { loc: "/", changefreq: "weekly", priority: "1.0" },
-  { loc: "/#installation", changefreq: "weekly", priority: "0.9" },
-  { loc: "/#features", changefreq: "weekly", priority: "0.8" },
-  { loc: "/#workflow", changefreq: "weekly", priority: "0.8" },
-  { loc: "/#console", changefreq: "weekly", priority: "0.7" },
-  { loc: "/#pricing", changefreq: "weekly", priority: "0.8" },
-  { loc: "/#faq", changefreq: "weekly", priority: "0.7" },
-  { loc: "/shared", changefreq: "monthly", priority: "0.5" },
 ];
 
 export default function sitemapPlugin(): Plugin {

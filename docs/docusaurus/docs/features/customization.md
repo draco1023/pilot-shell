@@ -1,7 +1,7 @@
 ---
 sidebar_position: 10
 title: Customization
-description: Customize what Pilot Shell auto-installs — skills, rules, hooks, agents, MCP servers, LSP servers, and Claude settings
+description: Customize what Pilot Shell auto-installs — skills, rules, hooks, agents, MCP servers, LSP servers, and Claude settings on Team and Enterprise plans.
 ---
 
 # Customization

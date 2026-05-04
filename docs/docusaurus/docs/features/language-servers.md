@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: Language Servers
-description: Real-time diagnostics and go-to-definition, auto-installed and configured
+description: Real-time diagnostics, go-to-definition, and find-references via auto-installed LSP servers for Python, TypeScript, Go, Rust, and other major languages.
 ---
 
 # Language Servers

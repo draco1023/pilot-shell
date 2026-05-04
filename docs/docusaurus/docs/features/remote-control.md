@@ -1,7 +1,7 @@
 ---
 sidebar_position: 6
 title: Remote Control
-description: Control Pilot Shell sessions from your phone, tablet, or any browser
+description: Control Pilot Shell sessions from your phone, tablet, or any browser — Telegram bot integration plus the Console web UI keep you in the loop while away.
 ---
 
 # [Remote Control](https://youtu.be/Ko7_tC1fMMM?si=kWDzYiQvxlkZTrRK)

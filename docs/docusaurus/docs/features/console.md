@@ -1,7 +1,7 @@
 ---
 sidebar_position: 8
 title: Pilot Console
-description: Local web dashboard at localhost:41777 — monitor and manage your sessions
+description: Local Pilot Console at localhost:41777 — monitor sessions, browse memories, manage extensions, view diffs, track usage, and control Pilot from the browser.
 ---
 
 # Pilot Console

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
 title: /fix
-description: Bugfix workflow — investigate, RED test, fix, verify end-to-end, done.
+description: Bugfix workflow — investigate root cause, write a RED reproducing test, fix at the source, then verify end-to-end against the running program. No ceremony.
 ---
 
 # /fix
