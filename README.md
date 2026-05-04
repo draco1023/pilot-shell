@@ -2,7 +2,7 @@
 
 <img src="docs/img/logo.png" alt="Pilot Shell" width="400">
 
-### The Claude Code Engineering Platform.
+### How real engineers run Claude Code.
 
 From requirement to production-grade code — planned, tested, verified.</br>
 **Spec-driven plans. Enforced quality gates. Persistent knowledge.**
@@ -41,7 +41,7 @@ curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.
 
 **Claude Code writes code fast** — but without structure, it skips tests, loses context, and produces inconsistent results. Other frameworks add complexity (dozens of agents, thousands of lines of config) without meaningfully better output.
 
-**Pilot Shell is different.** Every component solves a real problem:
+**Pilot Shell is different.** Every component solves a real problem with an engineered solution:
 
 - **`/spec`** — plans, implements, and verifies features end-to-end with TDD
 - **`/fix`** — bugfix workflow with TDD; bails out when complexity exceeds the standard fix lane
@@ -777,6 +777,6 @@ Found a bug or missing a feature? [Open an issue](https://github.com/maxritter/p
 
 <div align="center">
 
-**The Claude Code Engineering Platform.**
+**How real engineers run Claude Code.**
 
 </div>

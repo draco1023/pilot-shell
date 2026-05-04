@@ -15,7 +15,7 @@ const HeroSection = () => {
         {/* Subtitle */}
         <div className="animate-fade-in-up animation-delay-100 mb-6 xs:mb-8 px-1">
           <h1 className="text-foreground/90 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl font-medium max-w-[90%] xs:max-w-xl sm:max-w-2xl mx-auto leading-relaxed">
-            Pilot Shell — the Claude Code engineering platform.
+            Pilot Shell — how real engineers run Claude Code.
           </h1>
           <p className="text-muted-foreground text-[11px] xs:text-xs sm:text-sm md:text-base max-w-[90%] xs:max-w-xl sm:max-w-2xl mx-auto mt-1.5 leading-relaxed">
             From requirement to production-grade code — planned, tested, verified.

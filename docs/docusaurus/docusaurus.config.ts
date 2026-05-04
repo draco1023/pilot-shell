@@ -4,7 +4,7 @@ import type * as Preset from "@docusaurus/preset-classic";
 
 const config: Config = {
   title: "Pilot Shell",
-  tagline: "The Claude Code engineering platform — spec-driven plans, enforced tests, persistent knowledge",
+  tagline: "How real engineers run Claude Code — spec-driven plans, enforced tests, persistent knowledge",
   favicon: "img/favicon.png",
 
   url: "https://pilot-shell.com",
@@ -84,7 +84,7 @@ const config: Config = {
   themeConfig: {
     image: "https://pilot-shell.com/logo.png",
     metadata: [
-      { name: "keywords", content: "Claude Code engineering platform, Claude Code, Claude Code platform, Claude Code framework, spec-driven development, Pilot Shell, TDD enforcement, AI coding agent, MCP servers, Claude Code best practices" },
+      { name: "keywords", content: "how real engineers run Claude Code, Claude Code engineering platform, Claude Code, Claude Code platform, Claude Code framework, spec-driven development, Pilot Shell, TDD enforcement, AI coding agent, MCP servers, Claude Code best practices" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@maxritter" },
       { property: "og:type", content: "website" },

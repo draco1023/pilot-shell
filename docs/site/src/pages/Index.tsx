@@ -25,7 +25,7 @@ const Index = () => {
     name: "Pilot Shell",
     url: "https://pilot-shell.com/",
     description:
-      "The Claude Code engineering platform: spec-driven planning, enforced TDD, persistent memory, and quality hooks. Make Claude Code production-ready.",
+      "How real engineers run Claude Code: spec-driven planning, enforced TDD, persistent memory, and quality hooks. Make Claude Code production-ready.",
     inLanguage: "en-US",
     publisher: {
       "@type": "Organization",
@@ -60,7 +60,7 @@ const Index = () => {
     "@type": "SoftwareApplication",
     name: "Pilot Shell",
     description:
-      "The Claude Code engineering platform: spec-driven planning, enforced TDD, persistent memory, and quality hooks. Make Claude Code production-ready.",
+      "How real engineers run Claude Code: spec-driven planning, enforced TDD, persistent memory, and quality hooks. Make Claude Code production-ready.",
     applicationCategory: "DeveloperApplication",
     applicationSubCategory: "AI Development Tools",
     operatingSystem: "Linux, macOS, Windows",
@@ -83,8 +83,8 @@ const Index = () => {
   return (
     <>
       <SEO
-        title="Pilot Shell — The Claude Code Engineering Platform"
-        description="The Claude Code engineering platform: spec-driven planning, enforced TDD, persistent memory, and quality hooks for Python, TypeScript, and Go. Make Claude Code production-ready."
+        title="Pilot Shell — How real engineers run Claude Code"
+        description="How real engineers run Claude Code: spec-driven planning, enforced TDD, persistent memory, and quality hooks for Python, TypeScript, and Go. Make Claude Code production-ready."
         structuredData={[
           websiteStructuredData,
           breadcrumbStructuredData,
