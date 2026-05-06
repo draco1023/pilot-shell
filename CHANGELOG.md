@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [8.6.1] - 2026-05-06
+
+### Bug Fixes
+
+- Show changelog in launcher splash when update is available
+
 ## [8.6.0] - 2026-05-06
 
 ### Features
