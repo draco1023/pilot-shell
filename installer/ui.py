@@ -135,7 +135,7 @@ class Console:
 
         tagline = Text()
         tagline.append("  ✈ ", style="cyan")
-        tagline.append("How real engineers run Claude Code.", style="bold white")
+        tagline.append("How real engineers run Claude Code.", style="bold")
         self._console.print(tagline)
         self._console.print("    From requirement to production-grade code. Planned, tested, verified.", style="muted")
         self._console.print()
@@ -184,7 +184,7 @@ class Console:
             return
         step_text = Text()
         step_text.append(f"[{self._current_step}/{self._total_steps}] ", style="bold magenta")
-        step_text.append(name, style="bold white")
+        step_text.append(name, style="bold")
         self._console.print()
         self._console.print(Rule(step_text, style="magenta"))
 
@@ -231,7 +231,7 @@ class Console:
         step_num = 1
         for section_title, items in sections:
             self._console.print()
-            self._console.print(f"  [bold white]{section_title}[/bold white]")
+            self._console.print(f"  [bold]{section_title}[/bold]")
             self._console.print()
             for title, description in items:
                 self._console.print(f"  [bold magenta]{step_num}.[/bold magenta] [bold]{title}[/bold]")
