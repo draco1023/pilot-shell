@@ -45,12 +45,19 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Content-Security-Policy", "value": "frame-ancestors 'self' http://localhost:* https://localhost:*" },
+        { "key": "Content-Security-Policy", "value": "frame-ancestors 'self' http://localhost:* https://localhost:*; object-src 'none'; base-uri 'self'; form-action 'self'" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-XSS-Protection", "value": "1; mode=block" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" },
         { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }
+      ]
+    },
+    {
+      "//": "Tighter CSP scoped to /s/<id> — the shared-spec viewer renders user-supplied annotation text and decision comments polled from teammate submissions. Stricter script-src + connect-src + frame-src prevent any future XSS/regression from loading remote payloads or exfiltrating data. Browsers intersect this with the broader CSP above.",
+      "source": "/s/(.*)",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://analytics.ahrefs.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self' http://localhost:* https://localhost:*" }
       ]
     },
     {
