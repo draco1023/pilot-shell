@@ -2,6 +2,18 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [8.10.4] - 2026-05-18
+
+### Bug Fixes
+
+- Drop unsupported vercel.json comment + harden logger file fallback
+- Harden shared-feedback flow end-to-end against malicious input
+- Whitelist feedback fields and cap planPath length (defense-in-depth)
+
+### Styling
+
+- Align pilot-shell.com task card with Console layout
+
 ## [8.10.3] - 2026-05-18
 
 ### Bug Fixes
