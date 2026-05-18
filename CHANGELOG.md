@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [8.10.3] - 2026-05-18
+
+### Bug Fixes
+
+- Resolve share-id duplication across spec view/review tabs
+
 ## [8.10.2] - 2026-05-18
 
 ### Bug Fixes
