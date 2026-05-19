@@ -567,6 +567,9 @@ Only ship the files and directories you need. A repo with just `rules/` is a val
 
 Built-in credential scanner catches secrets before they leak — into Claude's context or into git history. Shipped as a single hook registered on four events; runs entirely on your machine, fail-closed by default, **ON out of the box**.
 
+<details>
+<summary><b>What gets scanned</b></summary>
+
 | Event | What is scanned | What happens on a match |
 |-------|-----------------|-------------------------|
 | `UserPromptSubmit` | The submitted prompt text | Prompt is blocked before delivery to Claude |
@@ -574,11 +577,23 @@ Built-in credential scanner catches secrets before they leak — into Claude's c
 | `PreToolUse(Bash)` | Command text, `$VAR` env values, `cat`/`head`/`tail` targets, `git commit` staged diff + staged blobs | Bash denied |
 | `PostToolUse(Bash)` | Combined `stdout + stderr` (first 1 MB) | Tool result dropped — leak stays out of the transcript |
 
+</details>
+
+<details>
+<summary><b>Patterns detected</b></summary>
+
 **24 patterns** ported from [gitleaks](https://github.com/gitleaks/gitleaks) and [TruffleHog](https://github.com/trufflesecurity/trufflehog): AWS, GCP, GitHub PAT, GitLab PAT, npm, Stripe, OpenAI, Anthropic, Slack, Discord, Telegram, Twilio, SendGrid, Mailgun, JWT, PEM/SSH private keys, generic high-entropy secrets, and more. Generic patterns use a Shannon-entropy filter so `API_KEY=test12345` doesn't trip the scanner.
+
+</details>
+
+<details>
+<summary><b>Bypass and toggle</b></summary>
 
 **Bypass per-prompt** with `[allow-secret]` or `[allow-all]` in the next prompt — one-shot, the tag is consumed by the first tool call. Tags inside an assistant message or a Bash command string are NOT honoured (prompt-injection defense).
 
 Toggle from Console → Settings → Security → **Credential Scanner**. The setting persists to `~/.pilot/config.json` (`securityScanner.credentialScanner`) and the launcher exports `PILOT_CREDENTIAL_SCANNER_ENABLED` so the four hook entry points respect it. See the [Security Scanner](https://pilot-shell.com/docs/features/security) page for the full pattern list and rationale.
+
+</details>
 
 ### Pilot Bot
 
