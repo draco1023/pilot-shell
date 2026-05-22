@@ -89,7 +89,7 @@ Installs globally on macOS, Linux, and Windows (WSL2). All tools and rules go to
 If you encounter an issue or unfixed bug in the latest version, you can always go back to a previous version (see [releases](https://github.com/maxritter/pilot-shell/releases)):
 
 ```bash
-export VERSION=9.0.3
+export VERSION=9.0.4
 curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.sh | bash
 ```
 </details>
