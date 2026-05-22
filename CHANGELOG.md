@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.0.0] - 2026-05-22
+
+### Features
+
+- Model switching for /spec, collapse model selection to /model
+
 ## [8.10.5] - 2026-05-21
 
 ### Bug Fixes
