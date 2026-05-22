@@ -56,12 +56,12 @@ Run **only** when the user explicitly picked "Run Codex adversarial review" in 6
    [ -z "$CODEX_COMPANION" ] && echo "MISSING"
    ```
 
-2. **Build the review prompt file** by rendering the **template at `${CLAUDE_PLUGIN_ROOT}/agents/changes-review-codex.md`** (the same template `spec-verify` uses — single source of truth for code-review semantics).
+2. **Build the review prompt file** by rendering the **template at `$HOME/.claude/agents/changes-review-codex.md`** (the same template `spec-verify` uses — single source of truth for code-review semantics).
 
    For `/fix`, the "plan" is the conversation, not a file. Inline a one-page plan into a temp file so the template's `{{PLAN_PATH}}` substitution has something to point at:
 
    ```bash
-   PROMPT_TEMPLATE="${CLAUDE_PLUGIN_ROOT}/agents/changes-review-codex.md"
+   PROMPT_TEMPLATE="$HOME/.claude/agents/changes-review-codex.md"
    PROMPT_FILE="/tmp/codex-fix-review-${PILOT_SESSION_ID:-default}-$$.md"
    FIX_PLAN_FILE="/tmp/codex-fix-plan-${PILOT_SESSION_ID:-default}-$$.md"
    cat > "$FIX_PLAN_FILE" <<'PLAN_EOF'

@@ -109,15 +109,11 @@ def _has_other_active_sessions() -> bool:
 
 
 def main() -> int:
-    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
-    if not plugin_root:
-        return 0
-
     # Spawn the detached worker-stop BEFORE any network I/O so the critical
     # side effect (releasing the worker port, closing SQLite WAL handles) survives
     # even if the harness cancels this hook mid-flight.
     if not _has_other_active_sessions():
-        stop_script = Path(plugin_root) / "scripts" / "worker-service.cjs"
+        stop_script = Path.home() / ".pilot" / "scripts" / "worker-service.cjs"
         try:
             _ = subprocess.Popen(
                 ["bun", str(stop_script), "stop"],

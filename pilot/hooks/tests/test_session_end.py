@@ -25,15 +25,6 @@ def _find_call(mock: MagicMock, needle: str) -> tuple[tuple, dict] | None:
     return None
 
 
-def test_returns_early_without_plugin_root():
-    """Should return 0 when CLAUDE_PLUGIN_ROOT is not set."""
-    with patch.dict(os.environ, {}, clear=True):
-        os.environ.pop("CLAUDE_PLUGIN_ROOT", None)
-        result = session_end.main()
-
-    assert result == 0
-
-
 def test_skips_stop_when_other_sessions_active(tmp_path: Path):
     """Should skip worker stop when other Pilot sessions are running."""
     base = tmp_path / "sessions"
@@ -41,7 +32,7 @@ def test_skips_stop_when_other_sessions_active(tmp_path: Path):
     (base / "2002").mkdir(parents=True)
 
     with (
-        patch.dict(os.environ, {"CLAUDE_PLUGIN_ROOT": "/fake/plugin", "PILOT_SESSION_ID": "1001"}),
+        patch.dict(os.environ, {"PILOT_SESSION_ID": "1001"}),
         patch.object(session_end, "SESSIONS_DIR", base),
         patch("session_end.os.kill", return_value=None),
         patch("session_end.subprocess.Popen") as mock_popen,
@@ -59,7 +50,7 @@ def test_stops_worker_when_no_other_sessions(tmp_path: Path):
     (base / "1001").mkdir(parents=True)
 
     with (
-        patch.dict(os.environ, {"CLAUDE_PLUGIN_ROOT": "/fake/plugin", "PILOT_SESSION_ID": "1001"}),
+        patch.dict(os.environ, {"PILOT_SESSION_ID": "1001"}),
         patch.object(session_end, "SESSIONS_DIR", base),
         patch("session_end.subprocess.Popen") as mock_popen,
     ):
@@ -70,6 +61,9 @@ def test_stops_worker_when_no_other_sessions(tmp_path: Path):
     assert call is not None, "worker-stop Popen never invoked"
     args, kwargs = call
     assert args[0][0] == "bun"
+    # The worker script now lives under ~/.pilot/scripts/, no longer
+    # ~/.claude/pilot/scripts/ — verify the new location explicitly.
+    assert args[0][1].endswith("/.pilot/scripts/worker-service.cjs")
     assert args[0][-1] == "stop"
     assert kwargs["start_new_session"] is True
     assert kwargs["close_fds"] is True
@@ -81,7 +75,7 @@ def test_stops_worker_when_zero_sessions(tmp_path: Path):
     base.mkdir(parents=True)
 
     with (
-        patch.dict(os.environ, {"CLAUDE_PLUGIN_ROOT": "/fake/plugin", "PILOT_SESSION_ID": "1001"}),
+        patch.dict(os.environ, {"PILOT_SESSION_ID": "1001"}),
         patch.object(session_end, "SESSIONS_DIR", base),
         patch("session_end.subprocess.Popen") as mock_popen,
     ):
@@ -97,7 +91,7 @@ def test_safe_default_on_directory_error():
     mock_dir.exists.side_effect = OSError("permission denied")
 
     with (
-        patch.dict(os.environ, {"CLAUDE_PLUGIN_ROOT": "/fake/plugin", "PILOT_SESSION_ID": "1001"}),
+        patch.dict(os.environ, {"PILOT_SESSION_ID": "1001"}),
         patch.object(session_end, "SESSIONS_DIR", mock_dir),
         patch("session_end.subprocess.Popen") as mock_popen,
     ):
@@ -118,7 +112,7 @@ def test_skips_dead_pid_sessions(tmp_path: Path):
             raise OSError("No such process")
 
     with (
-        patch.dict(os.environ, {"CLAUDE_PLUGIN_ROOT": "/fake/plugin", "PILOT_SESSION_ID": "1001"}),
+        patch.dict(os.environ, {"PILOT_SESSION_ID": "1001"}),
         patch.object(session_end, "SESSIONS_DIR", base),
         patch("session_end.os.kill", side_effect=kill_side_effect),
         patch("session_end.subprocess.Popen") as mock_popen,
@@ -135,7 +129,7 @@ def test_worker_stop_swallows_exec_errors(tmp_path: Path):
     base.mkdir(parents=True)
 
     with (
-        patch.dict(os.environ, {"CLAUDE_PLUGIN_ROOT": "/fake/plugin", "PILOT_SESSION_ID": "1001"}),
+        patch.dict(os.environ, {"PILOT_SESSION_ID": "1001"}),
         patch.object(session_end, "SESSIONS_DIR", base),
         patch("session_end.subprocess.Popen", side_effect=OSError("bun not found")),
     ):
@@ -210,7 +204,6 @@ def test_main_invokes_worker_stop_before_complete_session(tmp_path: Path):
         patch.dict(
             os.environ,
             {
-                "CLAUDE_PLUGIN_ROOT": "/fake/plugin",
                 "PILOT_SESSION_ID": "1001",
                 "CLAUDE_SESSION_ID": "session-xyz",
             },

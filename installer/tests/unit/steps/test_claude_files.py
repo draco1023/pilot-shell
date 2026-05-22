@@ -11,11 +11,13 @@ from unittest.mock import patch
 class TestPatchClaudePaths:
     """Test the patch_claude_paths function."""
 
-    def test_patch_claude_paths_leaves_plugin_path_unchanged(self):
-        """patch_claude_paths does NOT expand ~/.claude/pilot (hooks use ${CLAUDE_PLUGIN_ROOT})."""
+    def test_patch_claude_paths_leaves_non_bin_tilde_paths_unchanged(self):
+        """patch_claude_paths only expands ~/.pilot/bin/. Other tilde paths
+        (~/.claude/, ~/.pilot/scripts/, …) round-trip untouched — the shell
+        expands them at hook-execution time."""
         from installer.steps.claude_files import patch_claude_paths
 
-        content = '{"command": "~/.claude/pilot/scripts/worker.cjs"}'
+        content = '{"command": "~/.pilot/scripts/worker.cjs"}'
         result = patch_claude_paths(content)
 
         assert content == result
@@ -34,20 +36,21 @@ class TestPatchClaudePaths:
         assert expected_bin in result
 
     def test_patch_claude_paths_only_expands_bin_path(self):
-        """patch_claude_paths only expands ~/.pilot/bin/, not ~/.claude/pilot."""
+        """patch_claude_paths only expands ~/.pilot/bin/, not other ~/.pilot/ subdirs."""
         from pathlib import Path as P
 
         from installer.steps.claude_files import patch_claude_paths
 
         content = """{
-            "command": "~/.claude/pilot/scripts/worker.cjs",
+            "command": "~/.pilot/scripts/worker.cjs",
             "statusLine": {"command": "~/.pilot/bin/pilot statusline"}
         }"""
         result = patch_claude_paths(content)
 
         expected_bin = str(P.home() / ".pilot" / "bin") + "/"
         assert expected_bin in result
-        assert "~/.claude/pilot" in result
+        # ~/.pilot/scripts/ is NOT touched — the shell expands it at hook-execution time.
+        assert "~/.pilot/scripts/" in result
 
     def test_patch_claude_paths_preserves_non_tilde_paths(self):
         """patch_claude_paths leaves non-tilde paths unchanged."""
@@ -77,9 +80,9 @@ class TestProcessSettings:
         """process_settings preserves all language hooks without filtering."""
         from installer.steps.claude_files import process_settings
 
-        python_hook = "uv run --no-project python ~/.claude/pilot/hooks/file_checker_python.py"
-        ts_hook = "uv run --no-project python ~/.claude/pilot/hooks/file_checker_ts.py"
-        go_hook = "uv run --no-project python ~/.claude/pilot/hooks/file_checker_go.py"
+        python_hook = "uv run --no-project python ~/.claude/hooks/file_checker_python.py"
+        ts_hook = "uv run --no-project python ~/.claude/hooks/file_checker_ts.py"
+        go_hook = "uv run --no-project python ~/.claude/hooks/file_checker_go.py"
         settings = {
             "hooks": {
                 "PostToolUse": [
@@ -548,8 +551,9 @@ class TestDirectoryClearing:
             assert (global_skills / "spec" / "SKILL.md").exists()
             assert (global_skills / "spec" / "SKILL.md").read_text() == "new spec skill"
 
-    def test_pilot_plugin_folder_is_installed(self):
-        """ClaudeFilesStep installs pilot plugin folder to ~/.claude/pilot/ (global)."""
+    def test_pilot_assets_land_in_correct_global_locations(self):
+        """Hooks go to ~/.claude/hooks/, scripts and MCP config to ~/.pilot/,
+        no files end up in the legacy ~/.claude/pilot/ directory."""
         from installer.context import InstallContext
         from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
@@ -584,16 +588,23 @@ class TestDirectoryClearing:
             with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
                 step.run(ctx)
 
-            global_pilot = home_dir / ".claude" / "pilot"
-            assert (global_pilot / "package.json").exists()
-            # plugin.json and .lsp.json are SKIPPED by the installer post-migration:
-            # Pilot is no longer registered as a Claude Code plugin; LSP moved to
-            # the Piebald-AI/claude-code-lsps marketplace. See plan Task 3.
-            assert not (global_pilot / "plugin.json").exists()
-            assert (global_pilot / ".mcp.json").exists()
-            assert not (global_pilot / ".lsp.json").exists()
-            assert (global_pilot / "scripts" / "mcp-server.cjs").exists()
-            assert (global_pilot / "hooks" / "hook.py").exists()
+            claude_dir = home_dir / ".claude"
+            pilot_home = home_dir / ".pilot"
+
+            # plugin.json and .lsp.json are SKIPPED entirely (Pilot is no longer
+            # registered as a Claude Code plugin; LSP moved to the
+            # Piebald-AI/claude-code-lsps marketplace).
+            assert not (claude_dir / "pilot").exists(), "legacy ~/.claude/pilot/ must not be created"
+            assert not (pilot_home / "plugin.json").exists()
+            assert not (pilot_home / ".lsp.json").exists()
+
+            # Hooks land at ~/.claude/hooks/ (Python script files).
+            assert (claude_dir / "hooks" / "hook.py").exists()
+
+            # Pilot runtime assets land at ~/.pilot/ (scripts, MCP template, package.json).
+            assert (pilot_home / "package.json").exists()
+            assert (pilot_home / ".mcp.json").exists()
+            assert (pilot_home / "scripts" / "mcp-server.cjs").exists()
 
 
 class TestMergeAppConfig:
@@ -1028,7 +1039,7 @@ class TestResolveRepoUrl:
 
 
 class TestSkillsDeployment:
-    """Test that skills from pilot/skills/ are deployed to ~/.claude/pilot/skills/ via pilot_plugin."""
+    """Test that skills from pilot/skills/ are deployed to ~/.claude/skills/."""
 
     def test_all_skills_categorized_as_skills(self):
         """All files in pilot/skills/ are categorized as 'skills' for root-level installation."""
@@ -1598,36 +1609,6 @@ class TestBuildSkillMdFiles:
         ui.error.assert_not_called()
 
 
-class TestPatchPluginRoot:
-    """patch_plugin_root expands ${CLAUDE_PLUGIN_ROOT} to the absolute asset path."""
-
-    def test_substitutes_plugin_root_with_absolute_path(self):
-        from installer.steps.claude_files import get_claude_config_dir, patch_plugin_root
-
-        content = '{"command": "uv run python \\"${CLAUDE_PLUGIN_ROOT}/hooks/foo.py\\""}'
-        result = patch_plugin_root(content)
-
-        expected_root = str(get_claude_config_dir() / "pilot")
-        assert "${CLAUDE_PLUGIN_ROOT}" not in result
-        assert expected_root in result
-
-    def test_leaves_unrelated_text_unchanged(self):
-        from installer.steps.claude_files import patch_plugin_root
-
-        content = '{"command": "echo hello"}'
-        result = patch_plugin_root(content)
-        assert result == content
-
-    def test_handles_multiple_occurrences(self):
-        from installer.steps.claude_files import patch_plugin_root
-
-        content = "${CLAUDE_PLUGIN_ROOT}/a ${CLAUDE_PLUGIN_ROOT}/b"
-        result = patch_plugin_root(content)
-        assert "${CLAUDE_PLUGIN_ROOT}" not in result
-        assert result.count("/a") == 1
-        assert result.count("/b") == 1
-
-
 class TestMergePilotHooks:
     """Tests for the Pilot-owned-entry-aware hooks merge.
 
@@ -1752,145 +1733,128 @@ class TestAgentsCategoryAndSkips:
             dest = step._get_dest_path("agents", "pilot/agents/spec-review.md", ctx)
         assert dest == claude_dir / "agents" / "spec-review.md"
 
-    def test_remove_legacy_plugin_marker_deletes_file(self, tmp_path):
-        from unittest.mock import patch
+    def test_categorize_hooks_routes_to_hooks_category(self):
+        """pilot/hooks/*.py and the hooks.json config land in ~/.claude/hooks/."""
+        from installer.steps.claude_files import _categorize_file
+
+        assert _categorize_file("pilot/hooks/spec_mode_guard.py") == "hooks"
+        assert _categorize_file("pilot/hooks/_lib/console_settings.py") == "hooks"
+        assert _categorize_file("pilot/hooks/hooks.json") == "hooks"
+
+    def test_categorize_pilot_runtime_assets_route_to_pilot_home(self):
+        """pilot/scripts/, pilot/ui/, and root-level configs land in ~/.pilot/."""
+        from installer.steps.claude_files import _categorize_file
+
+        assert _categorize_file("pilot/scripts/worker-service.cjs") == "pilot_home"
+        assert _categorize_file("pilot/ui/viewer.html") == "pilot_home"
+        assert _categorize_file("pilot/.mcp.json") == "pilot_home"
+        assert _categorize_file("pilot/claude.json") == "pilot_home"
+
+    def test_get_dest_path_hooks_lands_under_claude_hooks(self, tmp_path):
+        from unittest.mock import MagicMock, patch
 
         from installer.steps.claude_files import ClaudeFilesStep
 
-        claude_dir = tmp_path / ".claude"
-        plugin_dir = claude_dir / "pilot"
-        plugin_dir.mkdir(parents=True)
-        marker = plugin_dir / "plugin.json"
-        marker.write_text('{"name": "pilot"}')
-
         step = ClaudeFilesStep()
+        claude_dir = tmp_path / ".claude"
         with patch("installer.steps.claude_files.get_claude_config_dir", return_value=claude_dir):
-            step._remove_legacy_plugin_marker()
+            ctx = MagicMock()
+            dest = step._get_dest_path("hooks", "pilot/hooks/spec_mode_guard.py", ctx)
+        assert dest == claude_dir / "hooks" / "spec_mode_guard.py"
 
-        assert not marker.exists()
-
-    def test_remove_legacy_plugin_marker_silent_if_missing(self, tmp_path):
-        from unittest.mock import patch
+    def test_get_dest_path_pilot_home_lands_under_dotpilot(self, tmp_path):
+        from unittest.mock import MagicMock, patch
 
         from installer.steps.claude_files import ClaudeFilesStep
 
-        claude_dir = tmp_path / ".claude"
         step = ClaudeFilesStep()
-        with patch("installer.steps.claude_files.get_claude_config_dir", return_value=claude_dir):
-            # Should not raise even if marker doesn't exist.
-            step._remove_legacy_plugin_marker()
+        pilot_home = tmp_path / ".pilot"
+        with patch("installer.steps.claude_files.Path.home", return_value=tmp_path):
+            ctx = MagicMock()
+            scripts_dest = step._get_dest_path("pilot_home", "pilot/scripts/worker-service.cjs", ctx)
+            mcp_dest = step._get_dest_path("pilot_home", "pilot/.mcp.json", ctx)
+        assert scripts_dest == pilot_home / "scripts" / "worker-service.cjs"
+        assert mcp_dest == pilot_home / ".mcp.json"
 
-    def test_upgrade_idempotency_two_runs_no_double_fire(self, tmp_path):
-        """Run install twice in a row. plugin.json stays gone; hooks aren't doubled.
+    def test_cleanup_preserves_user_placed_hook_scripts(self, tmp_path):
+        """User-placed scripts in ~/.claude/hooks/ must survive cleanup.
 
-        Plan Risk-table mitigation: 'Add an integration test that runs install
-        twice with a stale plugin.json from the first run and asserts it's gone
-        on the second.' This exercises the full _post_install_processing path
-        (minus heavy sub-steps) two times.
+        The manifest tracks Pilot-installed entries; anything else is the
+        user's. Wiping the dir wholesale would clobber files the user dropped
+        in there (e.g., for their own settings.json hook registrations).
         """
         from unittest.mock import MagicMock, patch
 
         from installer.steps.claude_files import ClaudeFilesStep
 
         claude_dir = tmp_path / ".claude"
-        plugin_dir = claude_dir / "pilot"
-        plugin_dir.mkdir(parents=True)
-        # Seed first-run state: stale plugin.json from a prior install
-        marker = plugin_dir / "plugin.json"
-        marker.write_text('{"name": "pilot"}')
-        # Minimal hooks.json so _merge_hooks_into_settings has input
-        hooks_dir = plugin_dir / "hooks"
-        hooks_dir.mkdir()
-        hooks_dir_content = {
-            "hooks": {"Stop": [{"matcher": "", "hooks": [{"type": "command", "command": "py /a/stop.py"}]}]}
-        }
-        (hooks_dir / "hooks.json").write_text(json.dumps(hooks_dir_content) + "\n")
-        # Pre-existing user settings.json
-        (claude_dir / "settings.json").write_text(json.dumps({"model": "sonnet"}) + "\n")
+        hooks_dir = claude_dir / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        # User's own hook file (not in manifest)
+        user_hook = hooks_dir / "my-team-check.sh"
+        user_hook.write_text("#!/bin/sh\necho user hook")
+        # Pilot-managed hook file (in manifest)
+        pilot_hook = hooks_dir / "pilot_owned.py"
+        pilot_hook.write_text("# pilot")
+
+        # Manifest records only the pilot-owned file.
+        manifest_path = claude_dir / ".pilot-manifest.json"
+        manifest_path.write_text(json.dumps({"files": ["hooks/pilot_owned.py"]}))
 
         ctx = MagicMock()
-        ctx.local_mode = True
-        ui = MagicMock()
-        step = ClaudeFilesStep()
+        ctx.project_dir = tmp_path / "project"
+        config = MagicMock()
+        config.local_mode = False
+        config.local_repo_dir = None
 
+        step = ClaudeFilesStep()
         with (
             patch("installer.steps.claude_files.get_claude_config_dir", return_value=claude_dir),
-            patch.object(step, "_make_scripts_executable"),
-            patch.object(step, "_merge_app_config"),
-            patch.object(step, "_merge_mcp_servers_into_claude_json"),
-            patch("installer.steps.claude_files.migrate_model_config"),
-            patch.object(step, "_cleanup_stale_managed_files"),
-            patch.object(step, "_build_skill_md_files"),
-            patch.object(step, "_save_pilot_manifest"),
-            patch.object(step, "_reapply_customization"),
+            patch("installer.steps.claude_files.Path.home", return_value=tmp_path),
         ):
-            # First run — plugin marker gone, hooks merged once
-            step._post_install_processing(ctx, ui)
-            assert not marker.exists()
-            settings_after_first = json.loads((claude_dir / "settings.json").read_text())
-            first_stop = settings_after_first["hooks"]["Stop"]
-            assert len(first_stop) == 1
+            step._cleanup_old_directories(ctx, config, None)
 
-            # Second run — re-seed marker (simulates downstream tooling
-            # recreating it; we still want it gone after a re-install) and
-            # confirm idempotency
-            marker.write_text('{"name": "pilot"}')
-            step._post_install_processing(ctx, ui)
-            assert not marker.exists()
+        # Pilot-owned file removed (it's in the manifest, not in the new install).
+        assert not pilot_hook.exists()
+        # User's file untouched.
+        assert user_hook.exists()
+        assert user_hook.read_text() == "#!/bin/sh\necho user hook"
 
-            # Hooks must NOT have doubled — second-run is a no-op for the same
-            # incoming entries (baseline matches → identity-aware merge replaces
-            # in place rather than appending).
-            settings_after_second = json.loads((claude_dir / "settings.json").read_text())
-            second_stop = settings_after_second["hooks"]["Stop"]
-            assert len(second_stop) == 1, f"Hooks doubled: {second_stop}"
-            assert second_stop == first_stop
+    def test_cleanup_removes_legacy_claude_pilot_dir(self, tmp_path):
+        """The ~/.claude/pilot/ directory is wiped entirely — its assets have
+        all moved to ~/.claude/hooks/, ~/.claude/agents/, or ~/.pilot/.
 
-    def test_post_install_processing_removes_marker_first(self, tmp_path):
-        """Order-of-operations: plugin.json deletion must happen before any merge writes."""
+        ⛔ Must patch BOTH `get_claude_config_dir` AND `Path.home` — the
+        production cleanup also wipes ~/.pilot/scripts/ and ~/.pilot/ui/ via
+        `Path.home()`. Without the Path.home patch, this test destroys the
+        developer's real ~/.pilot/ on every run.
+        """
         from unittest.mock import MagicMock, patch
 
         from installer.steps.claude_files import ClaudeFilesStep
 
         claude_dir = tmp_path / ".claude"
-        plugin_dir = claude_dir / "pilot"
-        plugin_dir.mkdir(parents=True)
-        marker = plugin_dir / "plugin.json"
-        marker.write_text('{"name": "pilot"}')
-
-        call_log: list[str] = []
-
-        def _log_remove():
-            call_log.append("remove_marker")
-            (plugin_dir / "plugin.json").unlink(missing_ok=True)
-
-        def _log_merge_hooks():
-            call_log.append("merge_hooks")
+        legacy_plugin = claude_dir / "pilot"
+        (legacy_plugin / "hooks").mkdir(parents=True)
+        (legacy_plugin / "hooks" / "hooks.json").write_text("{}")
+        (legacy_plugin / "scripts").mkdir()
+        (legacy_plugin / "scripts" / "worker.cjs").write_text("// worker")
 
         ctx = MagicMock()
-        ctx.local_mode = True  # short-circuit _update_hooks_config
-        ui = MagicMock()
+        ctx.project_dir = tmp_path / "project"
+        config = MagicMock()
+        config.local_mode = False
+        config.local_repo_dir = None
 
         step = ClaudeFilesStep()
         with (
-            patch.object(step, "_remove_legacy_plugin_marker", side_effect=_log_remove),
-            patch.object(step, "_make_scripts_executable"),
-            patch.object(step, "_merge_hooks_into_settings", side_effect=_log_merge_hooks),
-            patch.object(step, "_merge_app_config"),
-            patch.object(step, "_merge_mcp_servers_into_claude_json"),
-            patch("installer.steps.claude_files.migrate_model_config"),
-            patch.object(step, "_cleanup_stale_managed_files"),
-            patch.object(step, "_build_skill_md_files"),
-            patch.object(step, "_save_pilot_manifest"),
-            patch.object(step, "_reapply_customization"),
-            patch(
-                "installer.steps.claude_files.get_claude_config_dir",
-                return_value=claude_dir,
-            ),
+            patch("installer.steps.claude_files.get_claude_config_dir", return_value=claude_dir),
+            patch("installer.steps.claude_files.Path.home", return_value=tmp_path),
         ):
-            step._post_install_processing(ctx, ui)
+            step._cleanup_old_directories(ctx, config, None)
 
-        assert call_log.index("remove_marker") < call_log.index("merge_hooks")
+        assert not legacy_plugin.exists()
 
 
 class TestMergePilotMcpServers:
@@ -2002,9 +1966,9 @@ class TestMergeMcpServersIntoClaudeJson:
         from installer.steps.claude_files import ClaudeFilesStep
 
         claude_dir = tmp_path / ".claude"
-        plugin_dir = claude_dir / "pilot"
-        plugin_dir.mkdir(parents=True)
-        (plugin_dir / ".mcp.json").write_text(json.dumps({"mcpServers": {"context7": {"command": "npx"}}}, indent=2))
+        pilot_home = tmp_path / ".pilot"
+        pilot_home.mkdir(parents=True)
+        (pilot_home / ".mcp.json").write_text(json.dumps({"mcpServers": {"context7": {"command": "npx"}}}, indent=2))
         home = tmp_path
         # Pre-existing ~/.claude.json with non-MCP keys
         (home / ".claude.json").write_text(json.dumps({"oauthAccount": "x"}, indent=2))
@@ -2031,9 +1995,10 @@ class TestMergeMcpServersIntoClaudeJson:
         from installer.steps.claude_files import ClaudeFilesStep
 
         claude_dir = tmp_path / ".claude"
-        plugin_dir = claude_dir / "pilot"
-        plugin_dir.mkdir(parents=True)
-        (plugin_dir / ".mcp.json").write_text(
+        claude_dir.mkdir(parents=True)
+        pilot_home = tmp_path / ".pilot"
+        pilot_home.mkdir(parents=True)
+        (pilot_home / ".mcp.json").write_text(
             json.dumps({"mcpServers": {"context7": {"command": "npx-new"}}}, indent=2)
         )
         home = tmp_path
@@ -2061,19 +2026,19 @@ class TestMergeMcpServersIntoClaudeJson:
 class TestMergeHooksIntoSettings:
     """Integration tests for ClaudeFilesStep._merge_hooks_into_settings."""
 
-    def test_writes_hooks_into_settings_with_absolute_paths(self, tmp_path):
-        """After merge, ~/.claude/settings.json `hooks` contains absolute paths,
-        no ${CLAUDE_PLUGIN_ROOT} substrings, and a dedicated baseline file exists.
+    def test_writes_hooks_into_settings_with_shipped_paths(self, tmp_path):
+        """After merge, ~/.claude/settings.json contains the absolute $HOME paths
+        from the shipped hooks.json verbatim, and a dedicated baseline file exists.
+        Bash expands $HOME natively when Claude Code shells out — no install-time
+        path substitution is needed.
         """
         from unittest.mock import patch
 
         from installer.steps.claude_files import ClaudeFilesStep
 
         claude_dir = tmp_path / ".claude"
-        plugin_dir = claude_dir / "pilot"
-        hooks_dir = plugin_dir / "hooks"
+        hooks_dir = claude_dir / "hooks"
         hooks_dir.mkdir(parents=True)
-        # Minimal hooks.json with one ${CLAUDE_PLUGIN_ROOT} reference
         hooks_json = {
             "hooks": {
                 "PostToolUse": [
@@ -2082,7 +2047,7 @@ class TestMergeHooksIntoSettings:
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": 'uv run python "${CLAUDE_PLUGIN_ROOT}/hooks/file_checker.py"',
+                                "command": 'uv run python "$HOME/.claude/hooks/file_checker.py"',
                             }
                         ],
                     }
@@ -2090,8 +2055,6 @@ class TestMergeHooksIntoSettings:
             }
         }
         (hooks_dir / "hooks.json").write_text(json.dumps(hooks_json, indent=2) + "\n")
-        # Pre-existing settings.json with no hooks key
-        claude_dir.mkdir(parents=True, exist_ok=True)
         (claude_dir / "settings.json").write_text(json.dumps({"model": "sonnet"}, indent=2) + "\n")
 
         step = ClaudeFilesStep()
@@ -2104,17 +2067,13 @@ class TestMergeHooksIntoSettings:
         merged = json.loads((claude_dir / "settings.json").read_text())
         assert "hooks" in merged
         assert merged["model"] == "sonnet"
-        # Verify absolute path substitution happened
         cmd = merged["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
-        assert "${CLAUDE_PLUGIN_ROOT}" not in cmd
-        assert str(claude_dir / "pilot") in cmd
+        assert cmd == 'uv run python "$HOME/.claude/hooks/file_checker.py"'
 
-        # Dedicated baseline file exists with the new hooks
         baseline_path = claude_dir / ".pilot-hooks-baseline.json"
         assert baseline_path.exists()
         baseline = json.loads(baseline_path.read_text())
         assert "PostToolUse" in baseline
-        # settings baseline (legacy) must NOT contain hooks
         settings_baseline = claude_dir / ".pilot-settings-baseline.json"
         if settings_baseline.exists():
             assert "hooks" not in json.loads(settings_baseline.read_text())
@@ -2126,8 +2085,7 @@ class TestMergeHooksIntoSettings:
         from installer.steps.claude_files import ClaudeFilesStep
 
         claude_dir = tmp_path / ".claude"
-        plugin_dir = claude_dir / "pilot"
-        hooks_dir = plugin_dir / "hooks"
+        hooks_dir = claude_dir / "hooks"
         hooks_dir.mkdir(parents=True)
 
         # Incoming hooks.json from the new install
@@ -2174,3 +2132,68 @@ class TestMergeHooksIntoSettings:
         assert "echo MY_USER_STOP" in commands  # preserved
         assert "py NEW_PILOT_STOP" in commands  # installed
         assert "py OLD_PILOT_STOP" not in commands  # replaced
+
+    def test_legacy_upgrade_without_baseline_removes_old_pilot_paths(self, tmp_path):
+        """Pre-baseline Pilot installs left hook entries in settings.json with
+        absolute ~/.claude/pilot/hooks/... or ${CLAUDE_PLUGIN_ROOT}/hooks/...
+        commands. On upgrade with no baseline file, _merge_hooks_into_settings
+        must auto-seed a synthetic baseline so those legacy entries are
+        identified as Pilot-owned and REPLACED with the new $HOME/.claude/hooks/
+        entries — not preserved as duplicate user_only additions.
+        """
+        from unittest.mock import patch
+
+        from installer.steps.claude_files import ClaudeFilesStep
+
+        claude_dir = tmp_path / ".claude"
+        hooks_dir = claude_dir / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        new_command = 'uv run --no-project python "$HOME/.claude/hooks/spec_mode_guard.py"'
+        hooks_json = {
+            "hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": new_command}]}]}
+        }
+        (hooks_dir / "hooks.json").write_text(json.dumps(hooks_json, indent=2) + "\n")
+
+        # User's settings.json has two legacy entries (no baseline file on disk).
+        legacy_abs = (
+            'uv run --no-project python "/Users/x/.claude/pilot/hooks/spec_mode_guard.py"'
+        )
+        legacy_template = (
+            'uv run --no-project python "${CLAUDE_PLUGIN_ROOT}/hooks/spec_mode_guard.py"'
+        )
+        user_command = "echo MY_OWN_UPS_HOOK"
+        (claude_dir / "settings.json").write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "UserPromptSubmit": [
+                            {"hooks": [{"type": "command", "command": legacy_abs}]},
+                            {"hooks": [{"type": "command", "command": legacy_template}]},
+                            {"hooks": [{"type": "command", "command": user_command}]},
+                        ]
+                    },
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+
+        step = ClaudeFilesStep()
+        with patch("installer.steps.claude_files.get_claude_config_dir", return_value=claude_dir):
+            step._merge_hooks_into_settings()
+
+        merged_commands = [
+            h["command"]
+            for entry in json.loads((claude_dir / "settings.json").read_text())["hooks"][
+                "UserPromptSubmit"
+            ]
+            for h in entry["hooks"]
+        ]
+        # Legacy entries replaced
+        assert legacy_abs not in merged_commands
+        assert legacy_template not in merged_commands
+        # User-added entry preserved
+        assert user_command in merged_commands
+        # New entry installed
+        assert new_command in merged_commands

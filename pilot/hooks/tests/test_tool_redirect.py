@@ -1054,5 +1054,3 @@ class TestSearchNudgeSafety:
         code, output = _run_with_input("Agent", {"subagent_type": "Explore", "prompt": "find files"})
         assert code == 2
         assert _is_denied(output)
-
-

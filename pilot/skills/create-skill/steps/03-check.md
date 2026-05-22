@@ -4,10 +4,9 @@
 # Project skills
 ls .claude/skills/ 2>/dev/null
 rg -i "keyword" .claude/skills/ 2>/dev/null
-# Global skills (user + Pilot defaults)
+# Global skills (user + Pilot defaults all live at ~/.claude/skills/)
 ls ~/.claude/skills/ 2>/dev/null
-ls ~/.claude/pilot/skills/ 2>/dev/null
-rg -i "keyword" ~/.claude/skills/ ~/.claude/pilot/skills/ 2>/dev/null
+rg -i "keyword" ~/.claude/skills/ 2>/dev/null
 ```
 
 | Found | Action |

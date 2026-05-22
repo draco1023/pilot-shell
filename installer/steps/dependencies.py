@@ -742,9 +742,7 @@ def _install_or_update_plugin(
             # {"plugins": [...]}). Anything else falls through to
             # fresh-install rather than crashing the installer.
             if isinstance(plugins, list):
-                already_installed = any(
-                    isinstance(p, dict) and p.get("id") == plugin_id for p in plugins
-                )
+                already_installed = any(isinstance(p, dict) and p.get("id") == plugin_id for p in plugins)
     except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError, AttributeError, TypeError):
         pass
 
@@ -820,9 +818,7 @@ def _legacy_context_mode_uninstall_plugin() -> bool:
         if result.returncode != 0 or not result.stdout.strip():
             return False
         plugins = json.loads(result.stdout)
-        has_plugin = any(
-            isinstance(p, dict) and p.get("id") == _LEGACY_CONTEXT_MODE_PLUGIN_ID for p in plugins
-        )
+        has_plugin = any(isinstance(p, dict) and p.get("id") == _LEGACY_CONTEXT_MODE_PLUGIN_ID for p in plugins)
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, json.JSONDecodeError, OSError):
         return False
     if not has_plugin:
@@ -851,9 +847,7 @@ def _legacy_context_mode_remove_marketplace() -> bool:
         if result.returncode != 0 or not result.stdout.strip():
             return False
         markets = json.loads(result.stdout)
-        has_market = any(
-            isinstance(m, dict) and m.get("name") == _LEGACY_CONTEXT_MODE_MARKETPLACE for m in markets
-        )
+        has_market = any(isinstance(m, dict) and m.get("name") == _LEGACY_CONTEXT_MODE_MARKETPLACE for m in markets)
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, json.JSONDecodeError, OSError):
         return False
     if not has_market:
@@ -911,10 +905,7 @@ def _legacy_context_mode_remove_orphan_hook() -> bool:
         filtered = [
             h
             for h in sub_hooks
-            if not (
-                isinstance(h, dict)
-                and _LEGACY_CONTEXT_MODE_HOOK_FILENAME in str(h.get("command", ""))
-            )
+            if not (isinstance(h, dict) and _LEGACY_CONTEXT_MODE_HOOK_FILENAME in str(h.get("command", "")))
         ]
         if len(filtered) == len(sub_hooks):
             cleaned.append(entry)
@@ -1399,34 +1390,33 @@ def _install_with_spinner(ui: Any, name: str, install_fn: Any, *args: Any) -> bo
 
 
 def _install_plugin_dependencies(_project_dir: Path, ui: Any = None) -> bool:
-    """Install plugin dependencies by running bun/npm install in the plugin folder.
+    """Install Pilot's Node.js dependencies by running bun/npm install in ~/.pilot/.
 
-    This installs all Node.js dependencies defined in plugin/package.json,
-    which includes runtime dependencies for MCP servers and hooks.
+    Reads ~/.pilot/package.json (installed by the claude_files step as part of
+    the pilot_home category) and installs its dependencies — runtime deps for
+    the bun worker scripts and MCP servers under ~/.pilot/scripts/.
     """
-    from installer.steps.claude_files import get_claude_config_dir
+    pilot_home = Path.home() / ".pilot"
 
-    plugin_dir = get_claude_config_dir() / "pilot"
-
-    if not plugin_dir.exists():
+    if not pilot_home.exists():
         if ui:
-            ui.warning("Plugin directory not found - skipping plugin dependencies")
+            ui.warning("~/.pilot/ not found - skipping plugin dependencies")
         return False
 
-    package_json = plugin_dir / "package.json"
+    package_json = pilot_home / "package.json"
     if not package_json.exists():
         if ui:
-            ui.warning("No package.json in plugin directory - skipping")
+            ui.warning("No package.json in ~/.pilot/ - skipping")
         return False
 
     if command_exists("bun"):
-        if not _run_bash_with_retry("bun install", cwd=plugin_dir):
+        if not _run_bash_with_retry("bun install", cwd=pilot_home):
             return False
         _record_outcome(_OUTCOME_UPDATED)
         return True
 
     if command_exists("npm"):
-        if not _run_bash_with_retry("npm install", cwd=plugin_dir):
+        if not _run_bash_with_retry("npm install", cwd=pilot_home):
             return False
         _record_outcome(_OUTCOME_UPDATED)
         return True
@@ -1480,15 +1470,13 @@ def _kill_proc(proc: subprocess.Popen[Any]) -> None:
 def _precache_npx_mcp_servers(_ui: Any) -> bool:
     """Pre-cache npx-based MCP server packages so Claude Code can start them instantly.
 
-    Reads .mcp.json from the plugin directory, finds servers that use npx,
-    and installs each package into the npx cache using --package + -c "true".
-    This ensures packages are fully installed (including all dependencies)
-    before returning, avoiding the race condition of launching the actual
-    server and killing it mid-install.
+    Reads ~/.pilot/.mcp.json (installed by the claude_files step), finds
+    servers that use npx, and installs each package into the npx cache using
+    --package + -c "true". This ensures packages are fully installed
+    (including all dependencies) before returning, avoiding the race condition
+    of launching the actual server and killing it mid-install.
     """
-    from installer.steps.claude_files import get_claude_config_dir
-
-    mcp_config_path = get_claude_config_dir() / "pilot" / ".mcp.json"
+    mcp_config_path = Path.home() / ".pilot" / ".mcp.json"
     if not mcp_config_path.exists():
         _record_outcome(_OUTCOME_UNCHANGED)
         return True

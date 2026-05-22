@@ -7,12 +7,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/scripts/worker-service.cjs\" hook claude-code context",
+            "command": "bun \"$HOME/.pilot/scripts/worker-service.cjs\" hook claude-code context",
             "timeout": 15
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/scripts/worker-service.cjs\" hook claude-code user-message",
+            "command": "bun \"$HOME/.pilot/scripts/worker-service.cjs\" hook claude-code user-message",
             "async": true,
             "timeout": 15
           }
@@ -23,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/session_clear.py\"",
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/session_clear.py\"",
             "timeout": 5
           }
         ]
@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/post_compact_restore.py\"",
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/post_compact_restore.py\"",
             "timeout": 5
           }
         ]
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/spec_mode_guard.py\""
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/spec_mode_guard.py\""
           }
         ]
       },
@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/spec_handoff_resume.py\""
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/spec_handoff_resume.py\""
           }
         ]
       },
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/scripts/worker-service.cjs\" hook claude-code session-init",
+            "command": "bun \"$HOME/.pilot/scripts/worker-service.cjs\" hook claude-code session-init",
             "async": true,
             "timeout": 15
           }
@@ -73,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/tool_redirect.py\""
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/tool_redirect.py\""
           }
         ]
       },
@@ -82,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/tool_token_saver.py\""
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/tool_token_saver.py\""
           }
         ]
       }
@@ -93,7 +93,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/file_checker.py\""
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/file_checker.py\""
           }
         ]
       },
@@ -102,7 +102,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/context_monitor.py\""
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/context_monitor.py\""
           }
         ]
       },
@@ -111,7 +111,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/scripts/worker-service.cjs\" hook claude-code observation",
+            "command": "bun \"$HOME/.pilot/scripts/worker-service.cjs\" hook claude-code observation",
             "async": true,
             "timeout": 15
           }
@@ -123,11 +123,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/spec_stop_guard.py\""
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/spec_stop_guard.py\""
           },
           {
             "type": "command",
-            "command": "bun \"${CLAUDE_PLUGIN_ROOT}/scripts/worker-service.cjs\" hook claude-code summarize",
+            "command": "bun \"$HOME/.pilot/scripts/worker-service.cjs\" hook claude-code summarize",
             "async": true,
             "timeout": 15
           }
@@ -139,7 +139,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/session_end.py\"",
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/session_end.py\"",
             "timeout": 15
           }
         ]
@@ -150,7 +150,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"${CLAUDE_PLUGIN_ROOT}/hooks/pre_compact.py\"",
+            "command": "uv run --no-project python \"$HOME/.claude/hooks/pre_compact.py\"",
             "timeout": 15
           }
         ]

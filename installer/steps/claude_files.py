@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -46,9 +47,11 @@ SKIP_PATTERNS = (
     "/.vite/",
     "/coverage/",
     "/.turbo/",
+    "/tests/",
     ".lock",
     "-lock.yaml",
     ".install-version",
+    ".DS_Store",
 )
 
 SKIP_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
@@ -74,17 +77,6 @@ def patch_claude_paths(content: str) -> str:
     home = Path.home()
     abs_bin_path = str(home / ".pilot" / "bin") + "/"
     return content.replace('"~/.pilot/bin/', '"' + abs_bin_path)
-
-
-def patch_plugin_root(content: str) -> str:
-    """Expand ${CLAUDE_PLUGIN_ROOT} to the absolute Pilot asset path.
-
-    After dropping the plugin mechanism (no --plugin-dir), the hooks merged into
-    ~/.claude/settings.json can no longer rely on Claude Code's plugin loader
-    setting CLAUDE_PLUGIN_ROOT. We install-time patch hooks.json so the merged
-    settings.json contains absolute paths.
-    """
-    return content.replace("${CLAUDE_PLUGIN_ROOT}", str(get_claude_config_dir() / "pilot"))
 
 
 def process_settings(settings_content: str) -> str:
@@ -113,18 +105,69 @@ def _should_skip_file(file_path: str) -> bool:
     return False
 
 
+_LEGACY_HOOK_COMMAND_MARKERS = (
+    "${CLAUDE_PLUGIN_ROOT}",
+    "/.claude/pilot/",
+)
+
+
+def _legacy_hook_signature_baseline(current_hooks: dict[str, Any]) -> dict[str, Any]:
+    """Return a synthetic baseline containing only legacy Pilot hook entries.
+
+    Used on first install after the ~/.claude/pilot/ migration when the real
+    baseline file is missing (pre-baseline Pilot install, file restored from
+    backup that excluded dotfiles, etc.). Identifies legacy Pilot entries by
+    a command-string substring match — these were Pilot-shipped, so seeding
+    them into the baseline lets merge_pilot_hooks remove them as stale rather
+    than preserving them as user additions.
+    """
+    legacy: dict[str, Any] = {}
+    for event_key, entries in current_hooks.items():
+        if not isinstance(entries, list):
+            continue
+        matching = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            for hook in entry.get("hooks", []) or []:
+                if not isinstance(hook, dict):
+                    continue
+                cmd = hook.get("command", "")
+                if isinstance(cmd, str) and any(m in cmd for m in _LEGACY_HOOK_COMMAND_MARKERS):
+                    matching.append(entry)
+                    break
+        if matching:
+            legacy[event_key] = matching
+    return legacy
+
+
 def _categorize_file(file_path: str) -> str:
-    """Determine which category a file belongs to."""
-    if file_path == "pilot/settings.json" or file_path.endswith("/settings.json"):
+    """Determine which category a file belongs to.
+
+    Destination map:
+      - settings    → ~/.claude/settings.json
+      - agents      → ~/.claude/agents/        (subagents + codex prompt templates)
+      - hooks       → ~/.claude/hooks/         (Python hook scripts + hooks.json)
+      - skills      → ~/.claude/skills/
+      - rules       → ~/.claude/rules/
+      - pilot_home  → ~/.pilot/                (scripts/, ui/, .mcp.json, claude.json, package.json)
+
+    The settings category is matched by EXACT path — any nested file named
+    `settings.json` (e.g. a hook fixture) stays in its own category to avoid
+    clobbering the user's real ~/.claude/settings.json.
+    """
+    if file_path == "pilot/settings.json":
         return "settings"
     elif file_path.startswith("pilot/agents/"):
         return "agents"
+    elif file_path.startswith("pilot/hooks/"):
+        return "hooks"
     elif "/skills/" in file_path:
         return "skills"
     elif "/rules/" in file_path:
         return "rules"
     else:
-        return "pilot_plugin"
+        return "pilot_home"
 
 
 def _clear_directory_safe(path: Path, ui: Any = None, error_msg: str = "") -> None:
@@ -136,20 +179,6 @@ def _clear_directory_safe(path: Path, ui: Any = None, error_msg: str = "") -> No
     except (OSError, IOError) as e:
         if ui and error_msg:
             ui.warning(f"{error_msg}: {e}")
-
-
-def _clear_directory_contents(path: Path) -> None:
-    """Remove contents of a directory but keep the directory."""
-    if not path.exists():
-        return
-    for item in path.iterdir():
-        try:
-            if item.is_dir():
-                shutil.rmtree(item)
-            else:
-                item.unlink()
-        except (OSError, IOError):
-            pass
 
 
 class ClaudeFilesStep(BaseStep):
@@ -222,7 +251,8 @@ class ClaudeFilesStep(BaseStep):
             "skills": [],
             "rules": [],
             "agents": [],
-            "pilot_plugin": [],
+            "hooks": [],
+            "pilot_home": [],
             "settings": [],
         }
 
@@ -245,20 +275,39 @@ class ClaudeFilesStep(BaseStep):
         """Clean up Pilot-managed files before reinstallation.
 
         Uses manifests to track which files Pilot installed. Only removes
-        Pilot-managed files — user-created files in commands/ and rules/ are preserved.
+        Pilot-managed files — user-created files in commands/, rules/,
+        agents/, and hooks/ are preserved.
+
+        Also performs the one-shot ~/.claude/pilot/ migration: the directory
+        is no longer used (hooks moved to ~/.claude/hooks/, scripts/ui moved
+        to ~/.pilot/, MCP+app config merged into ~/.claude.json).
         """
         home_claude_dir = get_claude_config_dir()
-        home_pilot_plugin_dir = home_claude_dir / "pilot"
+        pilot_home_dir = Path.home() / ".pilot"
 
-        self._cleanup_legacy_standards_skills(home_pilot_plugin_dir)
-
-        _clear_directory_contents(home_pilot_plugin_dir)
+        # Legacy ~/.claude/pilot/ — removed entirely. Safe because every
+        # asset previously under there has a new home (or is no longer needed).
+        # Runs unconditionally (even with source_is_destination) — the legacy
+        # dir is always stale post-migration and never the source.
+        legacy_plugin_dir = home_claude_dir / "pilot"
+        self._cleanup_legacy_standards_skills(legacy_plugin_dir)
+        _clear_directory_safe(legacy_plugin_dir)
 
         source_is_destination = (
             config.local_mode and config.local_repo_dir and config.local_repo_dir.resolve() == ctx.project_dir.resolve()
         )
         if source_is_destination:
             return
+
+        # ~/.pilot/scripts/ and ~/.pilot/ui/ are wholly Pilot-managed (no user
+        # files there by convention; the dest path is what Pilot's hooks.json
+        # and MCP config point to). Clear before install so renamed/removed
+        # assets don't linger. Never touch other ~/.pilot/ subdirs (bin/,
+        # sessions/, config.json). Guarded by source_is_destination so a
+        # developer running --local from the repo doesn't lose their working
+        # ~/.pilot/scripts/ on every iteration.
+        _clear_directory_safe(pilot_home_dir / "scripts")
+        _clear_directory_safe(pilot_home_dir / "ui")
 
         manifest_path = home_claude_dir / PILOT_MANIFEST_FILE
         if not manifest_path.exists():
@@ -268,6 +317,11 @@ class ClaudeFilesStep(BaseStep):
         cleanup_managed_files(home_claude_dir / "skills", manifest_path, "skills/")
         cleanup_managed_files(home_claude_dir / "rules", manifest_path, "rules/")
         cleanup_managed_files(home_claude_dir / "agents", manifest_path, "agents/")
+        # ~/.claude/hooks/ is a SHARED directory — Claude Code's native hook
+        # script location. Users may drop their own scripts there. Manifest-based
+        # cleanup removes only Pilot-managed files (recorded in
+        # .pilot-manifest.json), preserving anything else.
+        cleanup_managed_files(home_claude_dir / "hooks", manifest_path, "hooks/")
 
     def _cleanup_legacy_standards_skills(self, plugin_dir: Path) -> None:
         """Remove old standards-* skill directories from plugin skills folder.
@@ -368,7 +422,8 @@ class ClaudeFilesStep(BaseStep):
             "skills": "skills",
             "rules": "standard rules",
             "agents": "agents",
-            "pilot_plugin": "Pilot plugin files",
+            "hooks": "hooks",
+            "pilot_home": "Pilot runtime files",
             "settings": "settings",
         }
 
@@ -459,7 +514,7 @@ class ClaudeFilesStep(BaseStep):
     def _get_dest_path(self, category: str, file_path: str, ctx: InstallContext) -> Path:
         """Determine destination path based on category."""
         home_claude_dir = get_claude_config_dir()
-        home_pilot_plugin_dir = home_claude_dir / "pilot"
+        pilot_home_dir = Path.home() / ".pilot"
 
         if category == "skills":
             rel_path = Path(file_path).relative_to("pilot/skills")
@@ -470,9 +525,12 @@ class ClaudeFilesStep(BaseStep):
         elif category == "agents":
             rel_path = Path(file_path).relative_to("pilot/agents")
             return home_claude_dir / "agents" / rel_path
-        elif category == "pilot_plugin":
+        elif category == "hooks":
+            rel_path = Path(file_path).relative_to("pilot/hooks")
+            return home_claude_dir / "hooks" / rel_path
+        elif category == "pilot_home":
             rel_path = Path(file_path).relative_to("pilot")
-            return home_pilot_plugin_dir / rel_path
+            return pilot_home_dir / rel_path
         elif category == "settings":
             return home_claude_dir / SETTINGS_FILE
         else:
@@ -480,17 +538,7 @@ class ClaudeFilesStep(BaseStep):
 
     def _post_install_processing(self, ctx: InstallContext, ui: Any) -> None:
         """Run post-installation processing tasks."""
-        # MUST run FIRST: removes the plugin.json marker from ~/.claude/pilot/
-        # so Claude Code stops treating the directory as a plugin before any
-        # hooks/MCP/agent state is merged into native settings.
-        self._remove_legacy_plugin_marker()
-
-        home_pilot_plugin_dir = get_claude_config_dir() / "pilot"
-
-        self._make_scripts_executable(home_pilot_plugin_dir)
-
-        if not ctx.local_mode:
-            self._update_hooks_config(home_pilot_plugin_dir)
+        self._make_scripts_executable(Path.home() / ".pilot" / "scripts")
 
         self._merge_hooks_into_settings()
         self._merge_app_config()
@@ -502,10 +550,13 @@ class ClaudeFilesStep(BaseStep):
         self._reapply_customization(ui)
 
     def _save_pilot_manifest(self, ctx: InstallContext) -> None:
-        """Save manifest of Pilot-managed files in skills/ and rules/.
+        """Save manifest of Pilot-managed files in skills/, rules/, agents/, hooks/.
 
         Records filenames (relative to ~/.claude/) so the next update
         can selectively remove only Pilot's files, preserving user files.
+        Files installed under ~/.pilot/ (scripts/, ui/, MCP config) are
+        managed by directory clearing in _cleanup_old_directories rather
+        than per-file manifest tracking.
         """
         home_claude_dir = get_claude_config_dir()
         installed = ctx.config.get("installed_files", [])
@@ -513,6 +564,7 @@ class ClaudeFilesStep(BaseStep):
         skills_dir = home_claude_dir / "skills"
         rules_dir = home_claude_dir / "rules"
         agents_dir = home_claude_dir / "agents"
+        hooks_dir = home_claude_dir / "hooks"
         managed_files: set[str] = set()
 
         for filepath_str in installed:
@@ -524,6 +576,8 @@ class ClaudeFilesStep(BaseStep):
                     managed_files.add("rules/" + str(filepath.relative_to(rules_dir)))
                 elif filepath.is_relative_to(agents_dir):
                     managed_files.add("agents/" + str(filepath.relative_to(agents_dir)))
+                elif filepath.is_relative_to(hooks_dir):
+                    managed_files.add("hooks/" + str(filepath.relative_to(hooks_dir)))
             except (ValueError, TypeError):
                 continue
 
@@ -843,9 +897,8 @@ class ClaudeFilesStep(BaseStep):
                     f"Run `pilot customize status` after install."
                 )
 
-    def _make_scripts_executable(self, plugin_dir: Path) -> None:
-        """Make script files executable."""
-        scripts_dir = plugin_dir / "scripts"
+    def _make_scripts_executable(self, scripts_dir: Path) -> None:
+        """Make .cjs script files executable."""
         if not scripts_dir.exists():
             return
 
@@ -856,53 +909,24 @@ class ClaudeFilesStep(BaseStep):
             except (OSError, IOError):
                 pass
 
-    def _update_hooks_config(self, plugin_dir: Path) -> None:
-        """Process hooks config with path patching and consistent formatting."""
-        hooks_json_path = plugin_dir / "hooks" / "hooks.json"
-        if not hooks_json_path.exists():
-            return
-
-        try:
-            hooks_content = hooks_json_path.read_text()
-            hooks_content = patch_claude_paths(hooks_content)
-            hooks_config = json.loads(hooks_content)
-            hooks_json_path.write_text(json.dumps(hooks_config, indent=2) + "\n")
-        except (json.JSONDecodeError, OSError, IOError):
-            pass
-
-    def _remove_legacy_plugin_marker(self) -> None:
-        """Delete ~/.claude/pilot/plugin.json so Claude Code stops loading the
-        directory as a plugin. Idempotent — silently no-op when absent.
-
-        Must be invoked FIRST in _post_install_processing — see plan Task 3
-        rationale (avoid double-loading window during upgrades).
-        """
-        marker = get_claude_config_dir() / "pilot" / "plugin.json"
-        try:
-            marker.unlink(missing_ok=True)
-        except OSError:
-            pass
-
     def _merge_hooks_into_settings(self) -> None:
         """Merge Pilot's hooks bundle into ~/.claude/settings.json.
 
-        Reads the installed pilot/hooks/hooks.json, install-time patches
-        ${CLAUDE_PLUGIN_ROOT} to the absolute asset path, then merges the
-        `hooks` dict into ~/.claude/settings.json using `merge_pilot_hooks`
-        which preserves user-added hook entries by signature membership in
-        the dedicated `.pilot-hooks-baseline.json` (NOT the legacy
-        `.pilot-settings-baseline.json`, which stays hooks-free so that
-        `merge_settings` never sees a `hooks` key).
+        Reads the installed hooks.json (now at ~/.claude/hooks/hooks.json with
+        absolute $HOME/.claude/hooks/ and $HOME/.pilot/scripts/ paths — bash
+        expands $HOME natively when Claude Code shells out, so no install-time
+        path patching is needed). Merges the `hooks` dict into
+        ~/.claude/settings.json using `merge_pilot_hooks`, which preserves
+        user-added hook entries by signature membership in the dedicated
+        `.pilot-hooks-baseline.json`.
         """
         claude_dir = get_claude_config_dir()
-        hooks_json_path = claude_dir / "pilot" / "hooks" / "hooks.json"
+        hooks_json_path = claude_dir / "hooks" / "hooks.json"
         if not hooks_json_path.exists():
             return
 
         try:
-            raw = hooks_json_path.read_text()
-            patched = patch_plugin_root(raw)
-            incoming_data = json.loads(patched)
+            incoming_data = json.loads(hooks_json_path.read_text())
         except (json.JSONDecodeError, OSError, IOError):
             return
 
@@ -928,13 +952,27 @@ class ClaudeFilesStep(BaseStep):
             except (json.JSONDecodeError, OSError, IOError):
                 baseline_hooks = None
 
+        # Legacy upgrade: pre-baseline Pilot versions left hook entries in
+        # settings.json with absolute paths under ~/.claude/pilot/hooks/ or
+        # literal ${CLAUDE_PLUGIN_ROOT} strings. Without a baseline, merge would
+        # treat them as user-added and preserve them alongside the new entries,
+        # leaving the user with broken duplicates. Seed a synthetic baseline
+        # from any current entry whose command references the legacy paths so
+        # merge_pilot_hooks identifies and replaces them.
+        if baseline_hooks is None and current_hooks:
+            baseline_hooks = _legacy_hook_signature_baseline(current_hooks)
+
         try:
             merged = merge_pilot_hooks(current_hooks, incoming_hooks, baseline_hooks)
-        except ValueError:
+        except ValueError as e:
             # Defensive guard: duplicate hook signature in shipped hooks.json
             # (e.g. corrupted download, hand-edit). Skip the merge so we don't
             # crash the whole install. The reviewer audit in spec-verify
             # catches the upstream cause; here we degrade gracefully.
+            # Surface via stderr so the user sees it even when no UI is wired —
+            # otherwise settings.json silently retains stale entries from the
+            # previous install and produces ENOENT noise at every hook event.
+            print(f"WARN: skipping hook merge due to {e}", file=sys.stderr)
             return
 
         if merged:
@@ -962,7 +1000,7 @@ class ClaudeFilesStep(BaseStep):
         and subsequent re-installs can identify Pilot-owned entries.
         """
         claude_dir = get_claude_config_dir()
-        mcp_template = claude_dir / "pilot" / ".mcp.json"
+        mcp_template = Path.home() / ".pilot" / ".mcp.json"
         if not mcp_template.exists():
             return
 
@@ -1032,7 +1070,7 @@ class ClaudeFilesStep(BaseStep):
         user's ~/.claude.json. Preserves all existing app state (projects,
         oauthAccount, caches, etc.) — only sets/updates keys defined in the template.
         """
-        template_path = get_claude_config_dir() / "pilot" / "claude.json"
+        template_path = Path.home() / ".pilot" / "claude.json"
         if not template_path.exists():
             return
 

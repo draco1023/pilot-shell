@@ -88,11 +88,11 @@ confirm_uninstall() {
 	echo ""
 
 	if [ -d "$PILOT_DIR" ]; then
-		echo "    • Remove ~/.pilot/ (binary, installer)"
+		echo "    • Remove ~/.pilot/ (binary, scripts, UI, MCP/app config)"
 	fi
 
 	if [ -d "$PILOT_PLUGIN_DIR" ]; then
-		echo "    • Remove ~/.claude/pilot/ (hooks, scripts, agents, MCP config)"
+		echo "    • Remove legacy ~/.claude/pilot/ directory"
 	fi
 
 	local entries
@@ -102,6 +102,7 @@ confirm_uninstall() {
 		echo "$entries" | grep -q '^skills/' && echo "    • Remove Pilot-managed skills from ~/.claude/skills/"
 		echo "$entries" | grep -q '^rules/' && echo "    • Remove Pilot-managed rules from ~/.claude/rules/"
 		echo "$entries" | grep -q '^agents/' && echo "    • Remove Pilot-managed agents from ~/.claude/agents/"
+		echo "$entries" | grep -q '^hooks/' && echo "    • Remove Pilot-managed hooks from ~/.claude/hooks/"
 	fi
 
 	if [ -f "$CLAUDE_DIR/settings.json" ]; then
@@ -250,11 +251,11 @@ remove_manifest_files() {
 	done <<<"$entries"
 
 	if [ "$removed_count" -gt 0 ]; then
-		echo "    [OK] Removed $removed_count Pilot-managed skills and rules"
-		removed_items+=("$removed_count skills/rules from ~/.claude/")
+		echo "    [OK] Removed $removed_count Pilot-managed file(s) from ~/.claude/"
+		removed_items+=("$removed_count file(s) from ~/.claude/")
 	fi
 
-	for subdir in "commands" "skills" "rules"; do
+	for subdir in "commands" "skills" "rules" "agents" "hooks"; do
 		local dir="$CLAUDE_DIR/$subdir"
 		if [ -d "$dir" ] && [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
 			rmdir "$dir" 2>/dev/null || true
@@ -558,10 +559,13 @@ remove_pilot_baselines() {
 }
 
 remove_pilot_plugin() {
+	# Legacy directory from pre-9.x installs; modern Pilot does not create it.
+	# Kept here so `uninstall.sh` cleans up after users who haven't run a recent
+	# install (which would have removed it as part of the post-install migration).
 	if [ -d "$PILOT_PLUGIN_DIR" ]; then
 		rm -rf "$PILOT_PLUGIN_DIR"
-		echo "    [OK] Removed ~/.claude/pilot/"
-		removed_items+=("~/.claude/pilot/")
+		echo "    [OK] Removed legacy ~/.claude/pilot/"
+		removed_items+=("~/.claude/pilot/ (legacy)")
 	fi
 }
 

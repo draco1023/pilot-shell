@@ -910,68 +910,62 @@ class TestInstallPluginDependencies:
 
         assert callable(_install_plugin_dependencies)
 
-    def test_install_plugin_dependencies_returns_false_if_no_plugin_dir(self):
-        """_install_plugin_dependencies returns False if plugin directory doesn't exist."""
+    def test_install_plugin_dependencies_returns_false_if_no_pilot_home(self):
+        """Returns False if ~/.pilot/ doesn't exist."""
         from installer.steps.dependencies import _install_plugin_dependencies
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config_dir = Path(tmpdir) / "claude-config"
-            config_dir.mkdir()
-
-            with patch("installer.steps.claude_files.get_claude_config_dir", return_value=config_dir):
+            with patch.object(Path, "home", return_value=Path(tmpdir)):
                 result = _install_plugin_dependencies(Path(tmpdir), ui=None)
             assert result is False
 
     def test_install_plugin_dependencies_returns_false_if_no_package_json(self):
-        """_install_plugin_dependencies returns False if no package.json exists."""
+        """Returns False when ~/.pilot/ exists but package.json is missing."""
         from installer.steps.dependencies import _install_plugin_dependencies
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config_dir = Path(tmpdir) / "claude-config"
-            plugin_dir = config_dir / "pilot"
-            plugin_dir.mkdir(parents=True)
+            pilot_home = Path(tmpdir) / ".pilot"
+            pilot_home.mkdir(parents=True)
 
-            with patch("installer.steps.claude_files.get_claude_config_dir", return_value=config_dir):
+            with patch.object(Path, "home", return_value=Path(tmpdir)):
                 result = _install_plugin_dependencies(Path(tmpdir), ui=None)
             assert result is False
 
     @patch("installer.steps.dependencies._run_bash_with_retry")
     @patch("installer.steps.dependencies.command_exists")
     def test_install_plugin_dependencies_runs_bun_install(self, mock_cmd_exists, mock_run):
-        """_install_plugin_dependencies runs bun install when bun is available."""
+        """Runs `bun install` in ~/.pilot/ when bun is available."""
         from installer.steps.dependencies import _install_plugin_dependencies
 
         mock_cmd_exists.side_effect = lambda cmd: cmd == "bun"
         mock_run.return_value = True
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config_dir = Path(tmpdir) / "claude-config"
-            plugin_dir = config_dir / "pilot"
-            plugin_dir.mkdir(parents=True)
-            (plugin_dir / "package.json").write_text('{"name": "test"}')
+            pilot_home = Path(tmpdir) / ".pilot"
+            pilot_home.mkdir(parents=True)
+            (pilot_home / "package.json").write_text('{"name": "test"}')
 
-            with patch("installer.steps.claude_files.get_claude_config_dir", return_value=config_dir):
+            with patch.object(Path, "home", return_value=Path(tmpdir)):
                 result = _install_plugin_dependencies(Path(tmpdir), ui=None)
 
             assert result is True
-            mock_run.assert_called_with("bun install", cwd=plugin_dir)
+            mock_run.assert_called_with("bun install", cwd=pilot_home)
 
     @patch("installer.steps.dependencies._run_bash_with_retry")
     @patch("installer.steps.dependencies.command_exists")
     def test_install_plugin_dependencies_falls_back_to_npm(self, mock_cmd_exists, mock_run):
-        """_install_plugin_dependencies falls back to npm install when bun is unavailable."""
+        """Falls back to `npm install` when bun is unavailable."""
         from installer.steps.dependencies import _install_plugin_dependencies
 
         mock_cmd_exists.side_effect = lambda cmd: cmd == "npm"
         mock_run.return_value = True
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config_dir = Path(tmpdir) / "claude-config"
-            plugin_dir = config_dir / "pilot"
-            plugin_dir.mkdir(parents=True)
-            (plugin_dir / "package.json").write_text('{"name": "test"}')
+            pilot_home = Path(tmpdir) / ".pilot"
+            pilot_home.mkdir(parents=True)
+            (pilot_home / "package.json").write_text('{"name": "test"}')
 
-            with patch("installer.steps.claude_files.get_claude_config_dir", return_value=config_dir):
+            with patch.object(Path, "home", return_value=Path(tmpdir)):
                 result = _install_plugin_dependencies(Path(tmpdir), ui=None)
 
         assert result is True
@@ -980,18 +974,17 @@ class TestInstallPluginDependencies:
 
     @patch("installer.steps.dependencies.command_exists")
     def test_install_plugin_dependencies_returns_false_when_no_package_manager(self, mock_cmd_exists):
-        """_install_plugin_dependencies returns False when neither bun nor npm is available."""
+        """Returns False when neither bun nor npm is available."""
         from installer.steps.dependencies import _install_plugin_dependencies
 
         mock_cmd_exists.return_value = False
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            config_dir = Path(tmpdir) / "claude-config"
-            plugin_dir = config_dir / "pilot"
-            plugin_dir.mkdir(parents=True)
-            (plugin_dir / "package.json").write_text('{"name": "test"}')
+            pilot_home = Path(tmpdir) / ".pilot"
+            pilot_home.mkdir(parents=True)
+            (pilot_home / "package.json").write_text('{"name": "test"}')
 
-            with patch("installer.steps.claude_files.get_claude_config_dir", return_value=config_dir):
+            with patch.object(Path, "home", return_value=Path(tmpdir)):
                 result = _install_plugin_dependencies(Path(tmpdir), ui=None)
 
         assert result is False
@@ -1164,9 +1157,9 @@ class TestPrecacheNpxMcpServers:
         }
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            plugin_dir = Path(tmpdir) / ".claude" / "pilot"
-            plugin_dir.mkdir(parents=True)
-            (plugin_dir / ".mcp.json").write_text(json.dumps(mcp_config))
+            pilot_home = Path(tmpdir) / ".pilot"
+            pilot_home.mkdir(parents=True)
+            (pilot_home / ".mcp.json").write_text(json.dumps(mcp_config))
 
             with patch.object(Path, "home", return_value=Path(tmpdir)):
                 with patch(
@@ -1191,9 +1184,9 @@ class TestPrecacheNpxMcpServers:
         }
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            plugin_dir = Path(tmpdir) / ".claude" / "pilot"
-            plugin_dir.mkdir(parents=True)
-            (plugin_dir / ".mcp.json").write_text(json.dumps(mcp_config))
+            pilot_home = Path(tmpdir) / ".pilot"
+            pilot_home.mkdir(parents=True)
+            (pilot_home / ".mcp.json").write_text(json.dumps(mcp_config))
 
             with patch.object(Path, "home", return_value=Path(tmpdir)):
                 with patch(
@@ -1220,9 +1213,9 @@ class TestPrecacheNpxMcpServers:
         mock_proc.wait = MagicMock(return_value=0)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            plugin_dir = Path(tmpdir) / ".claude" / "pilot"
-            plugin_dir.mkdir(parents=True)
-            (plugin_dir / ".mcp.json").write_text(json.dumps(mcp_config))
+            pilot_home = Path(tmpdir) / ".pilot"
+            pilot_home.mkdir(parents=True)
+            (pilot_home / ".mcp.json").write_text(json.dumps(mcp_config))
 
             with patch.object(Path, "home", return_value=Path(tmpdir)):
                 with patch(
@@ -1576,9 +1569,7 @@ class TestRemoveLegacyContextMode:
     @patch("installer.steps.dependencies._legacy_context_mode_remove_orphan_hook")
     @patch("installer.steps.dependencies.subprocess.run")
     @patch("installer.steps.dependencies.command_exists", return_value=True)
-    def test_uninstalls_plugin_and_removes_marketplace_when_present(
-        self, _mock_cmd, mock_sub, _mock_orphan
-    ):
+    def test_uninstalls_plugin_and_removes_marketplace_when_present(self, _mock_cmd, mock_sub, _mock_orphan):
         """Plugin uninstall + marketplace remove are both invoked when both are present."""
         from installer.steps.dependencies import remove_legacy_context_mode
 
@@ -1784,9 +1775,7 @@ class TestInstallChromeDevToolsPlugin:
         # would raise AttributeError under the buggy parser.
         mock_sub.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({"plugins": [
-                {"id": "chrome-devtools-mcp@chrome-devtools-plugins", "version": "1.0.0"}
-            ]}),
+            stdout=json.dumps({"plugins": [{"id": "chrome-devtools-mcp@chrome-devtools-plugins", "version": "1.0.0"}]}),
         )
 
         # Must not raise. Result may vary — what matters is no crash.

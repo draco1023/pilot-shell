@@ -12,7 +12,7 @@
     "mem-search": {
       "type": "stdio",
       "command": "sh",
-      "args": ["-c", "bun run ~/.claude/pilot/scripts/mcp-server.cjs"]
+      "args": ["-c", "bun run ~/.pilot/scripts/mcp-server.cjs"]
     },
     "web-search": {
       "command": "npx",

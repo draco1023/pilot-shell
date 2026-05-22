@@ -5,7 +5,7 @@ argument-hint: "<path/to/plan.md>"
 user-invocable: false
 hooks:
   Stop:
-    - command: uv run --no-project python "${CLAUDE_PLUGIN_ROOT}/hooks/spec_verify_validator.py"
+    - command: uv run --no-project python "$HOME/.claude/hooks/spec_verify_validator.py"
 ---
 
 # /spec-bugfix-verify - Bugfix Verification Phase

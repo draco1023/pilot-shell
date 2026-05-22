@@ -40,11 +40,11 @@ my-customization/
 │       └── steps/01-stage.md
 ├── rules/                      # → ~/.claude/rules/
 │   ├── team-standards.md       # Additive
-│   └── testing.md              # Overrides core (same filename)
-├── hooks/                      # → ~/.claude/pilot/hooks/
+│   └── testing.md              # Overrides core
+├── hooks/                      # → ~/.claude/hooks/
 │   ├── team-lint-check.sh
 │   └── hooks.json              # Registers team-lint-check.sh (see below)
-└── agents/                     # → ~/.claude/agents/  (native Claude location)
+└── agents/                     # → ~/.claude/agents/
     └── team-reviewer.md
 ```
 
@@ -99,9 +99,9 @@ IDs are stable across Pilot versions — upstream can rename files or edit prose
 
 ## Registering hooks
 
-A hook script at `hooks/team-lint-check.sh` is copied to `~/.claude/pilot/hooks/`, but Claude Code only runs it if it's registered in `hooks.json`. Pilot ships its own `hooks.json` with the core hooks; to add yours, ship a `hooks/hooks.json` in your repo that includes both.
+A hook script at `hooks/team-lint-check.sh` is copied to `~/.claude/hooks/`, but Claude Code only runs it if it's registered in `hooks.json`. Pilot ships its own `hooks.json` with the core hooks; to add yours, ship a `hooks/hooks.json` in your repo that includes both.
 
-1. Copy `~/.claude/pilot/hooks/hooks.json` into your repo at `hooks/hooks.json` — this is your baseline
+1. Copy `~/.claude/hooks/hooks.json` into your repo at `hooks/hooks.json` — this is your baseline
 2. Append your hook entries (under `PostToolUse`, `SessionStart`, etc.)
 3. Keep the existing Pilot entries — your file replaces Pilot's, so anything you omit is lost
 

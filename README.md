@@ -546,8 +546,8 @@ pilot customize remove                       # Restore Pilot defaults
 |--------|-----|
 | **Skills** (built-in workflows like `/spec`, `/prd`) | Overlay ops in `customization.json`: `insert_after`, `insert_before`, `replace`, `disable` — or ship an entirely new skill folder |
 | **Rules** | New rules are additive; same filename as a core rule overrides it |
-| **Hooks** | Scripts copy to `~/.claude/pilot/hooks/`; ship `hooks.json` to register them alongside Pilot's built-ins |
-| **Agents** | Drop `.md` files to add review/helper agents into `~/.claude/agents/` (native Claude location) |
+| **Hooks** | Scripts copy to `~/.claude/hooks/`; ship `hooks.json` to register them alongside Pilot's built-ins |
+| **Agents** | Drop `.md` files to add review/helper agents into `~/.claude/agents/` |
 | **MCP servers** | Top-level `.mcp.json` deep-merges into `~/.claude.json` `mcpServers` (adds team servers alongside Pilot's; pack values win on conflict) |
 | **Claude settings** | Top-level `settings.json` and `claude.json` deep-merge into the user's files — model prefs, permissions, env vars, etc. User state (oauth, projects) is preserved |
 
@@ -575,8 +575,8 @@ my-customization/
 │       └── steps/01-stage.md
 ├── rules/                      # → ~/.claude/rules/
 │   ├── team-standards.md       # Additive
-│   └── testing.md              # Overrides core (same filename)
-├── hooks/                      # → ~/.claude/pilot/hooks/
+│   └── testing.md              # Overrides core
+├── hooks/                      # → ~/.claude/hooks/
 │   ├── team-lint-check.sh
 │   └── hooks.json              # Registers team-lint-check.sh alongside Pilot's hooks
 └── agents/                     # → ~/.claude/agents/
