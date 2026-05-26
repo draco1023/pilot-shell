@@ -10,7 +10,6 @@ const navLinks = [
   { label: "Demo", href: "#demo" },
   { label: "Usage", href: "#workflow" },
   { label: "What's Inside", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
 ];
 
 const NavBar = () => {

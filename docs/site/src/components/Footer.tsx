@@ -63,16 +63,6 @@ const Footer = () => {
               <li>
                 <button
                   onClick={() =>
-                    navigateToSection("pricing", location.pathname, navigate)
-                  }
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Pricing
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() =>
                     navigateToSection("faq", location.pathname, navigate)
                   }
                   className="text-sm text-muted-foreground hover:text-primary transition-colors"

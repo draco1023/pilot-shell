@@ -10,7 +10,6 @@ const WhatsInside = lazy(() => import("@/components/WhatsInside"));
 const SpecCollabSection = lazy(() => import("@/components/SpecCollabSection"));
 const ConsoleSection = lazy(() => import("@/components/ConsoleSection"));
 const DemoSection = lazy(() => import("@/components/DemoSection"));
-const PricingSection = lazy(() => import("@/components/PricingSection"));
 const TestimonialsSection = lazy(() => import("@/components/TestimonialsSection"));
 const FAQSection = lazy(() => import("@/components/FAQSection"));
 const Footer = lazy(() => import("@/components/Footer"));
@@ -101,7 +100,6 @@ const Index = () => {
           <WorkflowSteps />
           <SpecCollabSection />
           <ConsoleSection />
-          <PricingSection />
           <TestimonialsSection />
           <DemoSection />
           <FAQSection />

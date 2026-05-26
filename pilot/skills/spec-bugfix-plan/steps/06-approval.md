@@ -47,26 +47,18 @@ Then print this message **verbatim** (substitute the plan path):
 ```
 Plan approved: <plan path>
 
-Two ways to continue — pick what fits your context size:
+Switch models, then continue:
 
-  Option A — Fast (carries planning context):
-    Run `/model <name>` to switch models (optional), then type any prompt
-    (e.g. `continue`). Implementation resumes immediately with your full
-    planning session still in context. Claude Code will ask you to confirm
-    the model switch because the existing context is loaded into the new model,
-    which incurs additional cost.
+  A — Keep context: `/model <name>`, then type `continue`
+  B — Fresh start:  `/model <name>`, `/clear`, then `/spec <plan path>` (lower cost)
 
-  Option B — Clean start (fresh context):
-    Run `/clear`, then `/spec <plan path>`. Starts a new session with just
-    the plan — lower token cost, useful if planning context is already large.
+Models:
+  `/model sonnet[1m]`  — recommended
+  `/model opus[1m]`
+  `/model sonnet`
+  `/model opus`
 
-Model options (for either path):
-  • `/model sonnet[1m]`  — Sonnet 1M context, cost-effective (recommended)
-  • `/model sonnet`      — Sonnet 200K context
-  • `/model opus[1m]`    — Opus 1M context (stay on same context size as planning)
-  • `/model opus`        — Opus 200K context
-
-Tip: turn off "Model Switching" in Console Settings → Automation to skip this pause next time.
+Tip: disable "Model Switching" in Settings → Automation to skip this step.
 ```
 
 After printing the message, end the turn — the stop guard's handoff sentinel will allow the stop, and the next user prompt will trigger `Skill('spec-implement', '<plan-path>')` automatically (Option A). For Option B the user runs `/clear` then `/spec <plan-path>`, which the dispatcher routes directly to implementation.

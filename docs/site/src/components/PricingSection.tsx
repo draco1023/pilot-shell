@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Check, Building2, Sparkles, Calendar, Mail, Shield } from "lucide-react";
+import { Check, Building2, Sparkles, Calendar, Mail, RefreshCw, Zap, Shield } from "lucide-react";
 import { PolarEmbedCheckout } from "@polar-sh/checkout/embed";
 import { Button } from "@/components/ui/button";
 import { useInView } from "@/hooks/use-in-view";
@@ -10,7 +10,6 @@ const SOLO_CHECKOUT_URL =
 const TEAM_CHECKOUT_URL =
   import.meta.env.VITE_POLAR_CHECKOUT_TEAM ||
   "https://buy.polar.sh/polar_cl_y5uSffkVLnESyfzfOSJ1M9YmMd8sIpcT7bza82oFv4C";
-const ENTERPRISE_FORM_URL = "https://form.typeform.com/to/J7h2jjfw";
 const PORTAL_URL =
   import.meta.env.VITE_POLAR_PORTAL_URL || "https://polar.sh/max-ritter/portal";
 const IS_PRODUCTION =
@@ -42,23 +41,53 @@ const PricingSection = () => {
         {/* Header */}
         <div
           ref={headerRef}
-          className={`text-center mb-16 ${headerInView ? "animate-fade-in-up" : "opacity-0"}`}
+          className={`text-center mb-12 ${headerInView ? "animate-fade-in-up" : "opacity-0"}`}
         >
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4">
-            Pricing
+            Always up-to-date. Always optimized.
           </h2>
-          <p className="text-muted-foreground text-lg sm:text-xl max-w-3xl mx-auto">
-            Get instant access to <span className="text-foreground font-medium">best practices</span> from daily production usage — a <span className="text-foreground font-medium">shortcut</span> to <span className="text-foreground font-medium">state-of-the-art</span> Claude Code development.
-            A <span className="text-foreground font-medium">free 7-day trial</span> starts automatically on install — full features, no subscription required.
+          <p className="text-muted-foreground text-lg sm:text-xl max-w-2xl mx-auto">
+            Your shortcut to state-of-the-art Claude Code development.
           </p>
         </div>
 
-        <div ref={cardsRef} className="grid md:grid-cols-3 gap-6 sm:gap-8">
+        {/* Value propositions */}
+        <div className={`grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto mb-16 ${headerInView ? "animate-fade-in-up animation-delay-100" : "opacity-0"}`}>
+          <div className="text-center space-y-2">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center mx-auto">
+              <RefreshCw className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">Continuously updated</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              New tools, optimizations, and best practices from daily production usage — shipped as updates, not blog posts.
+            </p>
+          </div>
+          <div className="text-center space-y-2">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center mx-auto">
+              <Zap className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">Ready to use</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Install once, get a complete Claude Code setup instantly. No hours of configuration, research, or trial and error.
+            </p>
+          </div>
+          <div className="text-center space-y-2">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center mx-auto">
+              <Shield className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">Battle-tested</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Every rule, hook, and workflow is proven in production before it ships. You get what works, not what sounds good.
+            </p>
+          </div>
+        </div>
+
+        <div ref={cardsRef} className="grid md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
           {/* Solo - Featured */}
           <div
             className={`group relative rounded-lg p-4 sm:p-6 md:p-8 border-2 border-primary/50 bg-card
               hover:border-primary hover:bg-card hover:border-primary
-              transition-all duration-300 scale-[1.02]
+              transition-all duration-300 scale-[1.02] flex flex-col
               ${cardsInView ? "animate-fade-in-up animation-delay-0" : "opacity-0"}`}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
@@ -76,11 +105,11 @@ const PricingSection = () => {
             </div>
 
             <div className="mb-6">
-              <span className="text-4xl font-bold text-foreground">$14</span>
+              <span className="text-4xl font-bold text-foreground">$9</span>
               <span className="text-muted-foreground">/month</span>
             </div>
 
-            <ul className="space-y-3 mb-8">
+            <ul className="space-y-3 mb-8 flex-1">
               <li className="flex items-start gap-3">
                 <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                 <span className="text-muted-foreground text-sm group-hover:text-foreground/80 transition-colors">
@@ -132,7 +161,7 @@ const PricingSection = () => {
           <div
             className={`group relative rounded-lg p-4 sm:p-6 md:p-8 border border-border/50 bg-card
               hover:border-indigo-500/50 hover:bg-card hover:border-indigo-500/50
-              transition-all duration-300
+              transition-all duration-300 flex flex-col
               ${cardsInView ? "animate-fade-in-up animation-delay-100" : "opacity-0"}`}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
@@ -150,11 +179,11 @@ const PricingSection = () => {
             </div>
 
             <div className="mb-6">
-              <span className="text-4xl font-bold text-foreground">$35</span>
+              <span className="text-4xl font-bold text-foreground">$19</span>
               <span className="text-muted-foreground">/seat/month</span>
             </div>
 
-            <ul className="space-y-3 mb-8">
+            <ul className="space-y-3 mb-8 flex-1">
               <li className="flex items-start gap-3">
                 <Sparkles className="h-5 w-5 text-indigo-500 flex-shrink-0 mt-0.5" />
                 <span className="text-muted-foreground text-sm group-hover:text-foreground/80 transition-colors">
@@ -198,69 +227,6 @@ const PricingSection = () => {
             </Button>
           </div>
 
-          {/* Enterprise */}
-          <div
-            className={`group relative rounded-lg p-4 sm:p-6 md:p-8 border border-border/50 bg-card
-              hover:border-amber-500/50 hover:bg-card hover:border-amber-500/50
-              transition-all duration-300
-              ${cardsInView ? "animate-fade-in-up animation-delay-200" : "opacity-0"}`}
-          >
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
-            <div className="flex items-center gap-3 mb-4">
-              <div
-                className="w-12 h-12 bg-amber-500/15 rounded-xl flex items-center justify-center
-                group-hover:bg-amber-500/25 group-hover:scale-110 transition-all duration-300"
-              >
-                <Shield className="h-6 w-6 text-amber-500" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-foreground">Enterprise</h3>
-                <p className="text-xs text-muted-foreground">100+ seats</p>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <span className="text-2xl font-bold text-foreground">Custom</span>
-              <span className="text-muted-foreground text-sm ml-1">pricing</span>
-            </div>
-
-            <ul className="space-y-3 mb-8">
-              <li className="flex items-start gap-3">
-                <Sparkles className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <span className="text-muted-foreground text-sm group-hover:text-foreground/80 transition-colors">
-                  Everything in Team
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <span className="text-muted-foreground text-sm group-hover:text-foreground/80 transition-colors">
-                  Full source code access — launcher, console, and all closed-source components
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <span className="text-muted-foreground text-sm group-hover:text-foreground/80 transition-colors">
-                  Fork and modify — full control to customize every part for your organization
-                </span>
-              </li>
-              <li className="flex items-start gap-3">
-                <Check className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                <span className="text-muted-foreground text-sm group-hover:text-foreground/80 transition-colors">
-                  Dedicated onboarding, ongoing updates, and priority support
-                </span>
-              </li>
-            </ul>
-
-            <Button
-              asChild
-              variant="outline"
-              className="w-full border-amber-500/50 hover:bg-amber-500/10"
-            >
-              <a href={ENTERPRISE_FORM_URL} target="_blank" rel="noopener">
-                Apply for Enterprise
-              </a>
-            </Button>
-          </div>
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
@@ -280,7 +246,7 @@ const PricingSection = () => {
             Rolling Out for Your Team?
           </h3>
           <p className="text-muted-foreground text-base sm:text-lg mb-6">
-            I'd love to help figure out if Pilot Shell is the right fit for your team and get everyone set up.
+            Let's find the right setup for your team and get everyone onboarded.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button size="lg" asChild>

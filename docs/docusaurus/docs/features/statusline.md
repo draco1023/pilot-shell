@@ -90,7 +90,7 @@ Pilot 8.4.0 (Solo) · CC 2.1.79 (Max) · sessions 2 · memories 12
 
 | Field | Description |
 |-------|-------------|
-| **Pilot version** | Pilot Shell version with license tier in parentheses: `Solo` (green), `Team` (cyan), `Trial 5d` (yellow), or `pilot-shell.com/#pricing` (dim) |
+| **Pilot version** | Pilot Shell version with license tier in parentheses: `Solo` (green), `Team` (cyan), `Trial 5d` (yellow), or `pilot-shell.com/pricing` (dim) |
 | **CC version** | Claude Code version with subscription type in parentheses: `Max`, `Pro`, `Team`, `Enterprise`. Detected via `claude auth status` (cached 24h) |
 | **Sessions** | Number of active Pilot Shell sessions |
 | **Memories** | Observations saved to Pilot Console memory during this session (only shown when > 0) |

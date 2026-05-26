@@ -28,6 +28,7 @@ interface PageEntry {
 // robots.txt but not the sitemap so it doesn't surface as an orphan.
 const PAGES: PageEntry[] = [
   { loc: "/", changefreq: "weekly", priority: "1.0" },
+  { loc: "/pricing", changefreq: "monthly", priority: "0.5" },
 ];
 
 export default function sitemapPlugin(): Plugin {

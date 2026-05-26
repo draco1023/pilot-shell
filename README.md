@@ -126,7 +126,7 @@ pilot
 pilot activate <your-license-key>
 ```
 
-Once Pilot Shell is running smoothly again, you can delete the `.bak` copies. Forgot your license key? Recover it in the [members area](https://polar.sh/max-ritter/portal).
+Once Pilot Shell is running smoothly again, you can delete the `.bak` copies. Forgot your license key? Recover it in the [Pilot members area](https://polar.sh/max-ritter/portal).
 </details>
 
 <details>
@@ -673,13 +673,7 @@ For full details on every component, see the **[Documentation](https://pilot-she
 
 ## License
 
-Pilot Shell is source-available under a commercial license. See the [LICENSE](LICENSE) file for full terms.
-
-| Tier           | Seats | Includes                                                                                                        |
-| :------------- | :---- | :-------------------------------------------------------------------------------------------------------------- |
-| **Solo**       | 1     | All features, continuous updates, community support via [GitHub Issues][gh-issues]                              |
-| **Team**       | Multi | Solo + extension sharing, customization, seat management, priority support                                      |
-| **Enterprise** | 100+  | Team + full source code access (launcher, console, all components), dedicated support   |
+See [LICENSE](LICENSE).
 
 ---
 
@@ -688,24 +682,7 @@ Pilot Shell is source-available under a commercial license. See the [LICENSE](LI
 <details>
 <summary><b>Does Pilot Shell send my code or data to external services?</b></summary>
 
-**No code, files, prompts, project data, or personal information ever leaves your machine through Pilot Shell.** All development tools — code search (Semble), code intelligence (CodeGraph), persistent memory (Pilot Shell Console), session state, and quality hooks — run entirely locally.
-
-Pilot Shell makes external calls **only for licensing**. Here is the complete list:
-
-| When                              | Where             | What is sent                     |
-| --------------------------------- | ----------------- | -------------------------------- |
-| License validation (once per 24h) | `api.polar.sh`    | License key, organization ID     |
-| License activation (once)         | `api.polar.sh`    | License key, machine fingerprint |
-| Trial start (once)                | `pilot-shell.com` | Hashed hardware fingerprint      |
-
-That's it — three calls total, each sent at most once (validation re-checks daily). No OS, no architecture, no Python version, no locale, no analytics, no heartbeats. The validation result is cached locally, and Pilot Shell works fully offline for up to 7 days between checks. Beyond these licensing calls, the only external communication is between Claude Code and Anthropic's API — using your own subscription or API key. If you enable the optional [Codex plugin](https://github.com/openai/codex-plugin-cc), adversarial reviews are sent to OpenAI's API — this is opt-in and disabled by default.
-
-</details>
-
-<details>
-<summary><b>Is Pilot Shell enterprise-compliant for data privacy?</b></summary>
-
-Yes. Your source code, project files, and development context never leave your machine through Pilot Shell. The only external calls are license validation (daily, license key only) and one-time activation/trial start (machine fingerprint only). No OS info, no version strings, no analytics, no telemetry. Enterprises using Claude Code with their own API key or Anthropic Enterprise subscription can add Pilot Shell without changing their data compliance posture.
+**No code, files, prompts, project data, or personal information ever leaves your machine through Pilot Shell.** All development tools — code search (Semble), code intelligence (CodeGraph), persistent memory (Pilot Shell Console), session state, and quality hooks — run entirely locally. No OS info, no version strings, no analytics, no telemetry, no heartbeats. Pilot Shell works fully offline between periodic license checks. If you enable the optional [Codex plugin](https://github.com/openai/codex-plugin-cc), adversarial reviews are sent to OpenAI's API — this is opt-in and disabled by default.
 
 </details>
 
@@ -773,11 +750,7 @@ For monorepos, organize rules in nested subdirectories by product and team (e.g.
 <details>
 <summary><b>Can I customize Pilot's built-in workflows and defaults?</b></summary>
 
-Yes — the **Customization** feature on Team and Enterprise plans lets you modify what Pilot Shell auto-installs, not just add alongside it. Tweak the built-in `/spec` workflow (insert a security-review step, replace the planning template, disable a step you don't need), adjust existing rules, register additional hooks, add review agents, change which MCP servers get configured, and override the auto-applied `settings.json` and `claude.json`. Source is either a **git repo** for your team or a **local directory** for personal use — no git needed for a one-off tweak.
-
-On **Team**, every developer runs `pilot customize install <source>` once and stays in sync via `pilot customize update`. Skill overlays stay pinned to Pilot's upstream by hash, so when Pilot ships an improvement to a step you replaced, `pilot customize status` flags the drift and `pilot customize diff` shows you what changed.
-
-**Enterprise** adds full source-code access to Pilot itself (launcher, console, all components) on top of everything Team gets — so you can fork, audit, and modify the entire stack for regulated environments. See the [Customization guide](https://pilot-shell.com/docs/features/customization) for the full schema.
+Yes — the **Customization** feature (available on the Team plan) lets you modify what Pilot Shell auto-installs, not just add alongside it. Tweak the built-in `/spec` workflow (insert a security-review step, replace the planning template, disable a step you don't need), adjust existing rules, register additional hooks, add review agents, change which MCP servers get configured, and override the auto-applied `settings.json` and `claude.json`. Source is either a **git repo** for your team or a **local directory** for personal use — no git needed for a one-off tweak. Skill overlays stay pinned to Pilot's upstream by hash, so when Pilot ships an improvement to a step you replaced, `pilot customize status` flags the drift and `pilot customize diff` shows you what changed. See the [Customization guide](https://pilot-shell.com/docs/features/customization) for the full schema.
 
 </details>
 
@@ -798,9 +771,9 @@ Claude Code's session logs and Pilot's caches grow over time and can degrade per
 1. Run `/logout` inside Claude Code.
 2. Back up `~/.claude.json`, `~/.claude/`, and `~/.pilot/` (`mv` them to `.bak` copies).
 3. Reinstall Pilot Shell with the official installer (`curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.sh | bash`).
-4. Run `pilot`, sign in to Claude again, and `pilot activate <your-license-key>`.
+4. Run `pilot`, sign in to Claude again, and re-activate with `pilot activate <your-license-key>`.
 
-Forgot your license key? Recover it in the [members area](https://polar.sh/max-ritter/portal). Full step-by-step is in the [Reset & Refresh](#install) section above.
+Once Pilot is running smoothly, delete the `.bak` copies. Forgot your license key? Recover it in the [Pilot members area](https://polar.sh/max-ritter/portal). Full step-by-step is in the [Reset & Refresh](#install) section above.
 
 </details>
 

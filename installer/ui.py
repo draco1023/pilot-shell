@@ -155,21 +155,22 @@ class Console:
         elif tier == "trial":
             days = license_info.get("days_remaining") if license_info else None
             is_expired = license_info.get("is_expired", False) if license_info else False
-            license_text = Text()
             if is_expired:
+                license_text = Text()
                 license_text.append("  ⚠ ", style="red")
                 license_text.append("Trial Expired", style="bold red")
-                license_text.append(" — Subscribe: ", style="muted")
-                license_text.append("https://pilot-shell.com", style="cyan")
-            else:
+                license_text.append(" — Get a license: ", style="muted")
+                license_text.append("https://pilot-shell.com/pricing", style="cyan")
+                self._console.print(license_text)
+                self._console.print()
+            elif days is not None and days <= 3:
                 expires_at = license_info.get("expires_at") if license_info else None
                 time_str = _get_trial_time_str(days, expires_at)
+                license_text = Text()
                 license_text.append("  ⏳ ", style="yellow")
                 license_text.append(f"Trial ({time_str} remaining)", style="bold yellow")
-                license_text.append(" — Subscribe: ", style="muted")
-                license_text.append("https://pilot-shell.com", style="cyan")
-            self._console.print(license_text)
-            self._console.print()
+                self._console.print(license_text)
+                self._console.print()
 
     def set_total_steps(self, total: int) -> None:
         """Set total number of installation steps."""

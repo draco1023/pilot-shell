@@ -11,6 +11,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import ScrollToHash from "@/components/ScrollToHash";
 import Index from "./pages/Index";
 
+const Pricing = lazy(() => import("./pages/Pricing"));
 const Shared = lazy(() => import("./pages/Shared"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -28,6 +29,7 @@ const App = () => (
           <Suspense fallback={null}>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/pricing" element={<Pricing />} />
               <Route path="/shared" element={<Shared />} />
               <Route path="/s/:id" element={<Shared />} />
               {/* /docs is served by Docusaurus static files */}

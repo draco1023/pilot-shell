@@ -1,17 +1,23 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
  * Handles scrolling to hash fragments after cross-page navigation.
  * Uses retry pattern to wait for target element to be in the DOM.
  */
 const ScrollToHash = () => {
-  const { hash } = useLocation();
+  const { hash, pathname } = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!hash) return;
 
     const id = hash.slice(1);
+
+    if (id === 'pricing' && pathname !== '/pricing' && !document.querySelector('#pricing')) {
+      navigate('/pricing', { replace: true });
+      return;
+    }
 
     const scrollToElement = () => {
       const element = document.querySelector(`#${CSS.escape(id)}`);
@@ -41,7 +47,7 @@ const ScrollToHash = () => {
     return () => {
       timeouts.forEach(clearTimeout);
     };
-  }, [hash]);
+  }, [hash, pathname, navigate]);
 
   return null;
 };

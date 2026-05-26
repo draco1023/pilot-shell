@@ -35,11 +35,6 @@ const faqItems = [
       "Pilot Shell's quality hooks (auto-formatting, linting, type checking) currently support Python, TypeScript/JavaScript, and Go out of the box. TDD enforcement, spec-driven development, persistent memory, context optimization, and all rules and standards work with any language that Claude Code supports. You can add custom hooks for additional languages.",
   },
   {
-    question: "Can I use one license on multiple machines?",
-    answer:
-      "Yes. A Solo license covers you across all your personal devices \u2014 workstation, laptop, VPS, cloud instances. One subscription, one key, multiple machines. No need for a Team plan just because you work from more than one device. Team licenses are for multiple people, not multiple machines.",
-  },
-  {
     question: "Can I use Pilot Shell on multiple projects?",
     answer:
       "Yes. Pilot Shell installs once globally and works across all your projects \u2014 you don\u2019t need to reinstall per project. All tools, rules, commands, and hooks live in ~/.pilot/ and ~/.claude/, available everywhere. Just cd into any project and run pilot. Each project can optionally have its own .claude/ rules, custom skills, and MCP servers for project-specific behavior. Run /setup-rules in each project to generate project-specific documentation and standards.",
@@ -52,17 +47,17 @@ const faqItems = [
   {
     question: "Can I customize Pilot\u2019s built-in workflows and defaults?",
     answer:
-      "Yes \u2014 the Customization feature on Team and Enterprise plans lets you modify what Pilot Shell auto-installs, not just add alongside it. Tweak the built-in /spec workflow (insert a security-review step, replace the planning template, disable a step you don\u2019t need), adjust existing rules, register additional hooks, add review agents, change which MCP or LSP servers get configured, and override the auto-applied settings.json and claude.json. Source is either a git repo for your team or a local directory for personal use \u2014 no git needed for a one-off tweak. On Team, every developer runs `pilot customize install <source>` once and stays in sync via `pilot customize update`. Skill overlays stay pinned to Pilot\u2019s upstream by hash, so when Pilot ships an improvement to a step you replaced, `pilot customize status` flags the drift and `pilot customize diff` shows what changed. Enterprise adds full source-code access to Pilot itself (launcher, console, all components) on top of everything Team gets \u2014 fork, audit, and modify the entire stack.",
+      "Yes \u2014 the Customization feature (available on the Team plan) lets you modify what Pilot Shell auto-installs, not just add alongside it. Tweak the built-in /spec workflow (insert a security-review step, replace the planning template, disable a step you don\u2019t need), adjust existing rules, register additional hooks, add review agents, change which MCP or LSP servers get configured, and override the auto-applied settings.json and claude.json. Source is either a git repo for your team or a local directory for personal use \u2014 no git needed for a one-off tweak. Skill overlays stay pinned to Pilot\u2019s upstream by hash, so when Pilot ships an improvement to a step you replaced, `pilot customize status` flags the drift and `pilot customize diff` shows what changed.",
   },
   {
     question: "Does Pilot Shell send my code or data to external services?",
     answer:
-      "No code, files, prompts, project data, or personal information ever leaves your machine through Pilot Shell. All development tools \u2014 vector search, persistent memory, session state, and quality hooks \u2014 run entirely locally. Pilot Shell makes exactly three external calls, all for licensing only: (1) License validation \u2014 once every 24 hours, sends your license key and organization ID to api.polar.sh. (2) License activation \u2014 one-time, sends license key and a machine fingerprint to api.polar.sh. (3) Trial start \u2014 one-time, sends a hashed hardware fingerprint to pilot-shell.com to generate a 7-day trial key. That\u2019s the complete list. No OS info, no version strings, no analytics, no telemetry, no heartbeats. The validation result is cached locally, and Pilot Shell works fully offline for up to 7 days. If you enable the optional Codex plugin, adversarial reviews are sent to OpenAI\u2019s API \u2014 this is opt-in and disabled by default.",
+      "No code, files, prompts, project data, or personal information ever leaves your machine through Pilot Shell. All development tools \u2014 vector search, persistent memory, session state, and quality hooks \u2014 run entirely locally. No OS info, no version strings, no analytics, no telemetry, no heartbeats. Pilot Shell works fully offline between periodic license checks. If you enable the optional Codex plugin, adversarial reviews are sent to OpenAI\u2019s API \u2014 this is opt-in and disabled by default.",
   },
   {
     question: "Pilot feels slower after a few weeks — what should I do?",
     answer:
-      "Claude Code’s session logs and Pilot’s caches grow over time and can degrade performance. A periodic reset every few weeks restores a clean baseline: (1) Run /logout inside Claude Code. (2) Back up ~/.claude.json, ~/.claude/, and ~/.pilot/ (rename them to .bak copies). (3) Reinstall Pilot Shell with the official installer from pilot-shell.com. (4) Run pilot, sign in to Claude again, and re-activate your license with `pilot activate <your-license-key>`. Once Pilot is running smoothly again, delete the .bak copies. Forgot your license key? Recover it in the Polar members area at polar.sh/max-ritter/portal.",
+      "Claude Code’s session logs and Pilot’s caches grow over time and can degrade performance. A periodic reset every few weeks restores a clean baseline: (1) Run /logout inside Claude Code. (2) Back up ~/.claude.json, ~/.claude/, and ~/.pilot/ (rename them to .bak copies). (3) Reinstall Pilot Shell with the official installer from pilot-shell.com. (4) Run pilot and sign in to Claude again. Once Pilot is running smoothly, delete the .bak copies.",
   },
   {
     question: "Can I use Pilot Shell inside a Dev Container?",

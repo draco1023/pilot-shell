@@ -94,4 +94,4 @@ pilot
 pilot activate <your-license-key>
 ```
 
-Once Pilot Shell is running smoothly again, you can delete the `.bak` copies. Forgot your license key? Recover it in the [Polar members area](https://polar.sh/max-ritter/portal).
+Once Pilot Shell is running smoothly again, you can delete the `.bak` copies. Forgot your license key? Recover it in the [Pilot members area](https://polar.sh/max-ritter/portal).
