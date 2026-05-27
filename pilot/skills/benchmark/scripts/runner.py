@@ -2,13 +2,15 @@
 """Unified benchmark runner — orchestrates with/without comparison runs.
 
 Handles two target types:
-    skill  — installs the target skill under `with/.claude/skills/<name>/`
-    rules  — copies rule file(s) into `with/.claude/rules/`
+    skill  — installs the target skill under `.claude/skills/<name>/` for
+             Claude or `.agents/skills/<name>/` for Codex
+    rules  — copies rule file(s) into `.claude/rules/` for Claude or composes
+             root `AGENTS.md` for Codex
 
-Both configs materialize an explicit `.claude/` directory under /tmp/pilot-bench-*/
-so Claude Code's project-root discovery stops there and never walks UP into a
-parent repo's `.claude/`. Each `claude -p` subprocess writes a stream-json
-transcript; the final `result` event supplies duration_ms + usage (token counts).
+Both configs materialize an explicit agent config surface under /tmp/pilot-bench-*/
+so project discovery stops there and never walks UP into a parent repo. Each
+`claude -p` subprocess writes a stream-json transcript; the final `result` event
+supplies duration_ms + usage (token counts).
 Missing those required fields → run is marked FAILED rather than silently zeroed.
 """
 
@@ -84,6 +86,7 @@ REQUIRED_RESULT_FIELDS = ("duration_ms", "usage")
 TEMP_DIRS: list[Path] = []
 
 SANDBOX_PLACEHOLDER = "{sandbox}"
+CODEX_DEFAULT_MODEL = "codex-default"
 
 
 def substitute_sandbox(prompt: str, sandbox_path: Path) -> str:
@@ -237,6 +240,13 @@ def _copy_md_stripping_conditional(src: Path, dest: Path) -> None:
         shutil.copy2(src, dest)
 
 
+def _read_md_stripping_conditional(src: Path) -> str:
+    """Read markdown, removing conditional-loading fields when present."""
+    content = src.read_text()
+    stripped, removed = strip_conditional_loading_frontmatter(content)
+    return stripped if removed else content
+
+
 def _strip_skill_frontmatter_in_place(skill_dir: Path) -> None:
     """After copytree, strip conditional-loading fields from SKILL.md /
     orchestrator.md so the skill activates for every prompt during the run."""
@@ -288,8 +298,49 @@ def detect_conditional_loading(target: TargetConfig) -> list[tuple[Path, list[st
     return findings
 
 
-def prepare_config_dir(target: TargetConfig, config_kind: str, tmp_root: Path) -> Path:
-    """Create an ephemeral project dir with `.claude/` populated for the config.
+def _prepare_codex_config_dir(target: TargetConfig, config_kind: str, tmp_root: Path) -> Path:
+    """Create an ephemeral Codex project dir for the config."""
+    dest = tmp_root / config_kind
+    dest.mkdir(parents=True, exist_ok=True)
+    agents_md = dest / "AGENTS.md"
+    agents_md.write_text("# Benchmark Baseline\n\n")
+
+    if config_kind == "without":
+        return dest
+
+    target_type = target.get("type", "skill")
+    raw_path = target.get("path")
+    if not raw_path:
+        raise ValueError("target.path is required when config_kind is 'with'")
+    source_path = Path(raw_path).expanduser().resolve()
+    _validate_target_path(source_path)
+    if not source_path.exists():
+        raise FileNotFoundError(f"target.path does not exist: {source_path}")
+
+    if target_type == "skill":
+        skill_name = target.get("name") or source_path.name
+        skills_dir = dest / ".agents" / "skills" / skill_name
+        shutil.copytree(source_path, skills_dir)
+        _strip_skill_frontmatter_in_place(skills_dir)
+    elif target_type == "rules":
+        sources = [source_path] if source_path.is_file() else sorted(source_path.rglob("*.md"))
+        blocks = ["# Benchmark Rules", ""]
+        for md in sources:
+            blocks.extend([f"## {md.stem}", "", _read_md_stripping_conditional(md).strip(), ""])
+        agents_md.write_text("\n".join(blocks).rstrip() + "\n")
+    else:
+        raise ValueError(f"unsupported target type: {target_type}")
+
+    return dest
+
+
+def prepare_config_dir(
+    target: TargetConfig,
+    config_kind: str,
+    tmp_root: Path,
+    agent: str = "claude",
+) -> Path:
+    """Create an ephemeral project dir with agent-specific config populated.
 
     `config_kind` is "with" or "without".
     Returns the path to the project directory the subprocess will use as cwd.
@@ -299,6 +350,9 @@ def prepare_config_dir(target: TargetConfig, config_kind: str, tmp_root: Path) -
     unconditionally during the benchmark (otherwise the rule may be dormant in
     both configs and the delta collapses to zero).
     """
+    if agent == "codex":
+        return _prepare_codex_config_dir(target, config_kind, tmp_root)
+
     dest = tmp_root / config_kind
     dest.mkdir(parents=True, exist_ok=True)
     claude_dir = dest / ".claude"
@@ -482,7 +536,9 @@ def _execute_run_codex(
 
     import time
 
-    cmd = ["codex", "exec", "--model", model]
+    cmd = ["codex", "exec"]
+    if model and model != CODEX_DEFAULT_MODEL:
+        cmd.extend(["--model", model])
     if skip_permissions:
         cmd.extend(["-c", 'approval_policy="never"', "-c", 'sandbox_mode="danger-full-access"'])
 
@@ -573,7 +629,9 @@ def _run_grader(  # noqa: PLR0913
     )
 
     if agent == "codex":
-        grader_cmd = ["codex", "exec", "--model", model]
+        grader_cmd = ["codex", "exec"]
+        if model and model != CODEX_DEFAULT_MODEL:
+            grader_cmd.extend(["--model", model])
         if skip_permissions:
             grader_cmd.extend(["-c", 'approval_policy="never"', "-c", 'sandbox_mode="danger-full-access"'])
     else:
@@ -646,7 +704,7 @@ def _run_single_run(
     tmp_root = Path(tempfile.mkdtemp(prefix="pilot-bench-", dir="/tmp"))
     TEMP_DIRS.append(tmp_root)
     try:
-        cfg_dir = prepare_config_dir(target, config_kind, tmp_root)
+        cfg_dir = prepare_config_dir(target, config_kind, tmp_root, agent=run_cfg.agent)
         resolved_prompt = substitute_sandbox(eval_prompt, cfg_dir)
         result = execute_run(
             prompt=resolved_prompt,
@@ -688,18 +746,18 @@ def _run_single_run(
             TEMP_DIRS.remove(tmp_root)
 
 
-def _announce_contamination(target: TargetConfig, isolate_global: bool) -> list[Path]:
+def _announce_contamination(target: TargetConfig, isolate_global: bool, agent: str) -> list[Path]:
     """Log contamination status and return the paths that should be hidden.
 
     Returns an empty list when isolation is disabled (but still warns the user
     about detected-but-not-hidden duplicates so silent contamination is impossible).
     """
-    suspects = detect_global_contamination(target)
+    suspects = detect_global_contamination(target, agent=agent)
     if not suspects:
         return []
     if isolate_global:
         print(
-            f"  🛡  auto-isolating {len(suspects)} global counterpart(s) of the target in ~/.claude/ "
+            f"  🛡  auto-isolating {len(suspects)} global counterpart(s) of the target "
             "so the `without` config is truly without it:",
             file=sys.stderr,
         )
@@ -772,7 +830,7 @@ def run_benchmark(
 
     _warn_prompt_contamination(evals)
     _announce_conditional_loading(target)
-    to_hide = _announce_contamination(target, isolate_global)
+    to_hide = _announce_contamination(target, isolate_global, run_cfg.agent)
 
     plan = PlanHeader(
         config_path=str(config_path),
@@ -855,10 +913,10 @@ def main() -> None:
         "--model",
         default=None,
         help=(
-            "Executor model. Default: target skill's frontmatter `model:` if present, "
+            "Executor model. Claude default: target skill's frontmatter `model:` if present, "
             f"otherwise {DEFAULT_FALLBACK_MODEL} for rules and for Pilot-shipped skills "
             "(spec-plan, fix, prd, …) which no longer carry frontmatter model. "
-            "Pass --model opus explicitly to benchmark them on Opus instead."
+            "Codex default: omit --model and use the active Codex model."
         ),
     )
     parser.add_argument(
@@ -885,7 +943,7 @@ def main() -> None:
         "--no-isolate-global",
         action="store_true",
         default=False,
-        help="Do not hide ~/.claude/ counterparts of the target during the run. "
+        help="Do not hide global counterparts of the target during the run. "
         "Default: auto-hide. Use when you want to measure the target IN ADDITION to "
         "globally-loaded guidance (realistic 'day-to-day' measurement).",
     )
@@ -938,11 +996,12 @@ def main() -> None:
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
         output_dir = Path("benchmarks") / name / "runs" / ts
 
-    executor_model: str = args.model or resolve_executor_model(target)
-    grader_model: str = args.grader_model or executor_model
-
     agent: str = args.agent
     grader_agent: str = args.grader_agent or agent
+    executor_model: str = args.model or (CODEX_DEFAULT_MODEL if agent == "codex" else resolve_executor_model(target))
+    grader_model: str = args.grader_model or (
+        CODEX_DEFAULT_MODEL if grader_agent == "codex" and agent != "codex" else executor_model
+    )
 
     run_cfg = RunConfig(
         runs=args.runs,

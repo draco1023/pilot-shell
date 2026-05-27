@@ -331,6 +331,13 @@ class CodexFilesStep(BaseStep):
             existing += "[sandbox_workspace_write]\nnetwork_access = true\n"
             changed = True
 
+        required_tui = {
+            "status_line": '["project-name", "model-with-reasoning", "branch-changes", "context-used", "task-progress", "run-state", "five-hour-limit", "weekly-limit"]',
+            "status_line_use_colors": "true",
+        }
+        existing, tui_changed = _ensure_section_keys(existing, "tui", required_tui)
+        changed = changed or tui_changed
+
         if "[notice]" not in existing:
             if existing and not existing.endswith("\n\n"):
                 existing = existing.rstrip("\n") + "\n\n"

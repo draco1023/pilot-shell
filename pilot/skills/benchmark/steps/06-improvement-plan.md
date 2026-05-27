@@ -107,7 +107,12 @@ Cap the body at ~25 lines so the user reads it in 60 seconds.
 
 ## ⛔ Mandatory user question
 
+<!-- CC-ONLY -->
 After presenting, you MUST ask which path to take. Do not silently apply edits. Use `AskUserQuestion` when the answer is genuinely uncertain; a plain question is fine when the recommendation is clear.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+After presenting, you MUST ask which path to take. Do not silently apply edits. Present numbered options in plain text and wait for the user's response.
+CODEX-END -->
 
 Options:
 

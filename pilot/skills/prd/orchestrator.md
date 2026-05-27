@@ -40,3 +40,10 @@ Understand → Research (optional) → Ideate (if vague) → Clarify → Propose
 The phase boundary is a default, not a wall — Clarify can drop back into 1-2 prose turns when a question opens a genuinely new unknown, then return to structured forms.
 
 The entire flow is conversational. One question at a time. No rushing to solutions.
+
+<!-- CC-ONLY -->
+**⛔ ALWAYS use the `AskUserQuestion` tool** for user questions during convergent phases (Steps 4-8) — never list numbered questions in plain text.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**⛔ ALWAYS use plain-text numbered options** for user questions — never refer to `AskUserQuestion` as a callable tool in Codex. Present 2-4 concrete options with trade-offs, and wait for the user's response.
+CODEX-END -->

@@ -102,6 +102,22 @@ class TestDetectContamination:
         result = detect_global_contamination(target)
         assert result == [tmp_home / ".claude" / "skills" / "my-skill"]
 
+    def test_codex_skill_with_matching_global(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        tmp_home = tmp_path / "home"
+        self._with_home(monkeypatch, tmp_home)
+        (tmp_home / ".agents" / "skills" / "my-skill").mkdir(parents=True)
+        project_skill = tmp_path / "proj" / "skills" / "my-skill"
+        project_skill.mkdir(parents=True)
+        _ = (project_skill / "SKILL.md").write_text("---\nname: my-skill\n---\n")
+
+        target: TargetConfig = {
+            "type": "skill",
+            "path": str(project_skill),
+            "name": "my-skill",
+        }
+        result = detect_global_contamination(target, agent="codex")
+        assert result == [tmp_home / ".agents" / "skills" / "my-skill"]
+
     def test_no_match_returns_empty(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         tmp_home = tmp_path / "home"
         self._with_home(monkeypatch, tmp_home)

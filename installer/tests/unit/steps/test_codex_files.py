@@ -240,6 +240,32 @@ class TestCodexSkillsInstallation:
         assert "If `AGENTS.md` does not exist, create it" in result
         assert "Never create AGENTS.md if it doesn't exist" not in result
 
+    def test_create_skill_codex_skill_uses_agents_skill_paths(self) -> None:
+        from installer.steps.codex_files import build_codex_skill_md
+
+        result = build_codex_skill_md(Path("pilot/skills/create-skill"))
+
+        assert ".agents/skills/{slug}-{name}/SKILL.md" in result
+        assert "~/.agents/skills/{slug}-{name}/SKILL.md" in result
+        assert (
+            "Skills in `.agents/skills/` (project) or `~/.agents/skills/` "
+            "(global) are available to Codex"
+        ) in result
+        assert (
+            "Skills in `.claude/skills/` (project) or `~/.claude/skills/` "
+            "(global) are automatically available to Claude"
+        ) not in result
+
+    def test_benchmark_codex_skill_describes_codex_materialization(self) -> None:
+        from installer.steps.codex_files import build_codex_skill_md
+
+        result = build_codex_skill_md(Path("pilot/skills/benchmark"))
+
+        assert ".agents/skills/<name>/" in result
+        assert "root `AGENTS.md`" in result
+        assert "--agent codex" in result
+        assert "with/.claude/skills/<name>/" not in result
+
 
 class TestCodexRulesInstallation:
     def test_creates_agents_md_with_markers(self, tmp_path: Path) -> None:
@@ -682,6 +708,57 @@ class TestEnsureSectionKeys:
         result, changed = _ensure_section_keys(content, "features", {"memories": "true", "hooks": "true"})
         assert changed is False
         assert result == content
+
+
+class TestTuiStatuslineConfiguration:
+    def test_installs_tui_statusline_on_fresh_config(self, tmp_path: Path) -> None:
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir(parents=True)
+        config = codex_dir / "config.toml"
+        config.write_text('approval_policy = "never"\n')
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = None
+        with (
+            patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+        ):
+            step._install_codex_config(ctx)
+
+        result = config.read_text()
+        assert "[tui]" in result
+        assert "status_line" in result
+        assert "project-name" in result
+        assert "model-with-reasoning" in result
+        assert "status_line_use_colors = true" in result
+        _validate_toml_structure(result)
+
+    def test_preserves_existing_tui_settings(self, tmp_path: Path) -> None:
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir(parents=True)
+        config = codex_dir / "config.toml"
+        config.write_text(
+            'approval_policy = "never"\n'
+            "\n"
+            "[tui]\n"
+            'status_line = ["project-name", "run-state"]\n'
+            "status_line_use_colors = false\n"
+        )
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = None
+        with (
+            patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+        ):
+            step._install_codex_config(ctx)
+
+        result = config.read_text()
+        assert 'status_line = ["project-name", "run-state"]' in result
+        assert "status_line_use_colors = false" in result
+        assert result.count("status_line =") == 1
 
 
 class TestDeprecatedKeyRemoval:

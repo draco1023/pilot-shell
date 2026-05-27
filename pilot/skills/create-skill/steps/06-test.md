@@ -126,7 +126,7 @@ After the skill works well, optimize its triggering accuracy.
 
 **Make queries realistic** — include file paths, personal context, abbreviations, typos, casual speech, varying lengths. Bad: `"Format this data"`. Good: `"i have this csv from marketing (campaigns_q4.csv) and need to pivot it so each campaign type is a column with spend as values, can you also add a total row at the bottom"`.
 
-**How skill triggering works:** Skills appear in Claude's `available_skills` list with their name + description. Claude decides whether to consult a skill based on that description alone. Important: Claude only consults skills for tasks it can't easily handle on its own — simple one-step queries like "read this file" won't trigger a skill even if the description matches, because Claude can handle them directly. Your test queries should be substantive enough that Claude would actually benefit from consulting a skill.
+**How skill triggering works:** Skills appear to the target agent with their name + description. The agent decides whether to consult a skill based on that description alone. Important: agents only consult skills for tasks they can't easily handle on their own — simple one-step queries like "read this file" won't trigger a skill even if the description matches, because the agent can handle them directly. Your test queries should be substantive enough that the target agent would actually benefit from consulting a skill.
 
 **Test triggering accuracy:**
 

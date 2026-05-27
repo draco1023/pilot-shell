@@ -36,4 +36,4 @@ Should NOT trigger:
 - "[general request the skill shouldn't handle]"
 ```
 
-**Debug approach:** Ask Claude "When would you use the [skill name] skill?" — Claude will quote the description back. Adjust based on what's missing.
+**Debug approach:** Ask the target agent "When would you use the [skill name] skill?" — the agent will quote the description back. Adjust based on what's missing.

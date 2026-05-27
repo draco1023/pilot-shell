@@ -144,7 +144,12 @@ TaskCreate(subject="TS-NNN: [name]", description="[priority] | [preconditions]")
    - Re-execute the scenario (counts as fix attempt 1)
    - If still failing: implement second fix, re-execute (fix attempt 2)
    - After 2 failed fix attempts: note `TS-NNN: KNOWN_ISSUE — [description]`
+<!-- CC-ONLY -->
 5. **Critical KNOWN_ISSUE** → run the iteration-cap check from Step 11 (read `Iterations:` from the plan header; if `>= 3` ask the user Continue / Pivot / Abandon before incrementing). On Continue: set `Status: PENDING`, increment `Iterations`, register status change, invoke `Skill(skill='spec-implement', args='<plan-path>')` — do not proceed to VERIFIED. On Pivot/Abandon: do not invoke spec-implement; surface to user per Step 11.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+5. **Critical KNOWN_ISSUE** → run the iteration-cap check from Step 11 (read `Iterations:` from the plan header; if `>= 3` present the user with Continue / Pivot / Abandon options before incrementing). On Continue: set `Status: PENDING`, increment `Iterations`, register status change, then continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>` — do not proceed to VERIFIED. On Pivot/Abandon: do not invoke spec-implement; surface to user per Step 11.
+CODEX-END -->
 6. **High/Medium KNOWN_ISSUE** → document and continue (non-blocking)
 
 ### 7d: Write E2E Results to Plan

@@ -23,11 +23,21 @@ When in doubt, ask: "Is this a reusable skill (has `SKILL.md`) or a rule pack (p
 If the user can't remember exact names, list them:
 
 ```bash
+<!-- CC-ONLY -->
 # Skills in this project
 ls -1 pilot/skills/ ~/.claude/skills/
 
 # Rules in this project
 ls -1 pilot/rules/ ~/.claude/rules/
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+# Skills in this project
+ls -1 pilot/skills/ .agents/skills/ ~/.agents/skills/ 2>/dev/null
+
+# Rules in this project
+ls -1 pilot/rules/ .claude/rules/ 2>/dev/null
+# Codex project rules are materialized from repo-root AGENTS.md when benchmarking.
+CODEX-END -->
 ```
 
 Skip Pilot internals like `bot-*` unless the user specifically asks for them.

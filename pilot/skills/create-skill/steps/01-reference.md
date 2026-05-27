@@ -19,10 +19,20 @@ SLUG=$(basename "$(git remote get-url origin 2>/dev/null | sed 's/\.git$//')" 2>
 
 **Skill scope:** Choose project or global based on reusability.
 
+<!-- CC-ONLY -->
 | Scope | When | Create in | After creating |
 |-------|------|-----------|----------------|
 | **Project** | Skill is specific to this repo | `.claude/skills/{slug}-{name}/SKILL.md` | Nothing needed |
 | **Global** | Skill applies across projects | `~/.claude/skills/{slug}-{name}/SKILL.md` | Nothing needed |
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+| Scope | When | Create in | After creating |
+|-------|------|-----------|----------------|
+| **Project** | Skill is specific to this repo | `.agents/skills/{slug}-{name}/SKILL.md` | Nothing needed |
+| **Global** | Skill applies across projects | `~/.agents/skills/{slug}-{name}/SKILL.md` | Nothing needed |
+
+Codex project instructions belong in repo-root `AGENTS.md`; skill instructions belong in `.agents/skills/<name>/SKILL.md` or `~/.agents/skills/<name>/SKILL.md`. Do not put Codex skills in `AGENTS.md`.
+CODEX-END -->
 
 **Naming rules:** Lowercase with hyphens only. The slug provides context; the name should be 1-3 words max that are descriptive (not generic). Examples: `pilot-shell-lsp-cleaner`, `my-api-auth-flow`, `acme-deploy`. Never use generic names like "helper", "utils", "tools", "handler", "workflow".
 
@@ -83,7 +93,7 @@ name: {slug}-descriptive-kebab-case-name
 description: |
   [What it does] + [When to use it] + [Key capabilities].
   Use when user asks to [specific trigger phrases]. Include trigger conditions, scenarios, exact error messages.
-targets: [claude]
+targets: [claude, codex]
 tags: [category, domain]
 license: MIT
 allowed-tools: Grep Glob  # Optional — restrict which tools the skill can use
@@ -161,16 +171,16 @@ description: End-to-end customer onboarding workflow for PayFlow. Handles
 # Too vague — won't trigger
 description: Helps with projects.
 
-# Missing triggers — Claude can't match user requests
+# Missing triggers — the agent can't match user requests
 description: Creates sophisticated multi-page documentation systems.
 
 # Too technical, no user triggers
 description: Implements the Project entity model with hierarchical relationships.
 ```
 
-**⚠️ The Description Trap:** If description summarizes the workflow, Claude follows the short description as a shortcut instead of reading SKILL.md. Always describe trigger conditions, not process.
+**⚠️ The Description Trap:** If description summarizes the workflow, the agent follows the short description as a shortcut instead of reading SKILL.md. Always describe trigger conditions, not process.
 
-**Make descriptions "pushy"** — Claude tends to undertrigger skills (not use them when they'd help). Combat this by being explicit about when to activate. Instead of "How to build a dashboard for internal data", write "How to build a dashboard for internal data. Use this skill whenever the user mentions dashboards, data visualization, internal metrics, or wants to display any kind of data, even if they don't explicitly ask for a 'dashboard.'"
+**Make descriptions "pushy"** — agents tend to undertrigger skills (not use them when they'd help). Combat this by being explicit about when to activate. Instead of "How to build a dashboard for internal data", write "How to build a dashboard for internal data. Use this skill whenever the user mentions dashboards, data visualization, internal metrics, or wants to display any kind of data, even if they don't explicitly ask for a 'dashboard.'"
 
 ### Progressive Disclosure
 
@@ -179,8 +189,13 @@ Three-level system — each level loads only when needed:
 | Level | What | When Loaded | Context Cost |
 |-------|------|-------------|--------------|
 | **1. Frontmatter** | `description` in YAML | Always (system prompt) | ~100 tokens |
+<!-- CC-ONLY -->
 | **2. SKILL.md body** | Full instructions | When Claude thinks skill is relevant | ~1000+ tokens |
-| **3. Linked files** | `scripts/`, `references/`, `assets/` | When Claude navigates to them | Only on demand |
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+| **2. SKILL.md body** | Full instructions | When Codex thinks skill is relevant or the user invokes `$skill-name` | ~1000+ tokens |
+CODEX-END -->
+| **3. Linked files** | `scripts/`, `references/`, `assets/` | When the agent navigates to them | Only on demand |
 
 **Rule of thumb:** "Is this line worth the context tokens it costs?" Don't explain what AI already knows. Only add your project's specific conventions, internal APIs, and domain rules.
 

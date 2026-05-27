@@ -182,6 +182,43 @@ class TestPrepareConfigDir:
         installed = result / ".claude" / "skills" / "my-skill" / "SKILL.md"
         assert installed.exists()
 
+    def test_codex_without_config_creates_empty_agents_md(self, tmp_path: Path) -> None:
+        target: TargetConfig = {"type": "skill", "path": "/x"}
+        result = prepare_config_dir(target, "without", tmp_path, agent="codex")
+        assert result == tmp_path / "without"
+        assert (result / "AGENTS.md").exists()
+        assert not (result / ".agents" / "skills").exists()
+
+    def test_codex_with_config_copies_skill_to_agents_dir(self, tmp_path: Path) -> None:
+        skill_src = tmp_path / "src" / "my-skill"
+        skill_src.mkdir(parents=True)
+        _ = (skill_src / "SKILL.md").write_text("---\nname: my-skill\n---\n")
+        target: TargetConfig = {"type": "skill", "path": str(skill_src), "name": "my-skill"}
+        dest_root = tmp_path / "dest"
+        dest_root.mkdir()
+        result = prepare_config_dir(target, "with", dest_root, agent="codex")
+        installed = result / ".agents" / "skills" / "my-skill" / "SKILL.md"
+        assert installed.exists()
+        assert not (result / ".claude").exists()
+
+    def test_codex_with_rules_target_writes_root_agents_md(self, tmp_path: Path) -> None:
+        rules_src = tmp_path / "src" / "rules"
+        rules_src.mkdir(parents=True)
+        _ = (rules_src / "a.md").write_text("---\npaths:\n  - '**/*.py'\n---\nrule A")
+        _ = (rules_src / "b.md").write_text("rule B")
+        target: TargetConfig = {"type": "rules", "path": str(rules_src), "name": "rules"}
+        dest_root = tmp_path / "dest"
+        dest_root.mkdir()
+        result = prepare_config_dir(target, "with", dest_root, agent="codex")
+        agents_md = result / "AGENTS.md"
+        content = agents_md.read_text()
+        assert agents_md.exists()
+        assert "# Benchmark Rules" in content
+        assert "rule A" in content
+        assert "rule B" in content
+        assert "paths:" not in content
+        assert not (result / ".claude" / "rules").exists()
+
     def test_with_rules_target_copies_md_files(self, tmp_path: Path) -> None:
         rules_src = tmp_path / "src" / "rules"
         rules_src.mkdir(parents=True)
@@ -523,6 +560,24 @@ class TestExecuteRunCodex:
         assert "exec" in cmd_arg
         assert isinstance(result, ExecuteSuccess)
 
+    def test_codex_agent_omits_model_flag_for_codex_default(self, tmp_path: Path) -> None:
+        config_dir = tmp_path / "cfg"
+        run_dir = tmp_path / "out"
+        config_dir.mkdir()
+        completed = MagicMock(stdout="output text", stderr="", returncode=0)
+        with patch("scripts.runner.subprocess.run", return_value=completed) as mock_run:
+            result = execute_run(
+                prompt="test prompt",
+                config_dir=config_dir,
+                run_dir=run_dir,
+                model="codex-default",
+                timeout=10,
+                agent="codex",
+            )
+        cmd_arg = mock_run.call_args.args[0]
+        assert "--model" not in cmd_arg
+        assert isinstance(result, ExecuteSuccess)
+
     def test_codex_agent_timing_json_has_agent_field(self, tmp_path: Path) -> None:
         config_dir = tmp_path / "cfg"
         run_dir = tmp_path / "out"
@@ -609,6 +664,26 @@ class TestRunGraderCodex:
         cmd_arg = mock_run.call_args.args[0]
         assert cmd_arg[0] == "codex"
         assert "exec" in cmd_arg
+        assert isinstance(result, GraderSuccess)
+
+    def test_codex_grader_omits_model_flag_for_codex_default(self, tmp_path: Path) -> None:
+        run_dir = tmp_path / "run"
+        run_dir.mkdir()
+        _ = (run_dir / "grading.json").write_text(
+            json.dumps({"summary": {"pass_rate": 1.0, "passed": 1, "failed": 0, "total": 1}})
+        )
+        with patch("scripts.runner.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(stdout="", stderr="", returncode=0)
+            result = _run_grader(
+                run_dir=run_dir,
+                assertions=["a"],
+                target_type="skill",
+                model="codex-default",
+                timeout=1,
+                agent="codex",
+            )
+        cmd_arg = mock_run.call_args.args[0]
+        assert "--model" not in cmd_arg
         assert isinstance(result, GraderSuccess)
 
 

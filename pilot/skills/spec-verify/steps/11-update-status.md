@@ -30,6 +30,7 @@ If any of the three is false → return to Step 10 and re-ask. Common traps that
 
 ⛔ **Iteration cap — check BEFORE re-invoking spec-implement.** Read `Iterations:` from the plan header. If `Iterations >= 3` BEFORE incrementing, stop the verify→implement loop and surface to the user. An infinite verify→implement loop on a feature plan is the single largest token-burn pattern in the workflow — three failed verifications means the plan is wrong, not that one more implement pass will fix it.
 
+<!-- CC-ONLY -->
 ```
 AskUserQuestion(
   question="Three verify iterations have failed for this plan. This pattern usually means the plan's design is incomplete or a verify check is mis-specified — not that one more implement pass will fix it. What now?",
@@ -40,9 +41,22 @@ AskUserQuestion(
   ]
 )
 ```
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+Present these numbered options and wait for user response:
+
+1. Continue — try one more iteration (rarely the right answer)
+2. Pivot — let me re-investigate the plan with you
+3. Abandon — leave PENDING, I'll come back to it
+CODEX-END -->
 
 Handle:
+<!-- CC-ONLY -->
 - **Continue:** increment `Iterations`, write `## Verification Gaps`, register status, invoke `Skill(skill='spec-implement', args='<plan-path>')` as below.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- **Continue:** increment `Iterations`, write `## Verification Gaps`, register status, then continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`.
+CODEX-END -->
 - **Pivot:** set `Status: PENDING`, do NOT invoke spec-implement. Tell the user you're standing by for new investigation direction.
 - **Abandon:** leave `Status: PENDING`, do not invoke spec-implement. Stop.
 
@@ -55,6 +69,11 @@ Handle:
    ```markdown
    | Gap | Type | Severity | Affected Files | Fix Description |
    ```
+<!-- CC-ONLY -->
 5. Invoke `Skill(skill='spec-implement', args='<plan-path>')`
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+5. Continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`.
+CODEX-END -->
 
 ARGUMENTS: $ARGUMENTS

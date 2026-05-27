@@ -14,7 +14,12 @@ Reference these values throughout: Steps 4/6 (questions), 10 (reviewer + Codex �
 
 **⛔ If `PILOT_PLAN_QUESTIONS_ENABLED` is `"false"` (above),** skip ALL `AskUserQuestion` calls in Steps 4 and 6. Make reasonable default choices (including selecting the recommended approach in Step 6) and document them in the plan under an "Autonomous Decisions" sub-section. Continue to the next step immediately.
 
+<!-- CC-ONLY -->
 **⛔ ALWAYS use the `AskUserQuestion` tool** (when questions are enabled) — never list numbered questions in plain text. Each question gets its own entry with predefined options users can select. This provides a structured form UI that is much easier to answer than freeform numbered lists.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**⛔ ALWAYS use plain-text numbered options** (when questions are enabled) — never refer to `AskUserQuestion` as a callable tool in Codex. Present each question with 2-4 concrete options and wait for the user's response.
+CODEX-END -->
 
 **⛔ Default is to ASK, not skip.** Every plan benefits from at least one round of user alignment. Only skip questions when the task is a single-file change with zero ambiguity.
 

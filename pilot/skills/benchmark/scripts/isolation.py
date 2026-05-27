@@ -4,6 +4,7 @@ Without this module, benchmarks are silently contaminated: files in
 `~/.claude/rules/` and `~/.claude/skills/` load in every `claude -p` subprocess
 regardless of cwd, so if the user has the target rule/skill installed globally,
 the `without` config still has it and the benchmark measures nothing.
+For Codex skill benchmarks, `~/.agents/skills/` is isolated the same way.
 
 Layered protection — each layer catches what the previous can't:
 
@@ -151,8 +152,8 @@ def install_signal_handlers() -> None:
 atexit.register(_restore_hidden_paths)
 
 
-def detect_global_contamination(target: TargetConfig) -> list[Path]:
-    """Return ~/.claude/ paths that duplicate the target's rule/skill."""
+def detect_global_contamination(target: TargetConfig, agent: str = "claude") -> list[Path]:
+    """Return global paths that duplicate the target's rule/skill."""
     target_type = target.get("type", "skill")
     raw_path = target.get("path")
     if not raw_path:
@@ -161,7 +162,7 @@ def detect_global_contamination(target: TargetConfig) -> list[Path]:
     if not source_path.exists():
         return []
 
-    home_claude = Path.home() / ".claude"
+    global_config_dir = Path.home() / (".agents" if agent == "codex" else ".claude")
     suspects: list[Path] = []
 
     def _same_path(a: Path, b: Path) -> bool:
@@ -171,7 +172,9 @@ def detect_global_contamination(target: TargetConfig) -> list[Path]:
             return False
 
     if target_type == "rules":
-        rules_dir = home_claude / "rules"
+        if agent == "codex":
+            return []
+        rules_dir = global_config_dir / "rules"
         if not rules_dir.exists():
             return []
         sources = [source_path] if source_path.is_file() else list(source_path.rglob("*.md"))
@@ -181,7 +184,7 @@ def detect_global_contamination(target: TargetConfig) -> list[Path]:
                 suspects.append(candidate)
     elif target_type == "skill":
         skill_name = target.get("name") or source_path.name
-        candidate = home_claude / "skills" / skill_name
+        candidate = global_config_dir / "skills" / skill_name
         if candidate.exists() and not _same_path(candidate, source_path):
             suspects.append(candidate)
 

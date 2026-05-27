@@ -21,17 +21,33 @@ Two target types — both run in isolated `/tmp/pilot-bench-*` directories, one 
 
 | Target type | `with/` config | `without/` config | Use when |
 |-------------|---------------|-------------------|----------|
+<!-- CC-ONLY -->
 | `skill` | Skill installed in `.claude/skills/<name>/` | Empty `.claude/` | Measuring "should we ship this skill?" |
 | `rules` | Rule file(s) copied into `.claude/rules/` | Empty `.claude/` | Measuring "does this rule/pack improve behavior?" |
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+| `skill` | Skill installed in `.agents/skills/<name>/` | Empty root `AGENTS.md` | Measuring "should we ship this skill?" |
+| `rules` | Rule file(s) composed into root `AGENTS.md` | Empty root `AGENTS.md` | Measuring "does this rule/pack improve behavior?" |
+CODEX-END -->
 
 Workflow-style skills like `/spec` are benchmarked as `type=skill` — present vs absent.
 
+<!-- CC-ONLY -->
 **Model selection:** Pilot-shipped skills (`spec-plan`, `fix`, `prd`, `create-skill`, `setup-rules`, …) don't carry a `model:` in their frontmatter — active model is controlled by Claude Code's `/model`. The runner defaults those benchmarks to `claude-sonnet-4-6`; pass `--model opus` explicitly to run them on Opus instead. Bot-* skills still carry hard-coded `model: sonnet`.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Model selection:** When `--agent codex` is used and no `--model` is passed, the runner omits `--model` and lets Codex use its active default model. Pass an explicit Codex model with `--model` only when comparing models.
+CODEX-END -->
 
 ## Isolation guarantees
 
 - **Per-run filesystem sandbox.** Each (eval, config, run) triple gets its own `/tmp/pilot-bench-*/` cwd. Use relative paths in prompts, or the `{sandbox}` placeholder when you need an absolute path. Hardcoded `/tmp/<fixed-name>/` in prompts is flagged at load time.
+<!-- CC-ONLY -->
 - **Global-rule auto-hiding.** `~/.claude/rules/<basename>.md` and `~/.claude/skills/<name>/` are moved aside for the duration of the run when they duplicate the target, then restored automatically. Layered fail-safes (on-disk recovery manifest + atexit + SIGINT/SIGTERM/SIGHUP handlers + next-run sweep) make the restore robust against kill -9, power loss, and segfaults. Opt out with `--no-isolate-global` for realistic "day-to-day" measurement.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- **Global-skill auto-hiding.** `~/.agents/skills/<name>/` is moved aside for the duration of Codex skill benchmarks when it duplicates the target, then restored automatically. Codex rules benchmarks use an isolated root `AGENTS.md`; pass `--no-isolate-global` only when you intentionally want globally-installed skills present too.
+CODEX-END -->
 
 ## Workflow
 
@@ -48,10 +64,15 @@ Follow these steps sequentially:
 
 **Config path:** `benchmarks/<target-name>/evals.json`
 **Outputs:** `benchmarks/<target-name>/runs/<timestamp>/`
+<!-- CC-ONLY -->
 **Runner:** `PYTHONPATH=~/.claude/skills/benchmark uv run python -m scripts.runner --config <evals.json> --skip-permissions`
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Runner:** `PYTHONPATH=~/.agents/skills/benchmark uv run python -m scripts.runner --config <evals.json> --skip-permissions --agent codex`
+CODEX-END -->
 
 **Defaults worth knowing:**
 - `--runs 1` (keeps token cost low; bump only for variance analysis)
 - `--workers 4` (bump to `min(total_runs, 8)` for small eval sets so all runs land in one wave)
-- `--model` is read from the target skill's frontmatter (alias → ID); rules and model-less skills fall back to `claude-sonnet-4-6`
+- `--model` is read from the target skill's frontmatter for Claude (alias → ID); rules and model-less Claude skills fall back to `claude-sonnet-4-6`; Codex defaults to the active Codex model unless `--model` is passed
 - `--grader-model` defaults to the same model as `--model` so executor and grader stay matched

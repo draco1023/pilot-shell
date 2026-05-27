@@ -48,6 +48,14 @@ Bugfix workflow with TDD. Investigate the bug, write the failing test, fix at th
 - **No `Iterations:` counter.** If your fix doesn't work after one re-attempt, stop and tell the user to switch to `/spec` — don't loop.
 - **No approval mid-flow.** Single end-of-flow confirmation only when `PILOT_PLAN_APPROVAL_ENABLED` is enabled.
 - **Stopping is success, not failure.** Recognising "this is bigger than a quick fix" and bailing out is the right call. Wasting time in the quick lane on a multi-component bug is the failure.
+<!-- CC-ONLY -->
+- **ALWAYS use `AskUserQuestion` tool** for user questions — never list numbered questions in plain text
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- **ALWAYS use plain-text numbered options** for user questions — never refer to `AskUserQuestion` as a callable tool in Codex
+- **Browser tools for E2E verification:** Use playwright-cli or agent-browser (Claude Code Chrome and Chrome DevTools MCP are not available in Codex)
+- **Codex adversarial review (Step 6.2.a) is not available** — the optional Codex review in Step 6 only runs when Claude Code's companion broker is present
+CODEX-END -->
 
 ---
 

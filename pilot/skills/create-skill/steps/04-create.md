@@ -2,6 +2,7 @@
 
 **Create the skill directory and SKILL.md:**
 
+<!-- CC-ONLY -->
 ```bash
 # Project scope — skill lives in this repo's .claude/skills/
 mkdir -p .claude/skills/{slug}-{name}
@@ -13,6 +14,20 @@ mkdir -p ~/.claude/skills/{slug}-{name}
 ```
 
 Skills in `.claude/skills/` (project) or `~/.claude/skills/` (global) are automatically available to Claude — no sync step needed.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+```bash
+# Project scope — skill lives in this repo's .agents/skills/
+mkdir -p .agents/skills/{slug}-{name}
+# Write SKILL.md
+
+# Global scope — skill applies across all projects
+mkdir -p ~/.agents/skills/{slug}-{name}
+# Write SKILL.md
+```
+
+Skills in `.agents/skills/` (project) or `~/.agents/skills/` (global) are available to Codex — no sync step needed.
+CODEX-END -->
 
 Edit the created `SKILL.md` with the skill content using the template from Step 1.
 

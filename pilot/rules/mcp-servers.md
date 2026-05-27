@@ -1,5 +1,6 @@
 ## Pilot MCP Servers
 
+<!-- CC-ONLY -->
 MCP tools are lazy-loaded via `ToolSearch`. Discover by keyword, then call directly. Full param schemas are returned by `ToolSearch` itself — these summaries cover purpose and minimum usage.
 
 ```
@@ -9,6 +10,17 @@ ToolSearch(query="select:full_tool_name") # Load a specific tool by exact name
 ```
 
 All servers use the `mcp__plugin_pilot_` prefix. Tools are callable immediately after ToolSearch returns them.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+MCP tools may be lazy-loaded via `tool_search` or registered at session start — check your available tools. Discover by keyword, then call directly.
+
+```
+tool_search(query="keyword")              # Discover and load tools by keyword
+tool_search(query="codegraph context")    # Example: find CodeGraph tools
+```
+
+All Pilot servers use the `mcp__plugin_pilot_` prefix. Tools are callable immediately after discovery.
+CODEX-END -->
 
 ---
 

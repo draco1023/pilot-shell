@@ -10,3 +10,10 @@ user-invocable: true
 **Flow:** Read existing → Migrate → Quality audit → Explore → Compare → Sync rules → Sync MCP → Discover rules → Cross-check → Sync AGENTS.md → Summary
 
 **Skill creation:** Use `/create-skill` to create workflow skills — `/setup-rules` focuses exclusively on rules and MCP documentation.
+
+<!-- CC-ONLY -->
+**⛔ ALWAYS use the `AskUserQuestion` tool** for user questions — never list numbered questions in plain text.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**⛔ ALWAYS use plain-text numbered options** for user questions — never refer to `AskUserQuestion` as a callable tool in Codex. Present options with trade-offs and wait for the user's response.
+CODEX-END -->

@@ -22,6 +22,7 @@ Run /clear before starting new work — this resets context while keeping projec
 
 ⛔ **Iteration cap.** Read `Iterations:` from the plan header. If `Iterations >= 3` BEFORE incrementing, stop the fix-on-fix loop:
 
+<!-- CC-ONLY -->
 ```
 AskUserQuestion(
   question="Three fix iterations have failed verification. This pattern usually means the bug is architectural — fixing symptoms in different places, each fix revealing a new failure mode. What now?",
@@ -32,12 +33,30 @@ AskUserQuestion(
   ]
 )
 ```
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+Present these numbered options and wait for user response:
+
+1. Continue — try one more fix (rarely the right answer)
+2. Pivot — let me re-investigate root cause with you
+3. Abandon — leave PENDING, I'll come back to it
+CODEX-END -->
 
 Handle:
+<!-- CC-ONLY -->
 - **Continue:** increment `Iterations`, invoke `Skill(skill='spec-implement', args='<plan-path>')` as below.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- **Continue:** increment `Iterations`, then continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`.
+CODEX-END -->
 - **Pivot:** set `Status: PENDING`, do NOT invoke spec-implement. Tell the user you're standing by for new investigation direction.
 - **Abandon:** leave `Status: PENDING`, do not invoke spec-implement. Stop.
 
+<!-- CC-ONLY -->
 **When `Iterations < 3`:** Add fix tasks, set `Status: PENDING`, increment `Iterations`, invoke `Skill(skill='spec-implement', args='<plan-path>')`.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**When `Iterations < 3`:** Add fix tasks, set `Status: PENDING`, increment `Iterations`, then continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`.
+CODEX-END -->
 
 ARGUMENTS: $ARGUMENTS
