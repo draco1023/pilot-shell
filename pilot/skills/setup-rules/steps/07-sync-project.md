@@ -2,6 +2,10 @@
 
 **Update `.claude/rules/{slug}-project.md` with current project state.**
 
+<!-- CODEX-START
+**Codex note:** Updating `.claude/rules/{slug}-project.md` alone does not update Codex instructions. Treat this rule as the modular source, then Step 11 must create or sync root `AGENTS.md`.
+CODEX-END -->
+
 Also look for a legacy unscoped `project.md` — if found, migrate its content into `{slug}-project.md` and delete the old file.
 
 ### Step 7.1: Handle Existing CLAUDE.md / AGENTS.md — CONDITIONAL

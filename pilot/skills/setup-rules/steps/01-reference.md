@@ -26,6 +26,10 @@ Use `{slug}-` prefix on everything: `{slug}-project.md`, `{slug}-mcp-servers.md`
 
 Use unique names (not `plan`, `implement`, `verify`, `standards-*`) for custom rules.
 
+<!-- CODEX-START
+**Codex output:** Codex reads project instructions from repo-root `AGENTS.md`, not `.claude/rules/`. When running `$setup-rules` in Codex, `.claude/rules/` may be used as a compatible modular source, but the workflow is incomplete until root `AGENTS.md` is created or synced from those rules.
+CODEX-END -->
+
 ### Recommended Directory Structure
 
 **For monorepos with multiple products/teams**, organize rules in nested subdirectories:

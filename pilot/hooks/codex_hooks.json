@@ -22,6 +22,16 @@
         ]
       },
       {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$HOME/.pilot/scripts/worker-service.cjs\" hook codex context",
+            "timeout": 15
+          }
+        ]
+      },
+      {
         "matcher": "clear",
         "hooks": [
           {

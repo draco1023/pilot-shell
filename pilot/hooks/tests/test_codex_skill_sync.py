@@ -124,7 +124,7 @@ class TestBuildCodexSkill:
 
     @pytest.mark.parametrize(
         "skill_name",
-        ["spec", "spec-plan", "spec-bugfix-plan", "spec-implement", "spec-verify", "spec-bugfix-verify", "prd", "fix"],
+        ["spec", "spec-plan", "spec-bugfix-plan", "spec-implement", "spec-verify", "spec-bugfix-verify", "prd", "fix", "benchmark", "setup-rules", "create-skill"],
     )
     def test_real_codex_skills_do_not_expose_claude_tool_calls(self, skill_name: str) -> None:
         result = _build_codex_skill(Path("pilot/skills") / skill_name)
@@ -155,7 +155,7 @@ class TestBuildCodexSkill:
             "plain-text numbered options tool",
         ):
             assert forbidden not in result
-        assert re.search(r"(^|[^A-Za-z0-9_`])/(spec|fix|prd)([^A-Za-z0-9_/]|$)", result) is None
+        assert re.search(r"(^|[^A-Za-z0-9_`])/(spec|fix|prd|setup-rules|create-skill|benchmark)([^A-Za-z0-9_/]|$)", result) is None
 
 
 class TestSyncCodexSkills:

@@ -61,7 +61,7 @@ curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.
 
 ### Prerequisites
 
-**At least one AI agent:** Pilot Shell supports **Claude Code** (Anthropic, primary — full feature coverage) and **[Codex CLI](https://developers.openai.com/codex/cli)** (OpenAI — core `/spec`, `/fix`, `/prd`). Install at least one before running the Pilot installer — it auto-detects and configures both.
+**At least one AI agent:** Pilot Shell supports **Claude Code** (Anthropic, primary — full feature coverage) and **[Codex CLI](https://developers.openai.com/codex/cli)** (OpenAI — all workflows, fewer platform features). Install at least one before running the Pilot installer — it auto-detects and configures both.
 
 - **Claude Code:** Install via the [native installer](https://code.claude.com/docs/en/quickstart). If you have the `npm` or `brew` version, uninstall it first. Requires a Claude subscription — [Max 5x or 20x](https://claude.com/pricing) for solo, [Team Premium](https://claude.com/pricing) for teams, [Enterprise](https://claude.com/pricing) for organizations.
 - **Codex CLI:** Install via `npm i -g @openai/codex`. Requires an [OpenAI API key](https://platform.openai.com/api-keys).
@@ -156,13 +156,14 @@ For tighter isolation when working with untrusted code, combine the dev containe
 
 ### Codex CLI Support
 
-Pilot Shell also works with [OpenAI Codex CLI](https://developers.openai.com/codex/cli). **Install Codex CLI separately first** — the Pilot installer auto-detects it and adds the core workflows: `$spec`, `$fix`, `$prd` + all MCP servers. **For the full feature set, use Claude Code.**
+Pilot Shell also works with [OpenAI Codex CLI](https://developers.openai.com/codex/cli). **Install Codex CLI separately first** — the Pilot installer auto-detects it and adds all workflows and MCP servers. **For the full feature set, use Claude Code.**
 
 <details>
 <summary><b>What works on Codex</b></summary>
 
-- **Core skills:** `$spec` (plan → implement → verify), `$fix` (TDD bugfix), `$prd` (requirements). Use `$` instead of `/`. Skills are auto-adapted for Codex — reviewer sub-agents and model switching are stripped, questions use plain text instead of `AskUserQuestion`.
-- **Console views:** Requirements, Specifications, Extensions, Changes, Usage, and Settings all work with Codex sessions. Each view shows a badge indicating agent support.
+- **All skills:** `$spec`, `$fix`, `$prd`, `$setup-rules`, `$create-skill`, `$benchmark`. Use `$` instead of `/`. Skills are auto-adapted for Codex — reviewer sub-agents and model switching are stripped, questions use plain text instead of `AskUserQuestion`.
+- **Console views:** Dashboard, Requirements, Specifications, Extensions, Changes, Usage, Sessions, and Settings all work with Codex sessions.
+- **Quality hooks:** file checker, context monitor, token saver (RTK), spec stop guard — all registered in `~/.codex/hooks.json`.
 - **MCP servers:** context7, CodeGraph, Semble, web-search, grep-mcp, web-fetch — all configured in `~/.codex/config.toml`.
 - **Rules:** testing, development practices, verification — delivered via `~/.codex/AGENTS.md`, adapted for Codex tool differences.
 - **Skill sync:** Skills rebuild automatically on every session start with license verification. Invalid license → skills are removed.
@@ -173,7 +174,7 @@ Pilot Shell also works with [OpenAI Codex CLI](https://developers.openai.com/cod
 <details>
 <summary><b>What requires Claude Code</b></summary>
 
-Console views for Sessions and Memories require Claude Code. So do: status line, Pilot Bot, quality hooks (file checker, context monitor, tool redirect), review sub-agents (spec-review, changes-review), Codex companion reviews (launched from CC), model switching, token optimization hooks, and bot skills (`/bot-boot`, `/bot-channel-task`, `/bot-defaults`, `/bot-heartbeat`, `/bot-jobs`). See the [full comparison](https://pilot-shell.com/docs/getting-started/codex-cli).
+Status line, Pilot Bot, review sub-agents (spec-review, changes-review), Codex companion reviews (launched from CC), model switching, tool redirect hook, and bot skills (`/bot-boot`, `/bot-channel-task`, `/bot-defaults`, `/bot-heartbeat`, `/bot-jobs`). See the [full comparison](https://pilot-shell.com/docs/getting-started/codex-cli).
 
 </details>
 
@@ -712,7 +713,7 @@ See [LICENSE](LICENSE).
 <details>
 <summary><b>What do I need to use Pilot Shell?</b></summary>
 
-Pilot Shell enhances your AI coding agent — it doesn't replace it. You need at least one: **Claude Code** (Anthropic) requires an active Claude subscription — [Max 5x or 20x](https://claude.com/pricing) for solo developers, [Team Premium](https://claude.com/pricing) for teams, or [Enterprise](https://claude.com/pricing) for organizations. **[Codex CLI](https://developers.openai.com/codex/cli)** (OpenAI) requires an OpenAI API key. You can use either agent or both — the installer auto-detects and configures whichever is installed. Both share the same rules, skills, hooks, MCP servers, and Console. Claude Code has full feature coverage; Codex CLI supports all non-bot skills (`/spec`, `/fix`, `/prd`, `/benchmark`, `/setup-rules`, `/create-skill`). See the [Codex CLI docs](https://pilot-shell.com/docs/getting-started/codex-cli) for the detailed feature matrix.
+Pilot Shell enhances your AI coding agent — it doesn't replace it. You need at least one: **Claude Code** (Anthropic) requires an active Claude subscription — [Max 5x or 20x](https://claude.com/pricing) for solo developers, [Team Premium](https://claude.com/pricing) for teams, or [Enterprise](https://claude.com/pricing) for organizations. **[Codex CLI](https://developers.openai.com/codex/cli)** (OpenAI) requires an OpenAI API key. You can use either agent or both — the installer auto-detects and configures whichever is installed. Both share the same rules, skills, hooks, MCP servers, and Console. All non-bot skills work on both agents: `/spec`, `/fix`, `/prd`, `/benchmark`, `/setup-rules`, `/create-skill`. A small set of features (bot skills, review sub-agents, model switching, status line) require Claude Code. See the [Codex CLI docs](https://pilot-shell.com/docs/getting-started/codex-cli) for the detailed comparison.
 
 </details>
 

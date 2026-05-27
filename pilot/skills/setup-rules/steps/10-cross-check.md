@@ -9,5 +9,8 @@
 5. **Reference validity** — cross-references between files point to files that actually exist
 6. **README currency** — if `.claude/rules/README.md` exists, verify it lists all current rule files and directories. Update if stale.
 7. **Path-scoping enforcement** — re-verify all team-level rules have `paths` frontmatter (final check)
+<!-- CODEX-START
+8. **Codex instruction currency** — verify root `AGENTS.md` exists and contains the current project, MCP, and repo-behavior guidance from the synced rules.
+CODEX-END -->
 
 Auto-fix any issues found. Report fixes in summary.

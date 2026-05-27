@@ -10,7 +10,7 @@ What you need before installing Pilot Shell.
 
 ## At Least One AI Agent
 
-Pilot Shell supports **Claude Code** (Anthropic, primary — full feature coverage) and **Codex CLI** (OpenAI — core `/spec`, `/fix`, `/prd`). Install at least one. The Pilot installer auto-detects and configures both.
+Pilot Shell supports **Claude Code** (Anthropic, primary — full feature coverage) and **Codex CLI** (OpenAI — all workflows, fewer platform features). Install at least one. The Pilot installer auto-detects and configures both.
 
 ### Claude Code
 

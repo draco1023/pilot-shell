@@ -86,7 +86,7 @@ description: |
 targets: [claude]
 tags: [category, domain]
 license: MIT
-allowed-tools: Bash(python:*) WebFetch  # Optional — restrict which tools the skill can use
+allowed-tools: Grep Glob  # Optional — restrict which tools the skill can use
 compatibility: Requires Python 3.12+    # Optional — environment requirements (1-500 chars)
 metadata:                               # Optional — custom key-value pairs
   author: Your Name
@@ -130,7 +130,7 @@ Result: [expected outcome]
 | `targets` | No | Restrict sync to specific CLIs (e.g., `[claude]`). Omit to sync everywhere |
 | `tags` | No | Categories for hub search and filtering (e.g., `[debugging, python]`) |
 | `license` | No | License identifier (e.g., `MIT`, `Apache-2.0`) |
-| `allowed-tools` | No | Restrict which tools the skill can access (e.g., `Bash(python:*) WebFetch`) |
+| `allowed-tools` | No | Restrict which tools the skill can access (e.g., `Grep Glob`) |
 | `compatibility` | No | Environment requirements (1-500 chars) |
 | `metadata` | No | Custom key-value pairs: `author`, `version`, `mcp-server`, `category`, etc. |
 

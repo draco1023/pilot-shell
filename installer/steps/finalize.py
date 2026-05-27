@@ -113,19 +113,15 @@ class FinalizeStep(BaseStep):
             ("/spec · $spec", "Plan, implement & verify features end-to-end with TDD"),
             ("/fix · $fix", "Investigate, RED test, fix, audit — bugfix workflow"),
             ("/prd · $prd", "Brainstorm ideas into PRDs with optional research before /spec"),
-        ]
-
-        claude_only: list[tuple[str, str]] = [
-            ("/setup-rules", "Create modular and concise rules for your project codebase"),
-            ("/create-skill", "Create well-structured reusable skills for your workflows"),
-            ("/benchmark", "Quantitative before/after evals for rules, skills, and workflows"),
+            ("/setup-rules · $setup-rules", "Create modular and concise rules for your project codebase"),
+            ("/create-skill · $create-skill", "Create well-structured reusable skills for your workflows"),
+            ("/benchmark · $benchmark", "Quantitative before/after evals for rules, skills, and workflows"),
         ]
 
         ui.next_steps(
             [
                 ("Getting Started", getting_started),
                 ("Workflows (Claude Code + Codex)", workflows),
-                ("Claude Code Only", claude_only),
             ]
         )
 

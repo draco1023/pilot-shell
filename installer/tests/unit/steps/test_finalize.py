@@ -204,9 +204,11 @@ class TestFinalSuccessPanel:
 
                 sections = mock_next_steps.call_args[0][0]
                 section_titles = [title for title, _ in sections]
-                assert section_titles == ["Getting Started", "Workflows (Claude Code + Codex)", "Claude Code Only"]
-                expected_lengths = {"Getting Started": 3, "Workflows (Claude Code + Codex)": 3, "Claude Code Only": 3}
+                assert section_titles == ["Getting Started", "Workflows (Claude Code + Codex)"]
+                expected_lengths = {"Getting Started": 3, "Workflows (Claude Code + Codex)": 6}
                 for title, items in sections:
                     assert len(items) == expected_lengths[title], f"{title}: expected {expected_lengths[title]}, got {len(items)}"
                 workflow_labels = [label for label, _ in dict(sections)["Workflows (Claude Code + Codex)"]]
                 assert "/fix · $fix" in workflow_labels
+                assert "/setup-rules · $setup-rules" in workflow_labels
+                assert "/benchmark · $benchmark" in workflow_labels

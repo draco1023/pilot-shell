@@ -393,9 +393,6 @@ class CodexFilesStep(BaseStep):
             _atomic_write(dest_dir / "SKILL.md", codex_content)
 
 
-_CODEX_SKIP_MCP = frozenset({"mem-search"})
-
-
 def _ensure_section_keys(
     content: str,
     section: str,
@@ -464,7 +461,7 @@ def _mcp_json_to_toml(mcp_data: dict[str, Any]) -> str:
 
     lines: list[str] = []
     for name, config in servers.items():
-        if not isinstance(config, dict) or name in _CODEX_SKIP_MCP:
+        if not isinstance(config, dict):
             continue
         lines.append(f"[mcp_servers.{name}]")
 

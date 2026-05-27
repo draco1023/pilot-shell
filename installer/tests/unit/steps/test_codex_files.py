@@ -69,7 +69,7 @@ class TestCodexHooksInstallation:
         assert "hooks" in data
         assert "SessionStart" in data["hooks"]
 
-    def test_real_template_does_not_inject_memory_context_on_codex_startup(self, tmp_path: Path) -> None:
+    def test_real_template_injects_memory_context_on_codex_startup(self, tmp_path: Path) -> None:
         codex_dir = tmp_path / ".codex"
         repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
 
@@ -88,7 +88,7 @@ class TestCodexHooksInstallation:
             for entry in data["hooks"]["SessionStart"]
             for hook in entry.get("hooks", [])
         ]
-        assert not any('worker-service.cjs" hook codex context' in command for command in context_commands)
+        assert any('worker-service.cjs" hook codex context' in command for command in context_commands)
 
     def test_real_template_has_all_hook_events(self, tmp_path: Path) -> None:
         codex_dir = tmp_path / ".codex"
@@ -230,6 +230,15 @@ class TestCodexSkillsInstallation:
         content = skill_md.read_text()
         assert content.startswith("---\n")
         assert "name: fix" in content
+
+    def test_setup_rules_codex_skill_creates_project_agents_md(self) -> None:
+        from installer.steps.codex_files import build_codex_skill_md
+
+        result = build_codex_skill_md(Path("pilot/skills/setup-rules"))
+
+        assert "Codex reads project instructions from repo-root `AGENTS.md`" in result
+        assert "If `AGENTS.md` does not exist, create it" in result
+        assert "Never create AGENTS.md if it doesn't exist" not in result
 
 
 class TestCodexRulesInstallation:
@@ -532,7 +541,7 @@ class TestAdaptInvocationSyntax:
 
     @pytest.mark.parametrize(
         "skill_name",
-        ["spec", "spec-plan", "spec-bugfix-plan", "spec-implement", "spec-verify", "spec-bugfix-verify", "prd", "fix"],
+        ["spec", "spec-plan", "spec-bugfix-plan", "spec-implement", "spec-verify", "spec-bugfix-verify", "prd", "fix", "benchmark", "setup-rules", "create-skill"],
     )
     def test_real_codex_skills_do_not_expose_claude_tool_calls(self, skill_name: str) -> None:
         from installer.steps.codex_files import build_codex_skill_md
@@ -564,7 +573,7 @@ class TestAdaptInvocationSyntax:
             "plain-text numbered options tool",
         ):
             assert forbidden not in result
-        assert re.search(r"(^|[^A-Za-z0-9_`])/(spec|fix|prd)([^A-Za-z0-9_/]|$)", result) is None
+        assert re.search(r"(^|[^A-Za-z0-9_`])/(spec|fix|prd|setup-rules|create-skill|benchmark)([^A-Za-z0-9_/]|$)", result) is None
 
     def test_multiline_cc_only_block(self) -> None:
         from installer.steps.codex_files import _adapt_invocation_syntax

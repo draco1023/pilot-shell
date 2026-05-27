@@ -1,16 +1,34 @@
 ## Step 11: Sync Rules Back to AGENTS.md — CONDITIONAL
 
+<!-- CC-ONLY -->
 **Only if Step 2 detected an existing AGENTS.md.** Skip entirely otherwise — never create AGENTS.md.
 
 AGENTS.md is the cross-framework agent context file (Codex, Cursor, etc.). When a repo uses both Pilot rules and AGENTS.md, the two should not drift. After rules have been synced (Steps 7–10), offer to re-export the relevant content back into AGENTS.md so other agents see the same context.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**When running as Codex: always run this step.** Codex reads project instructions from repo-root `AGENTS.md`. If `AGENTS.md` does not exist, create it from the synced rule set. If it exists, update the generated/synced portions while preserving user-authored content.
+
+Do not stop after updating `.claude/rules/`; that only helps Claude Code. The Codex deliverable is root `AGENTS.md`.
+CODEX-END -->
 
 ### Step 11.1: Always Ask First
 
+<!-- CC-ONLY -->
 AskUserQuestion: "AGENTS.md exists at the repo root. Sync the updated rules back into it so non-Claude agents (Codex, Cursor, etc.) see the same context?"
 
 - **"Yes, sync now"** — proceed to Step 11.2
 - **"Show diff first"** — generate the proposed AGENTS.md content, show a diff against the current file, then ask again
 - **"Skip"** — leave AGENTS.md untouched, continue to Summary
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+If `AGENTS.md` already exists, present numbered options before overwriting broad user-authored content:
+
+- **"Yes, sync now"** — proceed to Step 11.2
+- **"Show diff first"** — generate the proposed AGENTS.md content, show a diff against the current file, then ask again
+- **"Skip"** — leave AGENTS.md untouched, continue to Summary
+
+If `AGENTS.md` does not exist, create it without asking; the user invoked `$setup-rules` from Codex, and this is the file Codex actually loads.
+CODEX-END -->
 
 ### Step 11.2: Generate Synced Content
 
@@ -33,6 +51,11 @@ Write the merged content to AGENTS.md. Report what changed: sections added, sect
 **Rules:**
 
 - Never delete AGENTS.md
+<!-- CC-ONLY -->
 - Never create AGENTS.md if it didn't already exist
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- In Codex, create AGENTS.md when missing
+CODEX-END -->
 - Always preserve user-authored content not derivable from rules
 - Keep AGENTS.md under ~400 lines — link to rule files for deep detail rather than inlining everything

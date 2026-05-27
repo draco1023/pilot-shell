@@ -1,13 +1,13 @@
 ---
 sidebar_label: Codex CLI
-description: How Pilot Shell works with OpenAI Codex CLI — supported skills, limitations, and differences from Claude Code.
+description: How Pilot Shell works with OpenAI Codex CLI — supported skills, differences from Claude Code, and what's shared.
 ---
 
 # Codex CLI Support
 
 Pilot Shell works with [OpenAI Codex CLI](https://developers.openai.com/codex/cli) alongside Claude Code. **Install Codex CLI separately first** — the Pilot installer auto-detects it and sets up hooks, skills, MCP servers, and rules.
 
-**For the full Pilot Shell experience, use Claude Code.** Codex support covers the core workflows but not every feature.
+**For the full Pilot Shell experience, use Claude Code.** Codex support covers all workflows, quality hooks, and persistent memory, but features like the status line, review sub-agents, and bot skills remain Claude Code-only.
 
 ## What works on Codex
 
@@ -35,21 +35,9 @@ The spec sub-skills (`$spec-plan`, `$spec-bugfix-plan`, `$spec-implement`, `$spe
 - **No model switching** — Codex doesn't have a `/model` command. Plan → implement → verify runs continuously on the active model.
 - **Plain-text questions** — Where Claude Code uses `AskUserQuestion` (structured form UI), Codex presents numbered options as plain text.
 
-### Console Views
+### Console
 
-Some Console views work with Codex sessions:
-
-| Console View | Codex | Claude Code | Notes |
-|-------------|-------|-------------|-------|
-| **Requirements** | ✅ | ✅ | PRDs created by `$prd` appear in the Console |
-| **Specifications** | ✅ | ✅ | Plans created by `$spec` appear with task progress and phase tracking |
-| **Extensions** | ✅ | ✅ | Skills, rules, and agents — the source files are shared across both agents |
-| **Changes** | ✅ | ✅ | Git diff viewer works with any agent — it reads `git status` and `git diff` |
-| **Usage** | ✅ | ✅ | Token costs and model breakdown tracked for Codex sessions |
-| **Settings** | ✅ | ✅ | Settings that apply to both agents are labeled (see below) |
-| **Dashboard** | ⚠️ | ✅ | Stats from Codex sessions are partial (no memory/session data) |
-| **Sessions** | ✅ | ✅ | Codex sessions read from `~/.codex/sessions/`; Claude Code from observation hooks |
-| **Memories** | ❌ | ✅ | Persistent memory requires the Console observation pipeline |
+All Console views work with Codex sessions — Dashboard, Requirements, Specifications, Extensions, Changes, Usage, Settings, Sessions, and Memories. Persistent memory is shared between both agents via the `mem-search` MCP server.
 
 ### Console Settings
 
@@ -68,18 +56,17 @@ Settings are labeled in the Console UI to indicate agent support:
 
 ### MCP Servers
 
-Six of seven Pilot Shell MCP servers are configured for Codex via `~/.codex/config.toml`:
+All Pilot Shell MCP servers are configured for Codex via `~/.codex/config.toml`:
 
 | Server | Description |
 |--------|-------------|
 | **context7** | Library and framework documentation |
 | **CodeGraph** | Code knowledge graph — callers, callees, impact analysis. Auto-initialized per-project via SessionStart hook. |
 | **Semble** | Hybrid semantic + lexical code search (BM25 + Model2Vec) |
+| **mem-search** | Persistent memory — search, save, and retrieve observations across sessions |
 | **web-search** | Web search via DuckDuckGo, Bing, Exa |
 | **grep-mcp** | GitHub code search across 1M+ public repos |
 | **web-fetch** | Playwright-backed web page fetching |
-
-**Not available on Codex:** `mem-search` (Pilot Console persistent memory) — requires the Console worker daemon which depends on Claude Code hooks.
 
 ### Rules
 
@@ -89,14 +76,14 @@ Pilot Shell's instruction rules (testing, development practices, verification, e
 
 Hooks registered in `~/.codex/hooks.json`:
 
-- **SessionStart** — license verification, CodeGraph initialization, Codex skill rebuild (syncs skills from Claude Code sources with license gating)
+- **SessionStart** — license verification, CodeGraph initialization, Codex skill rebuild, memory context injection (past decisions, discoveries, and bugfixes from persistent memory)
 - **UserPromptSubmit** — session registration with the Console worker daemon
 - **PreToolUse** — `tool_token_saver.py` rewrites Bash commands via RTK for token savings
 - **PostToolUse** — `file_checker.py` (quality checks on edits), `context_monitor.py` (context usage tracking), observation capture
 - **Stop** — `spec_stop_guard.py` (blocks stopping during active specs), session summarization
 - **PreCompact / SessionStart(compact)** — preserves and restores lightweight plan state around compaction
 
-Pilot Console memory context is **not** injected on Codex SessionStart. Codex currently surfaces hook-provided developer context in the UI/event stream, so the Codex integration keeps startup quiet instead of dumping memory context into the visible transcript. The context monitor uses Codex token-count transcript events when available and stays silent rather than estimating from transcript file size.
+The context monitor uses Codex token-count transcript events when available and stays silent rather than estimating from transcript file size.
 
 ### Configuration
 
@@ -124,27 +111,24 @@ Existing user settings are preserved — only missing keys are added. The model 
 
 ## What requires Claude Code
 
-These features depend on Claude Code-specific APIs and are not available on Codex:
+A small set of features depend on Claude Code-specific APIs:
 
 | Feature | Why Claude Code only |
 |---------|---------------------|
-| **Automatic memory context injection** | Codex surfaces hook-injected developer context visibly; Pilot keeps SessionStart memory injection disabled |
 | **Status line** | Claude Code-specific status line API; Codex has no equivalent |
 | **Pilot Bot** | Scheduled tasks, background jobs — requires Claude Code's cron and remote control |
-| **Some quality hooks** | Tool redirect and spec mode guard depend on Claude Code-specific command/tool semantics |
 | **Bot skills** | `/bot-boot`, `/bot-channel-task`, `/bot-defaults`, `/bot-heartbeat`, `/bot-jobs` — depend on Claude Code cron and remote control |
-| **Spec collaboration** | Console annotation sharing requires the full observation pipeline |
 | **Review sub-agents** | `spec-review` and `changes-review` launch in separate Claude Code context windows |
 | **Codex companion reviews** | Launched from Claude Code via the Codex plugin — not available inside Codex itself |
 | **Model switching** | Claude Code's `/model` command and the `spec_handoff_resume` hook |
-| **Token optimization hooks** | RTK proxy hook, context monitoring — require Claude Code's `PreToolUse`/`PostToolUse` pipeline |
+| **Tool redirect hook** | Redirects to MCP alternatives — depends on Claude Code-specific tool semantics |
 
 ## Differences from Claude Code
 
 | Aspect | Claude Code | Codex CLI |
 |--------|-------------|-----------|
 | Model | Claude Opus 4.7 / Sonnet 4.6 | GPT-5.5 (xhigh reasoning) |
-| Skill invocation | `/spec`, `/fix`, `/prd` | `$spec`, `$fix`, `$prd` |
+| Skill invocation | `/spec`, `/fix`, `/prd`, `/setup-rules`, etc. | `$spec`, `$fix`, `$prd`, `$setup-rules`, etc. |
 | Config format | `~/.claude/settings.json` (JSON) | `~/.codex/config.toml` (TOML) |
 | MCP config | `~/.claude.json` | `~/.codex/config.toml` `[mcp_servers.*]` |
 | Rules location | `~/.claude/rules/*.md` | `~/.codex/AGENTS.md` |

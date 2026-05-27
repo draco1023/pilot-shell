@@ -11,7 +11,7 @@ const faqItems = [
   {
     question: "What do I need to use Pilot Shell?",
     answer:
-      "Pilot Shell enhances your AI coding agent \u2014 it doesn\u2019t replace it. You need at least one: Claude Code (Anthropic) requires a Claude subscription (Max 5x or 20x for solo, Team Premium for teams, Enterprise for orgs). Codex CLI (OpenAI) requires an OpenAI API key. You can use either or both \u2014 the installer auto-detects and configures whichever is installed. Both share the same rules, skills, hooks, MCP servers, and Console. Claude Code has full feature coverage; Codex CLI supports all non-bot skills (/spec, /fix, /prd, /benchmark, /setup-rules, /create-skill).",
+      "Pilot Shell enhances your AI coding agent \u2014 it doesn\u2019t replace it. You need at least one: Claude Code (Anthropic) requires a Claude subscription (Max 5x or 20x for solo, Team Premium for teams, Enterprise for orgs). Codex CLI (OpenAI) requires an OpenAI API key. You can use either or both \u2014 the installer auto-detects and configures whichever is installed. Both share the same rules, skills, hooks, MCP servers, and Console. Claude Code has full feature coverage; Codex CLI supports all non-bot skills (/spec, /fix, /prd, /benchmark, /setup-rules, /create-skill) but features like the status line, review sub-agents, and bot skills remain Claude Code-only.",
   },
   {
     question: "Is Pilot Shell enterprise-compliant for data privacy?",
