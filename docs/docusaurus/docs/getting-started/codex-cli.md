@@ -76,7 +76,7 @@ Pilot Shell's instruction rules (testing, development practices, verification, e
 
 Hooks registered in `~/.codex/hooks.json`:
 
-- **SessionStart** — license verification, CodeGraph initialization, Codex skill rebuild, memory context injection (past decisions, discoveries, and bugfixes from persistent memory)
+- **SessionStart** — license verification, CodeGraph initialization, Codex skill rebuild, memory preload (loads session history; on Claude Code the full index is injected as hidden context, on Codex a compact summary is shown and `mem-search` MCP handles on-demand lookups)
 - **UserPromptSubmit** — session registration with the Console worker daemon
 - **PreToolUse** — `tool_token_saver.py` rewrites Bash commands via RTK for token savings
 - **PostToolUse** — `file_checker.py` (quality checks on edits), `context_monitor.py` (context usage tracking), observation capture
