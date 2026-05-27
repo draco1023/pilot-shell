@@ -62,8 +62,12 @@ class CodexFilesStep(BaseStep):
 
         self._install_codex_hooks(ctx)
         self._install_codex_skills(ctx)
-        self._install_codex_config(ctx)
-        self._install_codex_mcp(ctx)
+        try:
+            self._install_codex_config(ctx)
+            self._install_codex_mcp(ctx)
+        except _TomlStructureError as e:
+            if ctx.ui:
+                ctx.ui.warning(f"Skipping Codex TOML config due to structure error: {e}")
         self._install_codex_rules(ctx)
 
         if ctx.ui:
@@ -188,7 +192,18 @@ class CodexFilesStep(BaseStep):
 
     def _install_codex_rules(self, ctx: InstallContext) -> None:
         """Merge Pilot Shell rules into ~/.codex/AGENTS.md between markers."""
-        rules_dir = Path.home() / ".claude" / "rules"
+        rules_dir: Path | None = None
+        if ctx.local_mode and ctx.local_repo_dir:
+            candidate = ctx.local_repo_dir / "pilot" / "rules"
+            if candidate.is_dir():
+                rules_dir = candidate
+        if rules_dir is None:
+            pilot_home = Path.home() / ".pilot"
+            candidate = pilot_home / "rules"
+            if candidate.is_dir():
+                rules_dir = candidate
+        if rules_dir is None:
+            rules_dir = Path.home() / ".claude" / "rules"
         if not rules_dir.is_dir():
             return
 
@@ -215,8 +230,8 @@ class CodexFilesStep(BaseStep):
             "instead present numbered options as plain text and ask the user to reply with a number or "
             "free text. Format: `1. Option A — description\\n2. Option B — description\\n"
             "Reply with a number or type your preference:`\n"
-            "- **`suppressOutput`** — not supported in hook responses. Never include it.\n"
-            "- **`hookSpecificOutput`** — not supported. Use `systemMessage` for context injection.\n\n"
+            "- **`suppressOutput`** — parsed but not implemented in hook responses. Never rely on it.\n"
+            "- **`systemMessage`** — surfaced as a UI warning or event-stream message; do not use it for hidden context.\n\n"
             "Tool name mapping: `Edit`/`Write` → `apply_patch` (Codex uses `apply_patch` for file edits, "
             "but `Edit`/`Write` work as aliases).\n\n"
             "Skill invocation: use `$skill-name` (not `/skill-name`).\n"
@@ -276,15 +291,19 @@ class CodexFilesStep(BaseStep):
             "file_opener": '"vscode"',
         }
         changed = False
+        section_match = re.search(r"(?m)^\[", existing)
+        top_level_scope = existing[:section_match.start()] if section_match else existing
         for key, value in required_top_level.items():
-            if not re.search(rf"(?m)^{re.escape(key)}\s*=", existing):
+            if not re.search(rf"(?m)^{re.escape(key)}\s*=", top_level_scope):
                 existing = _insert_top_level_key(existing, key, value)
+                sm = re.search(r"(?m)^\[", existing)
+                top_level_scope = existing[:sm.start()] if sm else existing
                 changed = True
 
         deprecated_keys = ["bypass_hook_trust"]
         for key in deprecated_keys:
             pattern = rf"(?m)^{re.escape(key)}\s*=\s*[^\n]*\n?"
-            if re.search(pattern, existing):
+            if re.search(pattern, top_level_scope):
                 existing = re.sub(pattern, "", existing)
                 changed = True
 
@@ -410,8 +429,6 @@ def _insert_top_level_key(content: str, key: str, value: str) -> str:
     Inserts before the first ``[section]`` header so the key doesn't
     accidentally land inside an unrelated table.
     """
-    import re
-
     line = f"{key} = {value}\n"
     m = re.search(r"(?m)^\[", content)
     if m:
@@ -453,7 +470,7 @@ def _mcp_json_to_toml(mcp_data: dict[str, Any]) -> str:
 
         env = config.get("env")
         if isinstance(env, dict) and env:
-            lines.append(f"")
+            lines.append("")
             lines.append(f"[mcp_servers.{name}.env]")
             for k, v in env.items():
                 lines.append(f'{k} = "{v}"')
@@ -552,16 +569,6 @@ _SKILL_CALL_RE = re.compile(
 _ASK_USER_QUESTION_BLOCK_RE = re.compile(
     r"^(?P<indent>[ \t]*)AskUserQuestion\(\n(?P<body>.*?)(?=^[ \t]*\)\s*$)^[ \t]*\)\s*$",
     re.DOTALL | re.MULTILINE,
-)
-
-_TASK_SUBAGENT_RE = re.compile(
-    r"Task\(\s*\n?\s*subagent_type=['\"]([^'\"]+)['\"].*?\)",
-    re.DOTALL,
-)
-
-_AGENT_SUBAGENT_RE = re.compile(
-    r"Agent\(\s*\n?\s*(?:subagent_type=['\"]([^'\"]+)['\"].*?|.*?subagent_type=['\"]([^'\"]+)['\"].*?)\)",
-    re.DOTALL,
 )
 
 

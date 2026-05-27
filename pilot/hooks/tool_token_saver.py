@@ -60,8 +60,6 @@ def _rewrite_command(cmd: str) -> str | None:
             check=False,
             timeout=5,
         )
-        if result.returncode != 0:
-            return None
         rewritten = result.stdout.strip()
         if not rewritten or rewritten == cmd:
             return None

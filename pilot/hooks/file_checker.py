@@ -76,7 +76,7 @@ def _extract_file_paths(tool_input: dict) -> list[str]:
 
     command = tool_input.get("command", "")
     if command:
-        return re.findall(r"\*\*\* (?:Update|Add) File:\s*(.+)", command)
+        return [p.strip() for p in re.findall(r"\*\*\* (?:Update|Add) File:\s*(.+)", command)]
 
     return []
 

@@ -12,8 +12,8 @@ from unittest.mock import patch
 
 from context_monitor import (
     _is_throttled,
+    _read_codex_token_count_context,
     _resolve_context,
-    _estimate_codex_context_pct,
     run_context_monitor,
 )
 
@@ -26,7 +26,7 @@ class TestContextMonitorAutocompact:
     def test_autocompact_returns_0_with_additional_context(
         self, mock_resolve, mock_throttle, mock_sid, mock_save, capsys
     ):
-        mock_resolve.return_value = (80.0, 160000, False)
+        mock_resolve.return_value = (91.0, 182000, False)
 
         result = run_context_monitor()
 
@@ -43,7 +43,7 @@ class TestContextMonitorAutocompact:
     @patch("context_monitor._is_throttled", return_value=False)
     @patch("context_monitor._resolve_context")
     def test_autocompact_does_not_use_decision_block(self, mock_resolve, mock_throttle, mock_sid, mock_save, capsys):
-        mock_resolve.return_value = (80.0, 160000, False)
+        mock_resolve.return_value = (91.0, 182000, False)
 
         run_context_monitor()
 
@@ -57,16 +57,14 @@ class TestContextMonitor80Warn:
     @patch("context_monitor._get_pilot_session_id", return_value="test-sess")
     @patch("context_monitor._is_throttled", return_value=False)
     @patch("context_monitor._resolve_context")
-    def test_80_warn_uses_additional_context(self, mock_resolve, mock_throttle, mock_sid, mock_save, capsys):
+    def test_warn_threshold_no_output_below_90_percent(self, mock_resolve, mock_throttle, mock_sid, mock_save, capsys):
         mock_resolve.return_value = (70.0, 140000, False)
 
         result = run_context_monitor()
 
         assert result == 0
         captured = capsys.readouterr()
-        data = json.loads(captured.out)
-        assert "hookSpecificOutput" in data
-        assert "Auto-compact will handle" in data["hookSpecificOutput"]["additionalContext"]
+        assert captured.out == ""
 
 
 class TestContextMonitorBelowThreshold:
@@ -133,7 +131,7 @@ class TestIsThrottled:
             json.dumps(
                 {
                     "session_id": session_id,
-                    "tokens": 170000,
+                    "tokens": 190000,
                     "timestamp": time.time() - 5,
                 }
             )
@@ -371,7 +369,7 @@ class TestSessionCachePath:
 class TestAutoCompactWarningIntegration:
     """Integration tests for auto-compact warnings using run_context_monitor."""
 
-    def test_75_percent_shows_autocompact_warning(self, tmp_path: Path) -> None:
+    def test_90_percent_shows_autocompact_warning(self, tmp_path: Path) -> None:
         import io
 
         session_id = "test-sess-42"
@@ -380,7 +378,7 @@ class TestAutoCompactWarningIntegration:
 
         with (
             patch.dict(os.environ, {"PILOT_SESSION_ID": session_id}),
-            patch("context_monitor._read_statusline_context_pct", return_value=76.0),
+            patch("context_monitor._read_statusline_context_pct", return_value=91.0),
             patch("context_monitor.get_session_cache_path", return_value=session_base / "context-cache.json"),
         ):
             captured = io.StringIO()
@@ -396,7 +394,41 @@ class TestAutoCompactWarningIntegration:
             assert "no context is lost" in output
             assert exit_code == 0
 
-    def test_65_percent_shows_informational_message(self, tmp_path: Path) -> None:
+    def test_autocompact_warning_is_not_repeated(self, tmp_path: Path) -> None:
+        import io
+
+        session_id = "test-sess-44"
+        session_base = tmp_path / "sessions" / session_id
+        session_base.mkdir(parents=True)
+        cache_file = session_base / "context-cache.json"
+        cache_file.write_text(
+            json.dumps(
+                {
+                    "tokens": 160_000,
+                    "timestamp": time.time() - 60,
+                    "session_id": session_id,
+                    "shown_autocompact_warn": True,
+                }
+            )
+        )
+
+        with (
+            patch.dict(os.environ, {"PILOT_SESSION_ID": session_id}),
+            patch("context_monitor._read_statusline_context_pct", return_value=91.0),
+            patch("context_monitor.get_session_cache_path", return_value=cache_file),
+        ):
+            captured = io.StringIO()
+            old_stdout = sys.stdout
+            sys.stdout = captured
+            try:
+                exit_code = run_context_monitor()
+            finally:
+                sys.stdout = old_stdout
+
+        assert captured.getvalue() == ""
+        assert exit_code == 0
+
+    def test_89_percent_has_no_informational_message(self, tmp_path: Path) -> None:
         import io
 
         session_id = "test-sess-43"
@@ -406,7 +438,7 @@ class TestAutoCompactWarningIntegration:
 
         with (
             patch.dict(os.environ, {"PILOT_SESSION_ID": session_id}),
-            patch("context_monitor._read_statusline_context_pct", return_value=66.0),
+            patch("context_monitor._read_statusline_context_pct", return_value=89.0),
             patch("context_monitor.get_session_cache_path", return_value=cache_file),
         ):
             captured = io.StringIO()
@@ -418,7 +450,7 @@ class TestAutoCompactWarningIntegration:
                 sys.stdout = old_stdout
 
             output = captured.getvalue()
-            assert "Auto-compact will handle context automatically" in output
+            assert output == ""
             assert exit_code == 0
 
 
@@ -558,44 +590,103 @@ class TestRunContextMonitorOrchestrator:
         assert "Auto-compact approaching" not in output
 
 
-class TestCodexTranscriptEstimation:
-    """Context estimation from Codex transcript file size when statusline cache is unavailable."""
+class TestCodexTranscriptTokenCount:
+    """Context resolution from Codex token-count transcript events."""
 
-    def test_estimate_returns_percentage_from_file_size(self, tmp_path: Path) -> None:
+    def test_reads_percentage_from_latest_token_count_event(self, tmp_path: Path) -> None:
         transcript = tmp_path / "transcript.jsonl"
-        transcript.write_text("x" * 800_000)
-        pct = _estimate_codex_context_pct(str(transcript), "gpt-4.1")
-        assert pct is not None
-        assert 15 < pct < 25
+        transcript.write_text(
+            json.dumps(
+                {
+                    "type": "event_msg",
+                    "payload": {
+                        "type": "token_count",
+                        "info": {
+                            "last_token_usage": {"input_tokens": 130_000, "output_tokens": 1_000},
+                            "total_token_usage": {"input_tokens": 1_500_000},
+                            "model_context_window": 258_400,
+                        },
+                    },
+                }
+            )
+            + "\n"
+        )
 
-    def test_estimate_uses_default_window_for_unknown_model(self, tmp_path: Path) -> None:
+        result = _read_codex_token_count_context(str(transcript))
+
+        assert result is not None
+        pct, tokens = result
+        assert 50 < pct < 51
+        assert tokens == 131_000
+
+    def test_ignores_transcript_size_when_token_count_is_low(self, tmp_path: Path) -> None:
         transcript = tmp_path / "transcript.jsonl"
-        transcript.write_text("x" * 400_000)
-        pct = _estimate_codex_context_pct(str(transcript), "unknown-model")
-        assert pct is not None
-        assert pct > 40
+        transcript.write_text(
+            "x" * 400_000
+            + "\n"
+            + json.dumps(
+                {
+                    "type": "event_msg",
+                    "payload": {
+                        "type": "token_count",
+                        "info": {
+                            "last_token_usage": {"input_tokens": 100_000, "output_tokens": 0},
+                            "total_token_usage": {"input_tokens": 2_000_000},
+                            "model_context_window": 258_400,
+                        },
+                    },
+                }
+            )
+            + "\n"
+        )
 
-    def test_estimate_returns_none_for_missing_file(self) -> None:
-        pct = _estimate_codex_context_pct("/nonexistent/path.jsonl", "gpt-4.1")
-        assert pct is None
+        result = _read_codex_token_count_context(str(transcript))
 
-    def test_estimate_returns_none_for_empty_path(self) -> None:
-        pct = _estimate_codex_context_pct("", "gpt-4.1")
-        assert pct is None
+        assert result is not None
+        pct, tokens = result
+        assert 38 < pct < 39
+        assert tokens == 100_000
 
-    def test_resolve_context_falls_back_to_transcript(self, tmp_path: Path) -> None:
+    def test_returns_none_when_no_token_count_event_exists(self, tmp_path: Path) -> None:
         transcript = tmp_path / "transcript.jsonl"
         transcript.write_text("x" * 600_000)
+
+        assert _read_codex_token_count_context(str(transcript)) is None
+
+    def test_returns_none_for_missing_file(self) -> None:
+        assert _read_codex_token_count_context("/nonexistent/path.jsonl") is None
+
+    def test_returns_none_for_empty_path(self) -> None:
+        assert _read_codex_token_count_context("") is None
+
+    def test_resolve_context_falls_back_to_codex_token_count(self, tmp_path: Path) -> None:
+        transcript = tmp_path / "transcript.jsonl"
+        transcript.write_text(
+            json.dumps(
+                {
+                    "type": "event_msg",
+                    "payload": {
+                        "type": "token_count",
+                        "info": {
+                            "last_token_usage": {"input_tokens": 120_000, "output_tokens": 2_000},
+                            "model_context_window": 258_400,
+                        },
+                    },
+                }
+            )
+            + "\n"
+        )
         session_id = "codex-test-sess"
 
         with patch("context_monitor._read_statusline_context_pct", return_value=None):
             result = _resolve_context(
                 session_id,
                 transcript_path=str(transcript),
-                model="o4-mini",
+                model="unknown-model",
             )
 
         assert result is not None
         pct, tokens, shown_80 = result
-        assert pct > 0
-        assert tokens > 0
+        assert 47 < pct < 48
+        assert tokens == 122_000
+        assert shown_80 is False

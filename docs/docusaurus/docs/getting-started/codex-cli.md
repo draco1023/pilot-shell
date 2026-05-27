@@ -90,9 +90,10 @@ Pilot Shell's instruction rules (testing, development practices, verification, e
 Hooks registered in `~/.codex/hooks.json`:
 
 - **SessionStart** — license verification, CodeGraph initialization, Codex skill rebuild (syncs skills from Claude Code sources with license gating)
-- **PreCompact** — preserves session state before compaction
+- **UserPromptSubmit / PostToolUse / Stop** — session registration, observation capture, focused quality warnings, and session summarization
+- **PreCompact / SessionStart(compact)** — preserves and restores lightweight plan state around compaction
 
-Most Claude Code hooks (file checker, context monitor, tool redirect, spec stop guard, spec mode guard) depend on Claude Code-specific hook features (`hookSpecificOutput`, `suppressOutput`) and are not available in Codex.
+Pilot Console memory context is **not** injected on Codex SessionStart. Codex currently surfaces hook-provided developer context in the UI/event stream, so the Codex integration keeps startup quiet instead of dumping memory context into the visible transcript. The context monitor uses Codex token-count transcript events when available and stays silent rather than estimating from transcript file size.
 
 ### Configuration
 
@@ -124,10 +125,10 @@ These features depend on Claude Code-specific APIs and are not available on Code
 
 | Feature | Why Claude Code only |
 |---------|---------------------|
-| **Pilot Console** (Memories) | Persistent memory requires Console worker hooks with `hookSpecificOutput` |
+| **Automatic memory context injection** | Codex surfaces hook-injected developer context visibly; Pilot keeps SessionStart memory injection disabled |
 | **Status line** | Claude Code-specific status line API; Codex has no equivalent |
 | **Pilot Bot** | Scheduled tasks, background jobs — requires Claude Code's cron and remote control |
-| **Quality hooks** | File checker, context monitor, tool redirect, spec mode guard — use Claude Code-specific hook response formats |
+| **Some quality hooks** | Tool redirect and spec mode guard depend on Claude Code-specific command/tool semantics |
 | **Bot skills** | `/bot-boot`, `/bot-channel-task`, `/bot-defaults`, `/bot-heartbeat`, `/bot-jobs` — depend on Claude Code cron and remote control |
 | **Spec collaboration** | Console annotation sharing requires the full observation pipeline |
 | **Review sub-agents** | `spec-review` and `changes-review` launch in separate Claude Code context windows |

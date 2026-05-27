@@ -13,7 +13,7 @@ const HeroSection = () => {
 
         {/* Slogan + descriptions */}
         <div className="animate-fade-in-up animation-delay-100 mb-6 xs:mb-7 sm:mb-9">
-          <h1 className="text-foreground text-xl xs:text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight leading-tight max-w-4xl mx-auto whitespace-nowrap">
+          <h1 className="text-foreground text-xl xs:text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight leading-tight max-w-4xl mx-auto sm:whitespace-nowrap">
             How real engineers run Claude Code and Codex
           </h1>
           <p className="text-muted-foreground text-sm xs:text-base sm:text-lg md:text-xl mt-3 xs:mt-4 max-w-2xl mx-auto leading-relaxed">

@@ -11,25 +11,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _lib.util import (
-    _get_compaction_threshold_pct,
     _get_max_context_tokens,
     get_session_cache_path,
     post_tool_use_context,
 )
 
-THRESHOLD_WARN = 65
-THRESHOLD_AUTOCOMPACT = 75
-
-
-def _to_effective(raw_pct: float) -> float:
-    """Convert raw context % to effective % (where compaction threshold = 100%).
-
-    Post-v12: per-skill orchestrator-window scaling is removed (per-skill model
-    selection no longer exists in config.json). The cached pct from
-    _resolve_context is in the main-session frame and the main-session
-    compaction threshold is the right calibration.
-    """
-    return min(raw_pct / _get_compaction_threshold_pct() * 100, 100)
+THRESHOLD_AUTOCOMPACT = 90
+_CODEX_TRANSCRIPT_TAIL_BYTES = 4_000_000
 
 
 def _get_pilot_session_id() -> str:
@@ -50,20 +38,46 @@ def get_session_flags(session_id: str) -> bool:
     return False
 
 
-def save_cache(tokens: int, session_id: str, shown_80_warn: bool | None = None) -> None:
+def get_autocompact_flag(session_id: str) -> bool:
+    """Get shown_autocompact_warn flag for this session."""
+    if get_session_cache_path().exists():
+        try:
+            with get_session_cache_path().open() as f:
+                cache = json.load(f)
+                if cache.get("session_id") == session_id:
+                    return cache.get("shown_autocompact_warn", False)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return False
+
+
+def save_cache(
+    tokens: int,
+    session_id: str,
+    shown_80_warn: bool | None = None,
+    shown_autocompact_warn: bool | None = None,
+    reset_warnings: bool = False,
+) -> None:
     """Save context calculation to cache with session ID."""
     existing_80_warn = False
+    existing_autocompact_warn = False
     if get_session_cache_path().exists():
         try:
             with get_session_cache_path().open() as f:
                 cache = json.load(f)
                 if cache.get("session_id") == session_id:
                     existing_80_warn = cache.get("shown_80_warn", False)
+                    existing_autocompact_warn = cache.get("shown_autocompact_warn", False)
         except (json.JSONDecodeError, OSError):
             pass
 
+    if reset_warnings:
+        existing_80_warn = False
+        existing_autocompact_warn = False
     if shown_80_warn:
         existing_80_warn = True
+    if shown_autocompact_warn:
+        existing_autocompact_warn = True
 
     try:
         with get_session_cache_path().open("w") as f:
@@ -73,6 +87,7 @@ def save_cache(tokens: int, session_id: str, shown_80_warn: bool | None = None) 
                     "timestamp": time.time(),
                     "session_id": session_id,
                     "shown_80_warn": existing_80_warn,
+                    "shown_autocompact_warn": existing_autocompact_warn,
                 },
                 f,
             )
@@ -106,9 +121,8 @@ def _read_statusline_context_pct() -> float | None:
 def _is_throttled(session_id: str) -> bool:
     """Check if context monitoring should be throttled (skipped).
 
-    Returns True if:
-    - Last check was < 30 seconds ago AND
-    - Last cached context was below the warning threshold (~80% effective)
+    Returns True if the last check was recent and below the auto-compact
+    warning threshold.
 
     Always returns False at high context (never throttle when approaching compaction).
 
@@ -135,7 +149,7 @@ def _is_throttled(session_id: str) -> bool:
                 tokens = cache.get("tokens", 0)
                 active_window = _get_max_context_tokens()
                 percentage = (tokens / active_window) * 100
-                if percentage < THRESHOLD_WARN:
+                if percentage < THRESHOLD_AUTOCOMPACT:
                     return True
 
             return False
@@ -143,35 +157,69 @@ def _is_throttled(session_id: str) -> bool:
         return False
 
 
-_CODEX_MODEL_WINDOWS: dict[str, int] = {
-    "gpt-4.1": 1_000_000,
-    "gpt-4.1-mini": 1_000_000,
-    "gpt-4.1-nano": 1_000_000,
-    "o4-mini": 200_000,
-    "o3": 200_000,
-    "codex-mini-latest": 200_000,
-}
-_CODEX_DEFAULT_WINDOW = 200_000
-
-
-def _estimate_codex_context_pct(transcript_path: str, model: str) -> float | None:
-    """Estimate context usage from Codex transcript file size.
-
-    Uses file_size / 4 as a rough token estimate. Approximate but sufficient
-    for threshold-based warnings. Returns None if file is unavailable.
-    """
+def _read_recent_transcript_lines(transcript_path: str) -> list[str] | None:
+    """Read recent JSONL lines from a Codex transcript without loading the whole file."""
     if not transcript_path:
         return None
     try:
-        file_size = os.path.getsize(transcript_path)
+        with open(transcript_path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            file_size = f.tell()
+            start = max(0, file_size - _CODEX_TRANSCRIPT_TAIL_BYTES)
+            f.seek(start)
+            data = f.read()
     except OSError:
         return None
-    estimated_tokens = file_size // 4
-    window = _CODEX_MODEL_WINDOWS.get(model, _CODEX_DEFAULT_WINDOW)
-    pct = estimated_tokens / window * 100
-    if pct > 100:
+
+    if start > 0:
+        _, _, data = data.partition(b"\n")
+    return data.decode("utf-8", errors="replace").splitlines()
+
+
+def _read_codex_token_count_context(transcript_path: str) -> tuple[float, int] | None:
+    """Read Codex's latest token-count event as (pct, tokens).
+
+    Codex transcripts include cumulative usage and the per-call
+    ``last_token_usage``. Context pressure is the latest model-call input, not
+    cumulative session spend and not the transcript file size.
+    """
+    lines = _read_recent_transcript_lines(transcript_path)
+    if not lines:
         return None
-    return pct
+
+    for line in reversed(lines):
+        if '"token_count"' not in line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        payload = entry.get("payload")
+        if not isinstance(payload, dict) or payload.get("type") != "token_count":
+            continue
+
+        info = payload.get("info")
+        if not isinstance(info, dict):
+            continue
+
+        window = info.get("model_context_window")
+        last_usage = info.get("last_token_usage")
+        if not isinstance(window, (int, float)) or window <= 0 or not isinstance(last_usage, dict):
+            continue
+
+        input_tokens = last_usage.get("input_tokens")
+        output_tokens = last_usage.get("output_tokens", 0)
+        if not isinstance(input_tokens, (int, float)):
+            continue
+        if not isinstance(output_tokens, (int, float)):
+            output_tokens = 0
+
+        tokens = int(input_tokens + output_tokens)
+        pct = min(tokens / int(window) * 100, 100)
+        return pct, tokens
+
+    return None
 
 
 def _resolve_context(
@@ -181,8 +229,8 @@ def _resolve_context(
 ) -> tuple[float, int, bool] | None:
     """Resolve context percentage and tokens. Returns (pct, tokens, shown_80) or None.
 
-    Tries Claude Code's statusline cache first, then falls back to Codex
-    transcript file estimation when transcript_path and model are provided.
+    Tries Claude Code's statusline cache first, then falls back to Codex's
+    own token-count transcript events when transcript_path is provided.
     """
     statusline_pct = _read_statusline_context_pct()
     if statusline_pct is not None:
@@ -190,11 +238,10 @@ def _resolve_context(
         shown_80_warn = get_session_flags(session_id)
         return statusline_pct, int(statusline_pct / 100 * main_window), shown_80_warn
 
-    if transcript_path and model:
-        codex_pct = _estimate_codex_context_pct(transcript_path, model)
-        if codex_pct is not None:
-            window = _CODEX_MODEL_WINDOWS.get(model, _CODEX_DEFAULT_WINDOW)
-            tokens = int(codex_pct / 100 * window)
+    if transcript_path:
+        codex_context = _read_codex_token_count_context(transcript_path)
+        if codex_context is not None:
+            codex_pct, tokens = codex_context
             shown_80_warn = get_session_flags(session_id)
             return codex_pct, tokens, shown_80_warn
 
@@ -221,30 +268,26 @@ def run_context_monitor() -> int:
     if resolved is None:
         return 0
 
-    percentage, total_tokens, shown_80_warn = resolved
-    effective = _to_effective(percentage)
+    percentage, total_tokens, _shown_80_warn = resolved
+    display_pct = min(max(percentage, 0), 100)
+    shown_autocompact_warn = get_autocompact_flag(session_id)
 
-    save_cache(total_tokens, session_id)
+    if percentage < THRESHOLD_AUTOCOMPACT:
+        save_cache(total_tokens, session_id, reset_warnings=True)
+        return 0
 
     if percentage >= THRESHOLD_AUTOCOMPACT:
-        print(
-            post_tool_use_context(
-                f"Context at {effective:.0f}%. Auto-compact approaching — no context is lost. "
-                f"Continue all workflow steps normally. Do NOT skip steps, sub-agents, or verification."
+        save_cache(total_tokens, session_id, shown_autocompact_warn=True)
+        if not shown_autocompact_warn:
+            print(
+                post_tool_use_context(
+                    f"Context at {display_pct:.0f}%. Auto-compact approaching — no context is lost. "
+                    f"Continue all workflow steps normally. Do NOT skip steps, sub-agents, or verification."
+                )
             )
-        )
         return 0
 
-    if percentage >= THRESHOLD_WARN and not shown_80_warn:
-        save_cache(total_tokens, session_id, shown_80_warn=True)
-        print(
-            post_tool_use_context(
-                f"Context at {effective:.0f}%. Auto-compact will handle context automatically. "
-                f"Continue working normally."
-            )
-        )
-        return 0
-
+    save_cache(total_tokens, session_id)
     return 0
 
 

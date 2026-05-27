@@ -69,7 +69,7 @@ class TestCodexHooksInstallation:
         assert "hooks" in data
         assert "SessionStart" in data["hooks"]
 
-    def test_real_template_starts_worker_on_codex_startup(self, tmp_path: Path) -> None:
+    def test_real_template_does_not_inject_memory_context_on_codex_startup(self, tmp_path: Path) -> None:
         codex_dir = tmp_path / ".codex"
         repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
 
@@ -86,10 +86,9 @@ class TestCodexHooksInstallation:
         context_commands = [
             hook["command"]
             for entry in data["hooks"]["SessionStart"]
-            if "startup" in entry.get("matcher", "")
             for hook in entry.get("hooks", [])
         ]
-        assert any('worker-service.cjs" hook codex context' in command for command in context_commands)
+        assert not any('worker-service.cjs" hook codex context' in command for command in context_commands)
 
     def test_real_template_has_all_hook_events(self, tmp_path: Path) -> None:
         codex_dir = tmp_path / ".codex"
