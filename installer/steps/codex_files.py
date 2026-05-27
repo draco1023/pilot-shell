@@ -39,7 +39,10 @@ def _get_codex_config_dir() -> Path:
     """Resolve the Codex config directory, respecting CODEX_HOME env var."""
     env_dir = os.environ.get("CODEX_HOME")
     if env_dir:
-        return Path(env_dir)
+        p = Path(env_dir)
+        if not p.is_absolute():
+            raise ValueError(f"CODEX_HOME must be an absolute path, got: {env_dir}")
+        return p
     return Path.home() / ".codex"
 
 
@@ -292,12 +295,12 @@ class CodexFilesStep(BaseStep):
         }
         changed = False
         section_match = re.search(r"(?m)^\[", existing)
-        top_level_scope = existing[:section_match.start()] if section_match else existing
+        top_level_scope = existing[: section_match.start()] if section_match else existing
         for key, value in required_top_level.items():
             if not re.search(rf"(?m)^{re.escape(key)}\s*=", top_level_scope):
                 existing = _insert_top_level_key(existing, key, value)
                 sm = re.search(r"(?m)^\[", existing)
-                top_level_scope = existing[:sm.start()] if sm else existing
+                top_level_scope = existing[: sm.start()] if sm else existing
                 changed = True
 
         deprecated_keys = ["bypass_hook_trust"]
@@ -345,8 +348,17 @@ class CodexFilesStep(BaseStep):
 
     _CODEX_SUPPORTED_SKILLS = frozenset(
         {
-            "spec", "spec-plan", "spec-bugfix-plan", "spec-implement", "spec-verify", "spec-bugfix-verify",
-            "fix", "prd", "benchmark", "setup-rules", "create-skill",
+            "spec",
+            "spec-plan",
+            "spec-bugfix-plan",
+            "spec-implement",
+            "spec-verify",
+            "spec-bugfix-verify",
+            "fix",
+            "prd",
+            "benchmark",
+            "setup-rules",
+            "create-skill",
         }
     )
 
@@ -371,7 +383,9 @@ class CodexFilesStep(BaseStep):
         for skill_dir in decomposed:
             try:
                 codex_content = build_codex_skill_md(skill_dir)
-            except Exception:
+            except Exception as e:
+                if ctx.ui:
+                    ctx.ui.warning(f"Failed to build SKILL.md for {skill_dir.name}: {e}")
                 continue
 
             dest_dir = agents_skills_dir / skill_dir.name

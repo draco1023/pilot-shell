@@ -43,10 +43,8 @@ def main() -> None:
     tier = data.get("tier", "")
     if tier == "trial" and data.get("trial_expired", False):
         _block("Pilot Shell trial expired. Run: pilot activate <license-key>")
-    elif not data.get("valid", False):
-        _block("Pilot Shell license invalid. Run: pilot activate <license-key>")
     else:
-        _allow()
+        _block("Pilot Shell license invalid. Run: pilot activate <license-key>")
 
 
 def _allow() -> None:

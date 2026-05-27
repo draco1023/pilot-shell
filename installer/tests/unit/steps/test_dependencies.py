@@ -114,6 +114,13 @@ class TestDependenciesStep:
             mock_plugin_deps.assert_called_once()
             _mock_semble.assert_called_once()
             _mock_rtk.assert_called_once()
+            _mock_codegraph.assert_called_once()
+            _mock_better_sqlite3.assert_called_once()
+            _mock_codex_plugin.assert_called_once()
+            _mock_lsp_plugins.assert_called_once()
+            _mock_playwright.assert_called_once()
+            _mock_pbt_tools.assert_called_once()
+            _mock_agent_browser.assert_called_once()
 
 
 class TestInstallClaudeCode:
@@ -1430,7 +1437,7 @@ class TestInstallGolangciLint:
     @patch("installer.steps.dependencies._curl_pipe_from_manifest", return_value=True)
     @patch("installer.steps.dependencies.subprocess.run")
     @patch("installer.steps.dependencies.command_exists", return_value=True)
-    def test_install_golangci_lint_upgrades_when_already_installed(self, _mock_cmd, mock_subproc, _mock_curl):
+    def test_install_golangci_lint_upgrades_when_already_installed(self, _mock_cmd, mock_subproc, mock_curl):
         """install_golangci_lint always runs installer to upgrade to manifest version."""
         from installer.steps.dependencies import install_golangci_lint
 
@@ -1438,6 +1445,7 @@ class TestInstallGolangciLint:
         result = install_golangci_lint()
 
         assert result is True
+        mock_curl.assert_called_once()
 
     @patch("installer.steps.dependencies._install_go_via_apt", return_value=False)
     @patch("installer.steps.dependencies.command_exists", return_value=False)

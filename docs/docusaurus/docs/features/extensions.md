@@ -211,7 +211,7 @@ Create extensions manually or via Claude Code commands:
 
 ### Codex Global Extensions
 
-```
+```text
 ~/.agents/
 └── skills/          ← Codex user skills (SKILL.md format)
 
@@ -224,7 +224,7 @@ Create extensions manually or via Claude Code commands:
 
 ### Codex Project Extensions
 
-```
+```text
 <project>/
 ├── .agents/
 │   └── skills/      ← Codex project skills

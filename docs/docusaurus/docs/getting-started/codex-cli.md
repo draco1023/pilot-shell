@@ -90,7 +90,10 @@ Pilot Shell's instruction rules (testing, development practices, verification, e
 Hooks registered in `~/.codex/hooks.json`:
 
 - **SessionStart** — license verification, CodeGraph initialization, Codex skill rebuild (syncs skills from Claude Code sources with license gating)
-- **UserPromptSubmit / PostToolUse / Stop** — session registration, observation capture, focused quality warnings, and session summarization
+- **UserPromptSubmit** — session registration with the Console worker daemon
+- **PreToolUse** — `tool_token_saver.py` rewrites Bash commands via RTK for token savings
+- **PostToolUse** — `file_checker.py` (quality checks on edits), `context_monitor.py` (context usage tracking), observation capture
+- **Stop** — `spec_stop_guard.py` (blocks stopping during active specs), session summarization
 - **PreCompact / SessionStart(compact)** — preserves and restores lightweight plan state around compaction
 
 Pilot Console memory context is **not** injected on Codex SessionStart. Codex currently surfaces hook-provided developer context in the UI/event stream, so the Codex integration keeps startup quiet instead of dumping memory context into the visible transcript. The context monitor uses Codex token-count transcript events when available and stays silent rather than estimating from transcript file size.

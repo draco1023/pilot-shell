@@ -184,11 +184,14 @@ class TestAliasLines:
         )
 
     def test_fish_session_id_is_unique_per_invocation(self):
-        """Fish session wrapper must NOT use bare %self as session ID."""
+        """Fish session wrapper must use $fish_pid-(random) for unique session IDs."""
         result = get_alias_lines("fish")
         lines_without_sid_ref = result.replace("$_sid", "")
         assert "PILOT_SESSION_ID %self;" not in lines_without_sid_ref, (
             "Bare %self reuses the fish PID across invocations"
+        )
+        assert "$fish_pid-(random)" in result, (
+            "Fish wrapper must use $fish_pid for PID expansion in concatenation"
         )
 
 

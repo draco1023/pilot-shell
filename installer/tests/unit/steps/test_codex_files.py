@@ -244,6 +244,7 @@ class TestCodexRulesInstallation:
         step = CodexFilesStep()
         ctx = MagicMock()
         ctx.ui = None
+        ctx.local_mode = False
 
         with (
             patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
@@ -272,6 +273,7 @@ class TestCodexRulesInstallation:
         step = CodexFilesStep()
         ctx = MagicMock()
         ctx.ui = None
+        ctx.local_mode = False
 
         with (
             patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
@@ -296,6 +298,7 @@ class TestCodexRulesInstallation:
         step = CodexFilesStep()
         ctx = MagicMock()
         ctx.ui = None
+        ctx.local_mode = False
 
         with (
             patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
@@ -316,6 +319,7 @@ class TestCodexRulesInstallation:
         step = CodexFilesStep()
         ctx = MagicMock()
         ctx.ui = None
+        ctx.local_mode = False
 
         with (
             patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),

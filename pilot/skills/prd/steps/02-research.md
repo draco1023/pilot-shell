@@ -23,9 +23,9 @@ Skip this phase entirely. Proceed to Step 4.
 4. **Optionally fetch full pages** for promising results: `ToolSearch(query="+web-fetch fetch")` then `fetch_url(url="...")`
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-2. **Use available web tools directly:** prefer the web-search MCP tool (`mcp__web_search__search`) when available.
+2. **Use available web tools directly:** prefer the web-search MCP tool (`mcp__web-search__search`) when available.
 3. **Execute searches sequentially**, gathering key findings from each.
-4. **Optionally fetch full pages** for promising results with the web-fetch MCP tool (`mcp__web_fetch__fetch_url`) when available.
+4. **Optionally fetch full pages** for promising results with the web-fetch MCP tool (`mcp__web-fetch__fetch_url`) when available.
 CODEX-END -->
 5. **Compile research summary:**
    - Key findings (3-5 bullet points)

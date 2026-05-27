@@ -397,14 +397,18 @@ def _init_rtk() -> None:
     try:
         subprocess.run(
             [rtk, "telemetry", "disable"],
-            capture_output=True, timeout=10, stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=10,
+            stdin=subprocess.DEVNULL,
         )
     except (OSError, subprocess.TimeoutExpired):
         pass
     try:
         subprocess.run(
             [rtk, "init", "-g", "--auto-patch", "--skip-env"],
-            capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=30,
+            stdin=subprocess.DEVNULL,
         )
     except (OSError, subprocess.TimeoutExpired):
         pass
@@ -412,7 +416,9 @@ def _init_rtk() -> None:
         try:
             subprocess.run(
                 [rtk, "init", "-g", "--codex"],
-                capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
+                capture_output=True,
+                timeout=30,
+                stdin=subprocess.DEVNULL,
             )
         except (OSError, subprocess.TimeoutExpired):
             pass
@@ -1086,24 +1092,23 @@ def install_pbt_tools() -> bool:
     Go PBT is handled by the built-in 'go test -fuzz' (Go 1.18+) — no install needed.
     Both packages are best-effort: failure does not block installation.
     """
+    if command_exists("hypothesis") and command_exists("fast-check"):
+        _record_outcome(_OUTCOME_UNCHANGED)
+        return True
+
     ok = True
-    any_changed = False
 
     if not _run_bash_with_retry("uv tool install --upgrade hypothesis", timeout=UV_TOOL_INSTALL_TIMEOUT):
         ok = False
-    else:
-        any_changed = True
 
     if not _run_bash_with_retry(
         _npm_install_cmd(manifest_get("fast-check")),
         timeout=GLOBAL_NPM_INSTALL_TIMEOUT,
     ):
         ok = False
-    else:
-        any_changed = True
 
     if ok:
-        _record_outcome(_OUTCOME_UPDATED if any_changed else _OUTCOME_UNCHANGED)
+        _record_outcome(_OUTCOME_UPDATED)
     return ok
 
 

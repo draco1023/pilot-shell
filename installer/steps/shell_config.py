@@ -30,12 +30,12 @@ def get_alias_lines(shell_type: str) -> str:
     if shell_type == "fish":
         path_line = f'set -gx PATH "{PILOT_BIN_DIR}" "{BUN_BIN_PATH}" $PATH'
         session_funcs = (
-            'function claude; set -l _sid %self-(random); '
-            'set -lx PILOT_SESSION_ID $_sid; '
+            "function claude; set -l _sid $fish_pid-(random); "
+            "set -lx PILOT_SESSION_ID $_sid; "
             'set -lx CLAUDE_CODE_TASK_LIST_ID "pilot-$_sid"; '
-            'command claude $argv; end\n'
-            'function codex; set -lx PILOT_SESSION_ID %self-(random); '
-            'command codex $argv; end'
+            "command claude $argv; end\n"
+            "function codex; set -lx PILOT_SESSION_ID $fish_pid-(random); "
+            "command codex $argv; end"
         )
     else:
         path_line = f'export PATH="{PILOT_BIN_DIR}:{BUN_BIN_PATH}:$PATH"'

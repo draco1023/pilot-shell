@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: Hooks Pipeline
-description: 19 quality hooks across 7 Claude Code lifecycle events — auto-format, lint, type-check, and TDD enforcement that fire automatically at every stage of work.
+description: 18 quality hooks across 7 Claude Code lifecycle events — auto-format, lint, type-check, and TDD enforcement that fire automatically at every stage of work.
 ---
 
 # Hooks Pipeline
 
-19 hook registrations across 7 lifecycle events — quality enforcement on autopilot.
+18 hook registrations across 7 lifecycle events — quality enforcement on autopilot.
 
 Blocking hooks reject actions or force fixes. Non-blocking hooks warn without interrupting. Async hooks run in the background. Two additional command-scoped Stop hooks run during `/spec` phases.
 

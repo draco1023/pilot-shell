@@ -18,17 +18,18 @@ Run from any directory — it installs globally to `~/.pilot/` and `~/.claude/` 
 
 ## What the Installer Does
 
-7 steps with progress tracking and rollback on failure:
+8 steps with progress tracking and rollback on failure:
 
 | Step | Title | Description |
 |------|-------|-------------|
 | 1 | Prerequisites | Checks/installs Homebrew, Node.js, Python 3.12+, uv, git, jq |
 | 2 | Claude files | Sets up `~/.claude/` plugin — rules, commands, hooks, MCP servers |
-| 3 | Config files | Creates `.nvmrc` and project config |
-| 4 | Dependencies | Installs Semble, RTK, CodeGraph, Chrome DevTools MCP, playwright-cli, agent-browser, language servers |
-| 5 | Shell integration | Auto-configures bash, fish, and zsh with the `pilot` alias. Add `# pilot-shell:managed-elsewhere` to a config file to opt out (for framework-managed shells) |
-| 6 | VS Code extensions | Installs recommended extensions for your language stack |
-| 7 | Finalize | Success message with next steps |
+| 3 | Codex files | Sets up `~/.codex/` assets — hooks, skills, rules, and MCP config for Codex CLI |
+| 4 | Config files | Creates `.nvmrc` and project config |
+| 5 | Dependencies | Installs Semble, RTK, CodeGraph, Chrome DevTools MCP, playwright-cli, agent-browser, language servers |
+| 6 | Shell integration | Auto-configures bash, fish, and zsh with the `pilot` alias. Add `# pilot-shell:managed-elsewhere` to a config file to opt out (for framework-managed shells) |
+| 7 | VS Code extensions | Installs recommended extensions for your language stack |
+| 8 | Finalize | Success message with next steps |
 
 ## Browser Automation
 
