@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -110,6 +111,16 @@ _LEGACY_HOOK_COMMAND_MARKERS = (
     "/.claude/pilot/",
 )
 
+_CODEX_ONLY_RE = re.compile(r"<!-- CODEX-START\n.*?CODEX-END -->(?:\n?)", re.DOTALL)
+_CC_ONLY_RE = re.compile(r"<!-- CC-ONLY -->\n?(.*?)<!-- /CC-ONLY -->\n?", re.DOTALL)
+
+
+def adapt_claude_rule_content(content: str) -> str:
+    """Strip Codex-only rule blocks and unwrap Claude-only rule blocks."""
+    content = _CODEX_ONLY_RE.sub("", content)
+    content = _CC_ONLY_RE.sub(lambda m: m.group(1), content)
+    return content
+
 
 def _legacy_hook_signature_baseline(current_hooks: dict[str, Any]) -> dict[str, Any]:
     """Return a synthetic baseline containing only legacy Pilot hook entries.
@@ -147,7 +158,7 @@ def _categorize_file(file_path: str) -> str:
     Destination map:
       - settings    → ~/.claude/settings.json
       - agents      → ~/.claude/agents/        (subagents + codex prompt templates)
-      - hooks       → ~/.claude/hooks/         (Python hook scripts + hooks.json)
+      - hooks       → ~/.pilot/hooks/          (Python hook scripts + hooks.json; agent-neutral)
       - skills      → ~/.claude/skills/
       - rules       → ~/.claude/rules/
       - pilot_home  → ~/.pilot/                (scripts/, ui/, .mcp.json, claude.json, package.json)
@@ -308,6 +319,7 @@ class ClaudeFilesStep(BaseStep):
         # ~/.pilot/scripts/ on every iteration.
         _clear_directory_safe(pilot_home_dir / "scripts")
         _clear_directory_safe(pilot_home_dir / "ui")
+        _clear_directory_safe(pilot_home_dir / "hooks")
 
         manifest_path = home_claude_dir / PILOT_MANIFEST_FILE
         if not manifest_path.exists():
@@ -317,11 +329,11 @@ class ClaudeFilesStep(BaseStep):
         cleanup_managed_files(home_claude_dir / "skills", manifest_path, "skills/")
         cleanup_managed_files(home_claude_dir / "rules", manifest_path, "rules/")
         cleanup_managed_files(home_claude_dir / "agents", manifest_path, "agents/")
-        # ~/.claude/hooks/ is a SHARED directory — Claude Code's native hook
-        # script location. Users may drop their own scripts there. Manifest-based
-        # cleanup removes only Pilot-managed files (recorded in
-        # .pilot-manifest.json), preserving anything else.
+        # Pilot hook scripts now live under ~/.pilot/hooks/ (agent-neutral).
+        # Legacy installs may still have Pilot scripts in ~/.claude/hooks/ —
+        # clean those up via manifest, then clean the new location too.
         cleanup_managed_files(home_claude_dir / "hooks", manifest_path, "hooks/")
+        cleanup_managed_files(pilot_home_dir / "hooks", manifest_path, "pilot_hooks/")
 
     def _cleanup_legacy_standards_skills(self, plugin_dir: Path) -> None:
         """Remove old standards-* skill directories from plugin skills folder.
@@ -474,6 +486,13 @@ class ClaudeFilesStep(BaseStep):
 
             for file_info, dest_path, success in zip(file_infos, dest_paths, results):
                 if success:
+                    if category == "rules":
+                        try:
+                            raw_content = dest_path.read_text(encoding="utf-8")
+                            dest_path.write_text(adapt_claude_rule_content(raw_content), encoding="utf-8")
+                        except OSError:
+                            failed.append(file_info.path)
+                            continue
                     installed.append(str(dest_path))
                 else:
                     failed.append(file_info.path)
@@ -527,7 +546,7 @@ class ClaudeFilesStep(BaseStep):
             return home_claude_dir / "agents" / rel_path
         elif category == "hooks":
             rel_path = Path(file_path).relative_to("pilot/hooks")
-            return home_claude_dir / "hooks" / rel_path
+            return pilot_home_dir / "hooks" / rel_path
         elif category == "pilot_home":
             rel_path = Path(file_path).relative_to("pilot")
             return pilot_home_dir / rel_path
@@ -564,7 +583,7 @@ class ClaudeFilesStep(BaseStep):
         skills_dir = home_claude_dir / "skills"
         rules_dir = home_claude_dir / "rules"
         agents_dir = home_claude_dir / "agents"
-        hooks_dir = home_claude_dir / "hooks"
+        pilot_hooks_dir = Path.home() / ".pilot" / "hooks"
         managed_files: set[str] = set()
 
         for filepath_str in installed:
@@ -576,8 +595,8 @@ class ClaudeFilesStep(BaseStep):
                     managed_files.add("rules/" + str(filepath.relative_to(rules_dir)))
                 elif filepath.is_relative_to(agents_dir):
                     managed_files.add("agents/" + str(filepath.relative_to(agents_dir)))
-                elif filepath.is_relative_to(hooks_dir):
-                    managed_files.add("hooks/" + str(filepath.relative_to(hooks_dir)))
+                elif filepath.is_relative_to(pilot_hooks_dir):
+                    managed_files.add("pilot_hooks/" + str(filepath.relative_to(pilot_hooks_dir)))
             except (ValueError, TypeError):
                 continue
 
@@ -912,8 +931,8 @@ class ClaudeFilesStep(BaseStep):
     def _merge_hooks_into_settings(self) -> None:
         """Merge Pilot's hooks bundle into ~/.claude/settings.json.
 
-        Reads the installed hooks.json (now at ~/.claude/hooks/hooks.json with
-        absolute $HOME/.claude/hooks/ and $HOME/.pilot/scripts/ paths — bash
+        Reads the installed hooks.json (at ~/.pilot/hooks/hooks.json with
+        absolute $HOME/.pilot/hooks/ and $HOME/.pilot/scripts/ paths — bash
         expands $HOME natively when Claude Code shells out, so no install-time
         path patching is needed). Merges the `hooks` dict into
         ~/.claude/settings.json using `merge_pilot_hooks`, which preserves
@@ -921,7 +940,8 @@ class ClaudeFilesStep(BaseStep):
         `.pilot-hooks-baseline.json`.
         """
         claude_dir = get_claude_config_dir()
-        hooks_json_path = claude_dir / "hooks" / "hooks.json"
+        pilot_home_dir = Path.home() / ".pilot"
+        hooks_json_path = pilot_home_dir / "hooks" / "hooks.json"
         if not hooks_json_path.exists():
             return
 

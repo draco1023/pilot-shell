@@ -14,7 +14,12 @@ hooks:
 
 **Input:** Bug description (new) or plan path (continue unapproved)
 **Output:** Approved bugfix plan at `docs/plans/YYYY-MM-DD-<slug>.md` with `Type: Bugfix`
+<!-- CC-ONLY -->
 **Next:** On approval → `Skill(skill='spec-implement', args='<plan-path>')`
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Next:** On approval → continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`.
+CODEX-END -->
 
 **Note:** This skill is invoked when the user types `/spec "<bug description>"` — they chose the full spec workflow. For a bugfix workflow without a plan file, users invoke `/fix` directly (separate user-facing command). The two are distinct entry points — honour the user's choice.
 
@@ -49,7 +54,12 @@ If Step 2 is incomplete, you cannot propose fixes. Symptom fixes are failure. Re
 - **NEVER assume — verify by reading files.** Trace the bug to actual file:line.
 - **Lean ≠ skipping steps.** Small bugs get short tasks, not fewer tasks. The three-task structure (Reproducing Test → Fix → Quality Gate) is non-negotiable.
 - **Plan file is source of truth** — survives across auto-compaction cycles
+<!-- CC-ONLY -->
 - **ALWAYS use `AskUserQuestion` tool** for clarifications — never list numbered questions in plain text
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- **ALWAYS use plain-text numbered options** for clarifications — never refer to `AskUserQuestion` as a callable tool in Codex
+CODEX-END -->
 - **⛔ If `PILOT_PLAN_QUESTIONS_ENABLED` is `"false"` (from Step 0),** skip all `AskUserQuestion` calls (Steps 2.1, 2.5 escalation, 3 approach selection). Make reasonable default assumptions (including selecting the recommended fix approach) and document them in the plan. Continue autonomously.
 
 > **NOTE: During `/spec`, use the structured workflow below — not CC's native plan mode.**

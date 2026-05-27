@@ -13,7 +13,7 @@ Similar patterns: [...]
 Greenfield?: [yes | no]
 ```
 
-If `Greenfield?: yes` AND the task is conceptual rather than symbol-mapped, **now** is the time to broaden with `mcp__semble__search` using different phrasings — Step 3 only ran the obvious noun query. Otherwise, proceed to 5.2 with the scan results as your starting set of entry points.
+If the scan didn't fully cover the intent (concept-heavy, cross-cutting, debugging-style, or greenfield), broaden with `mcp__semble__search` using different phrasings or `mcp__semble__find_related` from a promising hit. Then proceed to 5.2.
 
 #### 5.2: Deep dive with CodeGraph explore
 

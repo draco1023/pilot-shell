@@ -11,12 +11,12 @@
 version: 1
 entries:
   - id: nvm-curl
-    name: nvm install.sh (v0.40.0)
+    name: nvm install.sh (v0.40.4)
     source_type: curl
-    source_url: https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh
-    version: v0.40.0
-    sha256: "bdea8c52186c4dd12657e77e7515509cda5bf9fa5a2f0046bce749e62645076d"
-    last_audited: "2026-05-07"
+    source_url: https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh
+    version: v0.40.4
+    sha256: "4b7412c49960c7d31e8df72da90c1fb5b8cccb419ac99537b737028d497aba4f"
+    last_audited: "2026-05-27"
 
   # ---- npm globals (Task 2) ----
 
@@ -24,65 +24,65 @@ entries:
     name: "@colbymchenry/codegraph"
     source_type: npm
     source_url: "@colbymchenry/codegraph"
-    version: "0.7.3"
+    version: "0.9.6"
     # Highest-risk entry in this manifest per PRD: single-author npm package
     # with no public source repository declared. Manual audit only.
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: better-sqlite3
     name: better-sqlite3
     source_type: npm
     source_url: better-sqlite3
-    version: "12.9.0"
+    version: "12.10.0"
     # Native build via node-gyp at install time. CodeGraph relies on the
     # compiled native module (the WASM fallback corrupts SQLite databases on
     # certain filesystems). Postinstall scripts MUST be enabled.
     scripts_policy: allow
     scripts_justification: "native-build via node-gyp; required for CodeGraph SQLite backend"
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: vtsls
     name: "@vtsls/language-server"
     source_type: npm
     source_url: "@vtsls/language-server"
     version: "0.3.0"
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: typescript
     name: typescript
     source_type: npm
     source_url: typescript
     version: "6.0.3"
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: prettier
     name: prettier
     source_type: npm
     source_url: prettier
     version: "3.8.3"
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: fast-check
     name: fast-check
     source_type: npm
     source_url: fast-check
-    version: "4.7.0"
-    last_audited: "2026-05-07"
+    version: "4.8.0"
+    last_audited: "2026-05-27"
 
   - id: agent-browser
     name: agent-browser
     source_type: npm
     source_url: agent-browser
-    version: "0.26.0"
+    version: "0.27.0"
     # High-risk single-author package per PRD threat model. Manual audit on bumps.
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: playwright-cli
     name: "@playwright/cli"
     source_type: npm
     source_url: "@playwright/cli"
-    version: "0.1.12"
-    last_audited: "2026-05-07"
+    version: "0.1.13"
+    last_audited: "2026-05-27"
 
   # ---- curl-pipe installers (Task 3) ----
 
@@ -90,31 +90,31 @@ entries:
     name: claude.ai/install.sh
     source_type: curl
     source_url: https://claude.ai/install.sh
-    version: "vendor-managed-2026-05-07"
+    version: "vendor-managed-2026-05-27"
     sha256: "b315b46925a9bfb9422f2503dd5aa649f680832f4c076b22d87c39d578c3d830"
     # Anthropic-managed endpoint with no version stability guarantee. Soft-pin
     # behavior: hash mismatch logs a warning + new hash for the maintainer to
     # re-pin, but proceeds. Maintainer re-pins promptly when warning fires.
     soft_pin: true
     soft_pin_reason: "vendor-managed endpoint; Anthropic redeploys script at any time"
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: uv-installer
-    name: astral.sh/uv/install.sh (0.11.14)
+    name: astral.sh/uv/install.sh (0.11.16)
     source_type: curl
     # Per-version URL is immutable on astral.sh — picking a version pins the
     # installed uv release and removes the drift problem of the floating
     # /install.sh endpoint (see GH #147).
-    source_url: https://astral.sh/uv/0.11.14/install.sh
-    version: "0.11.14"
-    sha256: "14b6b88d74b9300d906d9754118afb4d4151e78ad294f026047b7227f5611760"
-    last_audited: "2026-05-18"
+    source_url: https://astral.sh/uv/0.11.16/install.sh
+    version: "0.11.16"
+    sha256: "b9f925505899533f36a3acfdf8684c661ff2d5c8735f759fca768367b5996123"
+    last_audited: "2026-05-27"
 
   - id: bun-installer
     name: bun.sh/install
     source_type: curl
     source_url: https://bun.sh/install
-    version: "live-2026-05-18"
+    version: "live-2026-05-27"
     sha256: "bab8acfb046aac8c72407bdcce903957665d655d7acaa3e11c7c4616beae68dd"
     # Bun does not expose immutable per-version install URLs (version is
     # selected via shell arg, not URL path); soft_pin mirrors the
@@ -122,35 +122,35 @@ entries:
     # instead of failing — same drift class as GH #147.
     soft_pin: true
     soft_pin_reason: "vendor-managed endpoint; bun.sh rewrites install script on every release with no per-version URL"
-    last_audited: "2026-05-18"
+    last_audited: "2026-05-27"
 
   - id: homebrew-installer
     name: Homebrew/install/install.sh
     source_type: curl
     # Pinned to a specific commit (HEAD/install.sh would float).
-    source_url: https://raw.githubusercontent.com/Homebrew/install/540da2ca91271886910572df3a50332540ca84e4/install.sh
-    version: "commit-540da2c"
-    commit: "540da2ca91271886910572df3a50332540ca84e4"
-    sha256: "dfd5145fe2aa5956a600e35848765273f5798ce6def01bd08ecec088a1268d91"
-    last_audited: "2026-05-07"
+    source_url: https://raw.githubusercontent.com/Homebrew/install/5753984d1eb214c40e86489416be2d38972f836a/install.sh
+    version: "commit-5753984"
+    commit: "5753984d1eb214c40e86489416be2d38972f836a"
+    sha256: "f3e91784ffeda32bc397de7acc1154724cc47522a459c9ac656cca176eeba457"
+    last_audited: "2026-05-27"
 
   - id: rtk-installer
     name: rtk-ai/rtk install.sh
     source_type: curl
-    source_url: https://raw.githubusercontent.com/rtk-ai/rtk/2fbc7514f6964acabcfac65501b8bb6b525e3aa8/install.sh
-    version: "commit-2fbc751"
-    commit: "2fbc7514f6964acabcfac65501b8bb6b525e3aa8"
-    sha256: "0c46611d70d0eee64c43c6398f8b1fe057b7f0b052810bbeec09288898ba9a46"
-    last_audited: "2026-05-07"
+    source_url: https://raw.githubusercontent.com/rtk-ai/rtk/5a149a7fdb92afe758a0c28d805873ce61d8259f/install.sh
+    version: "commit-5a149a7"
+    commit: "5a149a7fdb92afe758a0c28d805873ce61d8259f"
+    sha256: "ab22d109f920db7d931ef6aa97d9460d93f41d296981db8446afed96ea9661e5"
+    last_audited: "2026-05-27"
 
   - id: golangci-lint-installer
     name: golangci-lint install.sh
     source_type: curl
-    source_url: https://raw.githubusercontent.com/golangci/golangci-lint/2691aacde61559ce53cfda05513ee7c70677ea31/install.sh
-    version: "commit-2691aac"
-    commit: "2691aacde61559ce53cfda05513ee7c70677ea31"
-    sha256: "9e99d38f3213411a1b6175e5b535c72e37c7ed42ccf251d331385a3f97b695e7"
-    last_audited: "2026-05-07"
+    source_url: https://raw.githubusercontent.com/golangci/golangci-lint/2bff0e3f1cc5f6dcd18755dc3a0d9e997f2bdef2/install.sh
+    version: "commit-2bff0e3"
+    commit: "2bff0e3f1cc5f6dcd18755dc3a0d9e997f2bdef2"
+    sha256: "d32d3534af96cfd59546a084d22b213e8a47541cada5013aa8a84c4fa2589905"
+    last_audited: "2026-05-27"
 
   # ---- Homebrew formulas (Task 4) ----
   # pin_kind: monitor — homebrew/core doesn't expose stable per-version installs;
@@ -163,137 +163,137 @@ entries:
     name: git
     source_type: brew
     source_url: https://github.com/git/git
-    version: "2.51.0"
+    version: "2.54.0"
     pin_kind: monitor
     auto_upgrade: false
     brew_formula: git
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: gh-brew
     name: GitHub CLI
     source_type: brew
     source_url: https://github.com/cli/cli
-    version: "2.65.0"
+    version: "2.92.0"
     pin_kind: monitor
     auto_upgrade: false
     brew_formula: gh
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: python-3-12-brew
     name: Python 3.12
     source_type: brew
     source_url: https://github.com/python/cpython
-    version: "3.12.7"
+    version: "3.12.13"
     pin_kind: monitor
     auto_upgrade: false
     brew_formula: "python@3.12"
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: node-22-brew
     name: Node.js 22
     source_type: brew
     source_url: https://github.com/nodejs/node
-    version: "22.11.0"
+    version: "22.22.3"
     pin_kind: monitor
     auto_upgrade: false
     brew_formula: "node@22"
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: nvm-brew
     name: nvm (Homebrew install path)
     source_type: brew
     source_url: https://github.com/nvm-sh/nvm
-    version: "0.40.0"
+    version: "0.40.4"
     pin_kind: monitor
     auto_upgrade: false
     brew_formula: nvm
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: pnpm-brew
     name: pnpm
     source_type: brew
     source_url: https://github.com/pnpm/pnpm
-    version: "9.15.0"
+    version: "11.3.0"
     pin_kind: monitor
     brew_formula: pnpm
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: bun-brew
     name: bun
     source_type: brew
     source_url: https://github.com/oven-sh/bun
-    version: "1.1.40"
+    version: "1.3.14"
     pin_kind: monitor
     brew_formula: bun
     # bun ships from oven-sh/bun tap (Pilot pre-taps it); intentional non-core origin.
     brew_tap: oven-sh/bun
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: uv-brew
     name: uv (Homebrew install path)
     source_type: brew
     source_url: https://github.com/astral-sh/uv
-    version: "0.5.10"
+    version: "0.11.16"
     pin_kind: monitor
     brew_formula: uv
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: go-brew
     name: Go
     source_type: brew
     source_url: https://github.com/golang/go
-    version: "1.23.4"
+    version: "1.26.3"
     pin_kind: monitor
     brew_formula: go
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: gopls-brew
     name: gopls
     source_type: brew
     source_url: https://github.com/golang/tools
-    version: "0.17.0"
+    version: "0.22.0"
     pin_kind: monitor
     brew_formula: gopls
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: jq-brew
     name: jq
     source_type: brew
     source_url: https://github.com/jqlang/jq
-    version: "1.7.1"
+    version: "1.8.1"
     pin_kind: monitor
     brew_formula: jq
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: ripgrep-brew
     name: ripgrep
     source_type: brew
     source_url: https://github.com/BurntSushi/ripgrep
-    version: "14.1.1"
+    version: "15.1.0"
     pin_kind: monitor
     brew_formula: ripgrep
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: rtk-brew
     name: rtk (Homebrew install path)
     source_type: brew
     source_url: https://github.com/rtk-ai/rtk
-    version: "0.1.0"
+    version: "0.42.0"
     pin_kind: monitor
     brew_formula: rtk
     brew_tap: homebrew/core
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   # ---- npx-launched MCP servers (Task 5) ----
   # Every entry MUST also be referenced from .mcp.json or pilot/.mcp.json
@@ -304,22 +304,22 @@ entries:
     source_type: npm
     source_url: mcp-remote
     version: "0.1.38"
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: context7-mcp
     name: "@upstash/context7-mcp"
     source_type: npm
     source_url: "@upstash/context7-mcp"
-    version: "2.2.4"
-    last_audited: "2026-05-07"
+    version: "3.0.0"
+    last_audited: "2026-05-27"
 
   - id: open-websearch
     name: open-websearch
     source_type: npm
     source_url: open-websearch
-    version: "2.1.9"
+    version: "2.1.11"
     # No public source repo declared in npm registry; manual audit only.
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: fetcher-mcp
     name: fetcher-mcp
@@ -327,7 +327,7 @@ entries:
     source_url: fetcher-mcp
     version: "0.3.9"
     # No public source repo declared in npm registry; manual audit only.
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   - id: zod
     name: zod
@@ -336,7 +336,7 @@ entries:
     version: "4.4.3"
     # Peer dep auto-installed into open-websearch's npx cache when missing
     # (see _fix_npx_peer_dependencies in installer/steps/dependencies.py).
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"
 
   # ---- PyPI bootstrap (Task 7) ----
   # Used by install.sh and launcher/build.py via `uv run --no-project --with`.
@@ -348,26 +348,26 @@ entries:
     name: rich
     source_type: pypi
     source_url: https://github.com/Textualize/rich
-    version: "14.2.0"
-    last_audited: "2026-05-07"
+    version: "15.0.0"
+    last_audited: "2026-05-27"
 
   - id: certifi
     name: certifi
     source_type: pypi
     source_url: https://github.com/certifi/python-certifi
-    version: "2026.4.22"
-    last_audited: "2026-05-07"
+    version: "2026.5.20"
+    last_audited: "2026-05-27"
 
   - id: cryptography
     name: cryptography
     source_type: pypi
     source_url: https://github.com/pyca/cryptography
-    version: "46.0.6"
-    last_audited: "2026-05-07"
+    version: "48.0.0"
+    last_audited: "2026-05-27"
 
   - id: pyyaml
     name: PyYAML
     source_type: pypi
     source_url: https://github.com/yaml/pyyaml
     version: "6.0.3"
-    last_audited: "2026-05-07"
+    last_audited: "2026-05-27"

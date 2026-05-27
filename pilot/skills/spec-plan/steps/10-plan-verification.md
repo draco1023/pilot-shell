@@ -24,6 +24,7 @@ If anything matches, fix it inline (no new round-trip needed). Then proceed to s
 
 ---
 
+<!-- CC-ONLY -->
 **⛔ If `PILOT_SPEC_REVIEW_ENABLED` is `"false"` (from Step 0),** skip the Claude reviewer launch below and proceed straight to the Codex section.
 
 **⛔ Auto-skip the Claude reviewer for small plans.** If the plan has **task count ≤ 2** AND it does NOT touch security, authentication, data integrity, or destructive operations, skip the Claude reviewer launch — reviewer overhead exceeds value for a change the implementer can audit by inspection. Continue to the Codex section below; Codex still runs **only** when the user has explicitly opted in via `PILOT_CODEX_SPEC_REVIEW_ENABLED`.
@@ -222,3 +223,9 @@ rm -f "$PROMPT_FILE"
 ```
 
 **If Codex was NOT launched**, proceed after all Claude reviewer must_fix/should_fix resolved.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Skip automated plan review agents.** They are not available in Codex CLI. Proceed to Step 11 (annotation check) after completing the no-placeholders self-check above.
+
+Self-review the plan for obvious issues before requesting approval: missing edge cases, unclear DoD criteria, placeholder text, and unresolved ambiguities.
+CODEX-END -->

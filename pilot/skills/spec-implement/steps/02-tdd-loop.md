@@ -14,7 +14,9 @@ If you find yourself queuing 3+ RED tests before any GREEN, stop and complete th
 
 1. **Read plan's implementation steps** — list files to create/modify/delete
 2. **Call chain analysis (MANDATORY):** For each function being modified, run `trace_call_path(function_name, direction="both", depth=2)`. Discover exact names first with `search_graph(name_pattern="...")` if needed. This traces the actual call graph — Semble text search is not a substitute.
+<!-- CC-ONLY -->
 3. **Mark in_progress:** `TaskUpdate(taskId, status="in_progress")`
+<!-- /CC-ONLY -->
 4. **TDD Flow:**
    - **RED:** Write failing test → verify it fails (feature missing, not syntax error)
    - **GREEN:** Implement minimal code to pass
@@ -29,7 +31,9 @@ If you find yourself queuing 3+ RED tests before any GREEN, stop and complete th
 9. **Self-review:** Completeness? Names clear? YAGNI? Tests verify behavior not implementation?
 10. **Performance:** Is any expensive work (parsing, transforming, I/O) running on a hot path without caching or memoization? Are heavy dependencies imported fully when a lighter/tree-shaken alternative exists? Does repeated invocation (polling, re-render, request loop) redo work when input hasn't changed?
 11. **Per-task commit (worktree only):** `git add <files> && git commit -m "{type}(spec): {task-name}"`
+<!-- CC-ONLY -->
 12. **Mark completed:** `TaskUpdate(taskId, status="completed")`
+<!-- /CC-ONLY -->
 13. **Update plan file immediately** — ⛔ **NON-NEGOTIABLE.** Change `[ ]` → `[x]` for the task in `## Progress Tracking`. Update any Completed/Remaining counts. Do NOT proceed to the next task until the checkbox is updated.
 
 ---

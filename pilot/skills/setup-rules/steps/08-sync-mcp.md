@@ -10,7 +10,12 @@ Parse `.mcp.json`, exclude framework-provided servers (Pilot core servers if pre
 
 For each user server:
 
+<!-- CC-ONLY -->
 1. `ToolSearch(query="+server-name keyword")` to discover tools
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+1. MCP tools from configured servers are available directly — use the tool name pattern `mcp__<server-name>__<tool-name>` to discover and invoke tools from each server.
+CODEX-END -->
 2. Call 1-2 read-only tools per server as a connectivity check (**safety: only read-only tools**) — no need to test every tool, just confirm the server responds
 3. Record per-server: ✅ connected | ⚠️ partial (note issues) | ❌ unreachable
 4. Report health check:
@@ -46,7 +51,12 @@ Create/update `.claude/rules/{slug}-mcp-servers.md`:
 - [Decision point where the server provides relevant context]
 - [Workflow step where consulting this server prevents mistakes]
 
+<!-- CC-ONLY -->
 **Usage:** `ToolSearch(query="+server-name keyword")` then call the discovered tools directly.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Usage:** MCP tools are available directly via `mcp__<server-name>__<tool-name>` naming convention.
+CODEX-END -->
 ```
 
 **Do NOT include:**

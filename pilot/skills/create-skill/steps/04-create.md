@@ -18,9 +18,16 @@ Edit the created `SKILL.md` with the skill content using the template from Step 
 
 **Portability checklist** — skills are shared with users who may NOT have Pilot Shell:
 
+<!-- CC-ONLY -->
 - **Only use built-in Claude Code tools** in skill instructions: `Read`, `Write`, `Edit`, `Bash`, `Grep`, `Glob`, `Agent`, `WebFetch`, `WebSearch`, `Notebook`, `LSP`, `TodoRead`/`TodoWrite`
 - **Never reference Pilot-specific tools:** `semble search/find-related` (CLI or MCP), `agent-browser`, `pilot` CLI, Pilot MCP servers (`mem-search`, `context7`, `grep-mcp`, `web-fetch`, `web-search`)
 - **Substitute with built-in equivalents:** `semble search` → `Grep`/`Glob`, `agent-browser` → Claude Code Chrome (`mcp__claude-in-chrome__*`) or `Bash` with `npx agent-browser`, web fetch → `WebFetch`
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- **Only use built-in Codex tools** in skill instructions: `Read`, `Write`/`apply_patch`, `Edit`, `Bash`, `Grep`, `Glob`. `Agent` subagents and `WebFetch`/`WebSearch` are not available in Codex — use `Bash` with `curl` for web fetching and `codex exec` for isolated sub-tasks.
+- **Never reference Pilot-specific tools:** `semble search/find-related` (CLI or MCP), `agent-browser`, `pilot` CLI, Pilot MCP servers (`mem-search`, `context7`, `grep-mcp`, `web-fetch`, `web-search`)
+- **Substitute with built-in equivalents:** `semble search` → `Grep`/`Glob`, web fetch → `Bash` with `curl`
+CODEX-END -->
 - If a skill genuinely requires a non-standard tool, document it as a prerequisite in the skill body (not silently assume it exists)
 
 **Determinism checklist** — maximize reliability:

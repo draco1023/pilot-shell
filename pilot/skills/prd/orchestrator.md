@@ -34,7 +34,7 @@ Understand → Research (optional) → Ideate (if vague) → Clarify → Propose
 ```
 
 **Two modes inside one flow:**
-- **Divergent (Ideate):** free-form prose, Claude pitches directions, user reacts. Used when the idea is vague.
+- **Divergent (Ideate):** free-form prose, the agent pitches directions, user reacts. Used when the idea is vague.
 - **Convergent (Clarify → Converge):** structured `AskUserQuestion` forms with predefined options. Used once the shape is known.
 
 The phase boundary is a default, not a wall — Clarify can drop back into 1-2 prose turns when a question opens a genuinely new unknown, then return to structured forms.

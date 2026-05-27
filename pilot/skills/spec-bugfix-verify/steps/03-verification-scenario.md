@@ -9,7 +9,12 @@ Check whether the plan has a `## Verification Scenario` section (only present fo
 **Resolve browser tool (4-tier):** Check if `mcp__claude-in-chrome__*` tools are available → use Chrome. Otherwise check for `mcp__plugin_chrome-devtools-mcp_chrome-devtools__*` → use Chrome DevTools MCP. Otherwise use playwright-cli (preferred CLI) or agent-browser (lightweight). See `browser-automation.md`.
 
 ```bash
+<!-- CC-ONLY -->
 # Chrome DevTools MCP: load via ToolSearch(query="chrome-devtools-mcp", max_results=30)
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+# Chrome DevTools MCP: use the available Chrome DevTools MCP tools if present; if deferred, load them with the available tool-discovery helper.
+CODEX-END -->
 # playwright-cli:
 playwright-cli -s=$PILOT_SESSION_ID open <url>
 # agent-browser fallback:

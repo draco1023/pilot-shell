@@ -46,7 +46,7 @@ You can also connect from any browser at [claude.ai/code](https://claude.ai/code
 
 ## How it works
 
-Sessions started via `pilot` carry over all rules, hooks, MCP servers, and project configuration. The Claude App and web interface are just a window into your local session — your machine does all the work.
+Sessions carry over all rules, hooks, MCP servers, and project configuration. The Claude App and web interface are just a window into your local session — your machine does all the work.
 
 - **Full Pilot Shell experience** — hooks, rules, skills, MCP servers all stay active
 - **Outbound-only** — no ports open on your machine, all traffic over TLS
@@ -55,11 +55,11 @@ Sessions started via `pilot` carry over all rules, hooks, MCP servers, and proje
 
 ## Starting sessions from your phone via SSH
 
-The setup above assumes you start sessions via `pilot` on your computer first. To start new sessions from your phone instead:
+The setup above assumes you start sessions on your computer first. To start new sessions from your phone instead:
 
 1. Install [Termius](https://termius.com/) on your phone (not your computer)
 2. SSH into your computer
-3. Run `pilot` in any project directory
+3. Run `claude` in any project directory
 
 ## Keeping your computer reachable
 

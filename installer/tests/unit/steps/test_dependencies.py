@@ -37,6 +37,13 @@ class TestDependenciesStep:
             )
             assert step.check(ctx) is False
 
+    @patch("installer.steps.dependencies.initialize_codegraph", return_value=True)
+    @patch("installer.steps.dependencies.codegraph_needs_work", return_value=False)
+    @patch("installer.steps.dependencies.install_playwright_cli", return_value=True)
+    @patch("installer.steps.dependencies.install_lsp_plugins", return_value=True)
+    @patch("installer.steps.dependencies.install_codex_plugin", return_value=True)
+    @patch("installer.steps.dependencies.install_better_sqlite3", return_value=True)
+    @patch("installer.steps.dependencies.install_codegraph", return_value=True)
     @patch("installer.steps.dependencies.install_rtk", return_value=True)
     @patch("installer.steps.dependencies.install_semble", return_value=True)
     @patch("installer.steps.dependencies.install_agent_browser", return_value=True)
@@ -68,9 +75,16 @@ class TestDependenciesStep:
         _mock_prettier,
         _mock_golangci_lint,
         _mock_pbt_tools,
-        _mock_playwright,
+        _mock_agent_browser,
         _mock_semble,
         _mock_rtk,
+        _mock_codegraph,
+        _mock_better_sqlite3,
+        _mock_codex_plugin,
+        _mock_lsp_plugins,
+        _mock_playwright,
+        _mock_codegraph_needs_work,
+        _mock_init_codegraph,
     ):
         """DependenciesStep installs all dependencies including Python tools."""
         from installer.context import InstallContext
@@ -527,13 +541,16 @@ class TestInstallRtk:
 
         assert callable(install_rtk)
 
+    @patch("installer.steps.dependencies._symlink_to_pilot_bin")
+    @patch("installer.steps.dependencies._curl_pipe_from_manifest", return_value=True)
     @patch("installer.steps.dependencies.command_exists", return_value=True)
-    def test_install_rtk_skips_when_already_installed(self, _mock_cmd):
-        """install_rtk returns True without curl when rtk already exists (e.g., via brew)."""
+    def test_install_rtk_upgrades_when_already_installed(self, _mock_cmd, mock_curl, _mock_symlink):
+        """install_rtk always runs curl installer to upgrade even when rtk exists."""
         from installer.steps.dependencies import install_rtk
 
         result = install_rtk()
         assert result is True
+        mock_curl.assert_called_once()
 
     @patch("installer.steps.dependencies._symlink_to_pilot_bin")
     @patch("installer.steps.dependencies.command_exists", return_value=False)
@@ -1363,16 +1380,16 @@ class TestInstallPrettier:
 
         assert callable(install_prettier)
 
+    @patch("installer.steps.dependencies._run_bash_with_retry", return_value=True)
     @patch("installer.steps.dependencies.command_exists", return_value=True)
-    def test_install_prettier_skips_if_already_installed(self, _mock_cmd):
-        """install_prettier returns True without installing when prettier is in PATH."""
+    def test_install_prettier_upgrades_when_already_installed(self, _mock_cmd, mock_run):
+        """install_prettier always runs npm install to upgrade to manifest version."""
         from installer.steps.dependencies import install_prettier
 
-        with patch("installer.steps.dependencies._run_bash_with_retry") as mock_run:
-            result = install_prettier()
+        result = install_prettier()
 
         assert result is True
-        mock_run.assert_not_called()
+        mock_run.assert_called_once()
 
     @patch("installer.steps.dependencies._run_bash_with_retry", return_value=True)
     @patch("installer.steps.dependencies.command_exists", return_value=False)
@@ -1410,16 +1427,17 @@ class TestInstallGolangciLint:
 
         assert callable(install_golangci_lint)
 
+    @patch("installer.steps.dependencies._curl_pipe_from_manifest", return_value=True)
+    @patch("installer.steps.dependencies.subprocess.run")
     @patch("installer.steps.dependencies.command_exists", return_value=True)
-    def test_install_golangci_lint_skips_if_already_installed(self, mock_cmd):
-        """install_golangci_lint returns True without installing when already in PATH."""
+    def test_install_golangci_lint_upgrades_when_already_installed(self, _mock_cmd, mock_subproc, _mock_curl):
+        """install_golangci_lint always runs installer to upgrade to manifest version."""
         from installer.steps.dependencies import install_golangci_lint
 
-        with patch("installer.steps.dependencies._run_bash_with_retry") as mock_run:
-            result = install_golangci_lint()
+        mock_subproc.return_value = MagicMock(returncode=0, stdout="/go")
+        result = install_golangci_lint()
 
         assert result is True
-        mock_run.assert_not_called()
 
     @patch("installer.steps.dependencies._install_go_via_apt", return_value=False)
     @patch("installer.steps.dependencies.command_exists", return_value=False)

@@ -31,6 +31,7 @@ All subsequent work happens inside the worktree directory.
 
 ### 1.3 Set Up Task List (MANDATORY)
 
+<!-- CC-ONLY -->
 1. **Check existing:** `TaskList` — if tasks exist from prior session, resume (don't recreate)
 2. **If empty:** Create one task per uncompleted `[ ]` plan task:
    ```
@@ -38,3 +39,9 @@ All subsequent work happens inside the worktree directory.
    ```
    Set dependencies: `TaskUpdate(taskId="...", addBlockedBy=["..."])`
 3. Skip `[x]` (already completed) tasks
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+1. List uncompleted `[ ]` plan tasks — these are your work items.
+2. Track progress by updating plan checkboxes (`[ ]` → `[x]`) after each task.
+3. Skip `[x]` (already completed) tasks.
+CODEX-END -->

@@ -56,11 +56,20 @@ Before committing to a full eval set:
 
 1. Hand-author one eval for this target.
 2. Run baseline only:
+<!-- CC-ONLY -->
    ```bash
    PYTHONPATH=~/.claude/skills/benchmark uv run python -m scripts.runner \
        --config benchmarks/<target>/evals.json --configs without --runs 1 \
        --skip-permissions
    ```
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+   ```bash
+   PYTHONPATH=~/.agents/skills/benchmark uv run python -m scripts.runner \
+       --config benchmarks/<target>/evals.json --configs without --runs 1 \
+       --skip-permissions --agent codex
+   ```
+CODEX-END -->
 3. Inspect the baseline output (read `grading.json` for each run). If baseline passes 3/3 assertions, **rewrite the assertions** — they're not discriminating.
 
 Only after the baseline fails at least one assertion do you have evidence that the eval measures something real. Skip the gate only when the user explicitly says they want a quick smoke test.

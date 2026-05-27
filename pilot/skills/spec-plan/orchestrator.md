@@ -14,7 +14,12 @@ hooks:
 
 **Input:** Task description (new) or plan path (continue unapproved)
 **Output:** Approved plan at `docs/plans/YYYY-MM-DD-<slug>.md`
+<!-- CC-ONLY -->
 **Next:** On approval → `Skill(skill='spec-implement', args='<plan-path>')`
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Next:** On approval → continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`.
+CODEX-END -->
 
 ---
 

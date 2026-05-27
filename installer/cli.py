@@ -13,6 +13,7 @@ from installer.context import InstallContext
 from installer.errors import FatalInstallError, InstallationCancelled
 from installer.steps.base import BaseStep
 from installer.steps.claude_files import ClaudeFilesStep
+from installer.steps.codex_files import CodexFilesStep
 from installer.steps.config_files import ConfigFilesStep
 from installer.steps.dependencies import DependenciesStep
 from installer.steps.finalize import FinalizeStep
@@ -27,6 +28,7 @@ def get_all_steps() -> list[BaseStep]:
     return [
         PrerequisitesStep(),
         ClaudeFilesStep(),
+        CodexFilesStep(),
         ConfigFilesStep(),
         DependenciesStep(),
         ShellConfigStep(),

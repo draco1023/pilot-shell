@@ -143,29 +143,81 @@ def _is_throttled(session_id: str) -> bool:
         return False
 
 
-def _resolve_context(session_id: str) -> tuple[float, int, bool] | None:
+_CODEX_MODEL_WINDOWS: dict[str, int] = {
+    "gpt-4.1": 1_000_000,
+    "gpt-4.1-mini": 1_000_000,
+    "gpt-4.1-nano": 1_000_000,
+    "o4-mini": 200_000,
+    "o3": 200_000,
+    "codex-mini-latest": 200_000,
+}
+_CODEX_DEFAULT_WINDOW = 200_000
+
+
+def _estimate_codex_context_pct(transcript_path: str, model: str) -> float | None:
+    """Estimate context usage from Codex transcript file size.
+
+    Uses file_size / 4 as a rough token estimate. Approximate but sufficient
+    for threshold-based warnings. Returns None if file is unavailable.
+    """
+    if not transcript_path:
+        return None
+    try:
+        file_size = os.path.getsize(transcript_path)
+    except OSError:
+        return None
+    estimated_tokens = file_size // 4
+    window = _CODEX_MODEL_WINDOWS.get(model, _CODEX_DEFAULT_WINDOW)
+    pct = estimated_tokens / window * 100
+    if pct > 100:
+        return None
+    return pct
+
+
+def _resolve_context(
+    session_id: str,
+    transcript_path: str | None = None,
+    model: str | None = None,
+) -> tuple[float, int, bool] | None:
     """Resolve context percentage and tokens. Returns (pct, tokens, shown_80) or None.
 
-    Post-v12: per-skill orchestrator-window scaling is removed. The statusline
-    cache pct is in the live session's frame; we use it directly.
+    Tries Claude Code's statusline cache first, then falls back to Codex
+    transcript file estimation when transcript_path and model are provided.
     """
     statusline_pct = _read_statusline_context_pct()
-    if statusline_pct is None:
-        return None
+    if statusline_pct is not None:
+        main_window = _get_max_context_tokens()
+        shown_80_warn = get_session_flags(session_id)
+        return statusline_pct, int(statusline_pct / 100 * main_window), shown_80_warn
 
-    main_window = _get_max_context_tokens()
-    shown_80_warn = get_session_flags(session_id)
-    return statusline_pct, int(statusline_pct / 100 * main_window), shown_80_warn
+    if transcript_path and model:
+        codex_pct = _estimate_codex_context_pct(transcript_path, model)
+        if codex_pct is not None:
+            window = _CODEX_MODEL_WINDOWS.get(model, _CODEX_DEFAULT_WINDOW)
+            tokens = int(codex_pct / 100 * window)
+            shown_80_warn = get_session_flags(session_id)
+            return codex_pct, tokens, shown_80_warn
+
+    return None
 
 
 def run_context_monitor() -> int:
     """Run context monitoring. Always returns 0. Uses additionalContext JSON for all messages."""
+    hook_data: dict = {}
+    try:
+        hook_data = json.load(sys.stdin)
+    except (json.JSONDecodeError, OSError):
+        pass
+
     session_id = _get_pilot_session_id()
 
     if _is_throttled(session_id):
         return 0
 
-    resolved = _resolve_context(session_id)
+    transcript_path = hook_data.get("transcript_path")
+    model = hook_data.get("model", "")
+
+    resolved = _resolve_context(session_id, transcript_path=transcript_path, model=model)
     if resolved is None:
         return 0
 

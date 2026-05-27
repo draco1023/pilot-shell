@@ -206,15 +206,12 @@ def install_uv() -> bool:
 
 
 def install_python_tools() -> bool:
-    """Install Python development tools."""
+    """Install or upgrade Python development tools."""
     tools = ["ruff", "basedpyright"]
-    installed_any = False
     for tool in tools:
-        if not command_exists(tool):
-            if not _run_bash_with_retry(f"uv tool install {tool}"):
-                return False
-            installed_any = True
-    _record_outcome(_OUTCOME_INSTALLED if installed_any else _OUTCOME_UNCHANGED)
+        if not _run_bash_with_retry(f"uv tool install --upgrade {tool}"):
+            return False
+    _record_outcome(_OUTCOME_UPDATED)
     return True
 
 
@@ -372,22 +369,53 @@ def install_semble() -> bool:
 def install_rtk() -> bool:
     """Install or update RTK (Rust Token Killer) CLI.
 
-    Brew handles install/upgrade in prerequisites (no sudo needed).
-    Curl fallback only runs when brew didn't install it.
+    Always runs the installer to ensure the manifest-pinned version is current.
     Symlinks to ~/.pilot/bin/ so RTK is on PATH during hook execution.
+    After install, runs ``rtk init`` for both Claude Code and Codex (if installed).
     """
-    if command_exists("rtk"):
-        _symlink_to_pilot_bin("rtk")
-        _record_outcome(_OUTCOME_UNCHANGED)
-        return True
+    was_present = command_exists("rtk")
     if not _curl_pipe_from_manifest(
         "rtk-installer",
         CurlPipeRunOptions(interpreter="sh", timeout=120),
     ):
+        if was_present:
+            _symlink_to_pilot_bin("rtk")
+            _record_outcome(_OUTCOME_UNCHANGED)
+            return True
         return False
     _symlink_to_pilot_bin("rtk")
-    _record_outcome(_OUTCOME_INSTALLED)
+    _init_rtk()
+    _record_outcome(_OUTCOME_UPDATED if was_present else _OUTCOME_INSTALLED)
     return True
+
+
+def _init_rtk() -> None:
+    """Initialize RTK for all detected agents (Claude Code, Codex)."""
+    rtk = shutil.which("rtk")
+    if not rtk:
+        return
+    try:
+        subprocess.run(
+            [rtk, "telemetry", "disable"],
+            capture_output=True, timeout=10, stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    try:
+        subprocess.run(
+            [rtk, "init", "-g", "--auto-patch", "--skip-env"],
+            capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    if shutil.which("codex"):
+        try:
+            subprocess.run(
+                [rtk, "init", "-g", "--codex"],
+                capture_output=True, timeout=30, stdin=subprocess.DEVNULL,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
 
 
 def _symlink_to_pilot_bin(binary_name: str) -> None:
@@ -583,31 +611,27 @@ def codegraph_needs_work(project_dir: Path) -> bool:
 
 
 def install_typescript_lsp() -> bool:
-    """Install TypeScript language server and compiler globally (manifest-pinned)."""
-    if command_exists("vtsls"):
-        _record_outcome(_OUTCOME_UNCHANGED)
-        return True
-    if _run_bash_with_retry(
+    """Install or upgrade TypeScript language server and compiler globally (manifest-pinned)."""
+    was_present = command_exists("vtsls")
+    if not _run_bash_with_retry(
         _npm_install_cmd(manifest_get("vtsls"), manifest_get("typescript")),
         timeout=GLOBAL_NPM_INSTALL_TIMEOUT,
     ):
-        _record_outcome(_OUTCOME_INSTALLED)
-        return True
-    return False
+        return False
+    _record_outcome(_OUTCOME_UPDATED if was_present else _OUTCOME_INSTALLED)
+    return True
 
 
 def install_prettier() -> bool:
-    """Install prettier code formatter globally (manifest-pinned)."""
-    if command_exists("prettier"):
-        _record_outcome(_OUTCOME_UNCHANGED)
-        return True
-    if _run_bash_with_retry(
+    """Install or upgrade prettier code formatter globally (manifest-pinned)."""
+    was_present = command_exists("prettier")
+    if not _run_bash_with_retry(
         _npm_install_cmd(manifest_get("prettier")),
         timeout=GLOBAL_NPM_INSTALL_TIMEOUT,
     ):
-        _record_outcome(_OUTCOME_INSTALLED)
-        return True
-    return False
+        return False
+    _record_outcome(_OUTCOME_UPDATED if was_present else _OUTCOME_INSTALLED)
+    return True
 
 
 def _install_go_via_apt() -> bool:
@@ -642,19 +666,11 @@ def _is_golangci_lint_installed() -> bool:
 
 
 def install_golangci_lint() -> bool:
-    """Install golangci-lint for comprehensive Go code linting."""
-    if _is_golangci_lint_installed():
-        _record_outcome(_OUTCOME_UNCHANGED)
-        return True
+    """Install or upgrade golangci-lint for comprehensive Go code linting."""
+    was_present = _is_golangci_lint_installed()
     if not command_exists("go"):
         if not _install_go_via_apt():
             return False
-    # Resolve GOPATH concretely — _curl_pipe_with_hash_verify shell-quotes every
-    # script_args entry, so passing the literal `$(go env GOPATH)/bin` would
-    # arrive at the install script as a single-quoted string instead of the
-    # actual Go bin directory. The install would then drop binaries somewhere
-    # nonsensical and the symlink fallback in _is_golangci_lint_installed would
-    # never see them.
     try:
         gopath_result = subprocess.run(["go", "env", "GOPATH"], capture_output=True, text=True, timeout=10)
     except (subprocess.SubprocessError, OSError):
@@ -666,11 +682,11 @@ def install_golangci_lint() -> bool:
         "golangci-lint-installer",
         CurlPipeRunOptions(
             interpreter="sh",
-            script_args=["-s", "--", "-b", f"{gopath}/bin"],
+            script_args=["-b", f"{gopath}/bin"],
             timeout=120,
         ),
     ):
-        _record_outcome(_OUTCOME_INSTALLED)
+        _record_outcome(_OUTCOME_UPDATED if was_present else _OUTCOME_INSTALLED)
         return True
     return False
 
@@ -1065,40 +1081,29 @@ def install_chrome_devtools_plugin() -> bool:
 
 
 def install_pbt_tools() -> bool:
-    """Install property-based testing packages: hypothesis (Python) and fast-check (TypeScript).
+    """Install or upgrade property-based testing packages: hypothesis (Python) and fast-check (TypeScript).
 
     Go PBT is handled by the built-in 'go test -fuzz' (Go 1.18+) — no install needed.
     Both packages are best-effort: failure does not block installation.
     """
     ok = True
-    installed_any = False
+    any_changed = False
 
-    if not command_exists("hypothesis"):
-        if _run_bash_with_retry("uv tool install hypothesis", timeout=UV_TOOL_INSTALL_TIMEOUT):
-            installed_any = True
-        else:
-            ok = False
+    if not _run_bash_with_retry("uv tool install --upgrade hypothesis", timeout=UV_TOOL_INSTALL_TIMEOUT):
+        ok = False
+    else:
+        any_changed = True
 
-    if not command_exists("fast-check"):
-        fast_check_cmd = _npm_install_cmd(manifest_get("fast-check"))
-        try:
-            result = subprocess.run(
-                ["npm", "list", "-g", "fast-check", "--depth=0"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-            )
-            need_install = result.returncode != 0 or "fast-check" not in result.stdout
-        except Exception:
-            need_install = True
-        if need_install:
-            if _run_bash_with_retry(fast_check_cmd, timeout=GLOBAL_NPM_INSTALL_TIMEOUT):
-                installed_any = True
-            else:
-                ok = False
+    if not _run_bash_with_retry(
+        _npm_install_cmd(manifest_get("fast-check")),
+        timeout=GLOBAL_NPM_INSTALL_TIMEOUT,
+    ):
+        ok = False
+    else:
+        any_changed = True
 
     if ok:
-        _record_outcome(_OUTCOME_INSTALLED if installed_any else _OUTCOME_UNCHANGED)
+        _record_outcome(_OUTCOME_UPDATED if any_changed else _OUTCOME_UNCHANGED)
     return ok
 
 

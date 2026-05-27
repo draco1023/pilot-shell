@@ -243,6 +243,7 @@ benchmarks/**
 skill-creator
 spec-annotate
 changes-header
+review-output.json
 apm.yml
 .playwright-*/
 .apm
@@ -255,6 +256,7 @@ apm.yml
 demo
 skills-lock.json
 sx.json
+context-hud
 .env**
 playwright/
 .claude.backup.*

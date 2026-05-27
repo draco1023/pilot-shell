@@ -10,12 +10,12 @@ Extensions are the things that customize Claude Code behavior. Pilot Shell provi
 
 ## Extension Categories
 
-| Category     | What it does                                                | Location                         |
-| ------------ | ----------------------------------------------------------- | -------------------------------- |
-| **Skills**   | Reusable workflows that load automatically when relevant    | `.claude/skills/<name>/SKILL.md` |
-| **Rules**    | Instructions Claude follows every session (or by file type) | `.claude/rules/<name>.md`        |
-| **Commands** | Slash commands invoked on demand via `/<name>`              | `.claude/commands/<name>.md`     |
-| **Agents**   | Sub-agent definitions for specialized tasks                 | `.claude/agents/<name>.md`       |
+| Category     | What it does                                                | Claude Code Location             | Codex Location                   |
+| ------------ | ----------------------------------------------------------- | -------------------------------- | -------------------------------- |
+| **Skills**   | Reusable workflows that load automatically when relevant    | `.claude/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` |
+| **Rules**    | Instructions the agent follows every session                | `.claude/rules/<name>.md`        | `~/.codex/rules/<name>.rules`    |
+| **Commands** | Slash commands invoked on demand via `/<name>`              | `.claude/commands/<name>.md`     | *(not available in Codex)*       |
+| **Agents**   | Sub-agent definitions for specialized tasks                 | `.claude/agents/<name>.md`       | `.codex/agents/<name>.toml`      |
 
 ## Scope: Global vs Project
 
@@ -33,6 +33,45 @@ Installed Claude Code plugins are automatically discovered and their extensions 
 - Filter by the **Plugin** scope button to see only plugin extensions
 
 Install plugins via the Claude Code CLI: `claude plugin install <name>`
+
+## Codex Extensions
+
+The Extensions page supports both Claude Code and Codex. Codex stores extensions in different locations and formats than Claude Code.
+
+### Agent Toggle
+
+Use the **All / Claude Code / Codex** toggle at the top of the Extensions page to filter by agent. When "All" is selected, each extension card shows a small agent badge (CC or Codex) to distinguish its source.
+
+### Format Differences
+
+| Format | Used by | File extension | Notes |
+| --- | --- | --- | --- |
+| **Markdown** | Claude Code rules/commands/agents, both agents' skills | `.md` | Full markdown editor with preview |
+| **Starlark** | Codex rules | `.rules` | Sandbox permission rules in Python-like syntax |
+| **TOML** | Codex agents | `.toml` | Custom agent definitions with model/instruction config |
+
+Starlark and TOML extensions are displayed as raw source in the detail modal. All formats support editing through the text editor.
+
+### Codex Skills
+
+Codex skills use the same `SKILL.md` format as Claude Code skills but live in a different directory (`~/.agents/skills/` instead of `~/.claude/skills/`). They are fully editable and support all operations (rename, delete, move between scopes).
+
+### Codex System Skills
+
+Built-in Codex skills (skill-creator, plugin-creator, etc.) are discovered from `~/.codex/skills/.system/` and displayed as read-only items with a "Codex System" badge, similar to Claude Code plugin extensions.
+
+### Codex Rules
+
+Codex rules use Starlark (`.rules`) format for sandbox permission control. They are global-only — there is no project-level equivalent. See [Codex Rules](https://developers.openai.com/codex/rules) for the format specification.
+
+### Codex Agents (Subagents)
+
+Custom Codex agents are TOML files defining specialized subagents with model selection, instructions, and optional MCP server configuration. They exist at both global (`~/.codex/agents/`) and project (`.codex/agents/`) scope. See [Codex Subagents](https://developers.openai.com/codex/subagents) for the format specification.
+
+### Limitations
+
+- **Remote push/pull** currently targets Claude Code extensions only
+- **Commands** are a Claude Code-only concept; they do not exist in Codex
 
 ## Team Sharing (Team and Enterprise)
 
@@ -99,11 +138,13 @@ The [Pilot Console](/docs/features/console) provides a full management interface
 ### Viewing Extensions
 
 - All extensions from all scopes appear in a unified two-column grid
+- **Agent toggle** (All / Claude Code / Codex) filters extensions by agent — when "All" is active, cards show agent badges
 - Each category has a distinct color: Skills (violet), Rules (amber), Commands (green), Agents (blue)
 - Filter by **scope** (All / Global / Project / Plugin / Remote) and **category** (Skills, Rules, Commands, Agents)
 - Search by name in the top-right search bar
 - Extensions that exist in both scopes show an "also in global/project" indicator so you can spot duplicates at a glance
-- Plugin extensions display the plugin name as a badge
+- Plugin extensions display the plugin name as a badge; Codex system skills show "Codex System"
+- Non-markdown formats show format badges (`.rules` for Starlark, `.toml` for TOML)
 - Click any extension to see its full content
 
 ### Editing Extensions
@@ -166,6 +207,29 @@ Create extensions manually or via Claude Code commands:
 ├── rules/                       ← plugin rules
 ├── commands/                    ← plugin commands
 └── agents/                      ← plugin agents
+```
+
+### Codex Global Extensions
+
+```
+~/.agents/
+└── skills/          ← Codex user skills (SKILL.md format)
+
+~/.codex/
+├── rules/           ← Codex rules (.rules Starlark format)
+├── agents/          ← Codex custom agents (.toml format)
+└── skills/
+    └── .system/     ← Codex system skills (read-only)
+```
+
+### Codex Project Extensions
+
+```
+<project>/
+├── .agents/
+│   └── skills/      ← Codex project skills
+└── .codex/
+    └── agents/      ← Codex project agents
 ```
 
 ## See Also

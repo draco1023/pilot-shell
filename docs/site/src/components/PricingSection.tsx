@@ -47,7 +47,7 @@ const PricingSection = () => {
             Always up-to-date. Always optimized.
           </h2>
           <p className="text-muted-foreground text-lg sm:text-xl max-w-2xl mx-auto">
-            Your shortcut to state-of-the-art Claude Code development.
+            Your shortcut to state-of-the-art AI-assisted development.
           </p>
         </div>
 
@@ -68,7 +68,7 @@ const PricingSection = () => {
             </div>
             <h3 className="text-sm font-semibold text-foreground">Ready to use</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Install once, get a complete Claude Code setup instantly. No hours of configuration, research, or trial and error.
+              Install once, get a complete AI coding setup instantly. No hours of configuration, research, or trial and error.
             </p>
           </div>
           <div className="text-center space-y-2">
@@ -105,6 +105,12 @@ const PricingSection = () => {
             </div>
 
             <div className="mb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm text-muted-foreground line-through">$14/mo</span>
+                <span className="text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                  Save 36%
+                </span>
+              </div>
               <span className="text-4xl font-bold text-foreground">$9</span>
               <span className="text-muted-foreground">/month</span>
             </div>
@@ -179,6 +185,12 @@ const PricingSection = () => {
             </div>
 
             <div className="mb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm text-muted-foreground line-through">$35/seat/mo</span>
+                <span className="text-xs font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                  Save 46%
+                </span>
+              </div>
               <span className="text-4xl font-bold text-foreground">$19</span>
               <span className="text-muted-foreground">/seat/month</span>
             </div>

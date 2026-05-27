@@ -14,7 +14,7 @@ Works with any existing project — no scaffolding required.
 curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.sh | bash
 ```
 
-Run from any directory — it installs globally to `~/.pilot/` and `~/.claude/`. After installation, `cd` into any project and run `pilot` or `ccp` to start.
+Run from any directory — it installs globally to `~/.pilot/` and `~/.claude/` (and `~/.codex/` if Codex CLI is detected). After installation, just run `claude` or `codex` directly — Pilot Shell loads automatically.
 
 ## What the Installer Does
 
@@ -36,14 +36,14 @@ For the best browser automation and E2E testing experience, install the [Claude 
 
 Pilot uses a 4-tier browser tool selection: **Chrome extension** (preferred) → **[Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)** (enterprise fallback via CDP — Lighthouse, performance tracing, device emulation) → **playwright-cli** (thorough E2E with persistent sessions, tracing, network mocking) → **agent-browser** (lightweight, fast startup). The three CLI/MCP tools are installed automatically. The Chrome extension must be installed manually via the browser extension store. In environments where the Chrome extension can't be installed (enterprise restrictions, dev containers), Pilot falls back to Chrome DevTools MCP first, then to CLI tools.
 
-## Codex Plugin (Included)
+## Codex Companion Plugin (Included)
 
-The [Codex plugin](https://github.com/openai/codex-plugin-cc) is installed automatically by the Pilot installer. To activate it:
+The [Codex companion plugin](https://github.com/openai/codex-plugin-cc) is installed automatically by the Pilot installer. It provides adversarial code review powered by OpenAI — an independent second opinion during Claude Code's `/spec` planning and verification.
 
 1. Run `/codex:setup` in any Pilot session to authenticate with your OpenAI account
 2. Enable the Codex reviewers in Console Settings → Reviewers
 
-When enabled, Codex provides an independent adversarial review during `/spec` planning and verification phases. A [ChatGPT Plus](https://chatgpt.com/#pricing) subscription ($20/mo) covers the Codex API usage needed for code reviews.
+This is separate from [Codex CLI support](/docs/getting-started/codex-cli) — the companion plugin runs from within Claude Code, while Codex CLI is a standalone agent.
 
 ## Dev Container
 

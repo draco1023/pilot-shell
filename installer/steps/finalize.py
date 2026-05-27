@@ -103,18 +103,19 @@ class FinalizeStep(BaseStep):
 
         getting_started.extend(
             [
-                ("Launch Pilot Shell", "Run 'pilot' in your project folder instead of 'claude'"),
-                ("Pilot Shell Console", f"Open the UI in your browser at: http://{get_console_display()}"),
-                ("Share Specs", "Share specs from the Console, teammate feedback flows back"),
-                ("Pilot Bot", "Run 'pilot bot' for 24/7 automation with scheduled tasks"),
-                ("Claude Chrome", "Install and enable for better browser automation"),
+                ("Start a session", "Run 'claude' or 'codex' directly — Pilot Shell loads automatically"),
+                ("Check for updates", "Run 'pilot update' to update Pilot Shell, Claude Code and Codex"),
+                ("Pilot Shell Console", f"Open the local web UI at http://{get_console_display()}"),
             ]
         )
 
         workflows: list[tuple[str, str]] = [
-            ("/spec", "Plan, implement & verify features end-to-end with TDD"),
-            ("/fix", "Investigate, RED test, fix, audit — bugfix workflow"),
-            ("/prd", "Brainstorm ideas into PRDs with optional research before /spec"),
+            ("/spec · $spec", "Plan, implement & verify features end-to-end with TDD"),
+            ("/fix · $fix", "Investigate, RED test, fix, audit — bugfix workflow"),
+            ("/prd · $prd", "Brainstorm ideas into PRDs with optional research before /spec"),
+        ]
+
+        claude_only: list[tuple[str, str]] = [
             ("/setup-rules", "Create modular and concise rules for your project codebase"),
             ("/create-skill", "Create well-structured reusable skills for your workflows"),
             ("/benchmark", "Quantitative before/after evals for rules, skills, and workflows"),
@@ -123,7 +124,8 @@ class FinalizeStep(BaseStep):
         ui.next_steps(
             [
                 ("Getting Started", getting_started),
-                ("Workflows", workflows),
+                ("Workflows (Claude Code + Codex)", workflows),
+                ("Claude Code Only", claude_only),
             ]
         )
 

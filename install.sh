@@ -435,7 +435,7 @@ run_installer() {
 	fi
 
 	uv run --python 3.12 --no-project \
-		--with rich==14.2.0 --with certifi==2026.4.22 --with PyYAML==6.0.3 \
+		--with rich==15.0.0 --with certifi==2026.5.20 --with PyYAML==6.0.3 \
 		python -m installer install $system_arg $version_arg $local_arg "$@"
 }
 

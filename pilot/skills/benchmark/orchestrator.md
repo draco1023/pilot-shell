@@ -1,12 +1,12 @@
 ---
 name: benchmark
-description: Benchmark and evaluate Claude Code rules, skills, and workflows with quantitative before/after comparisons. Use whenever the user wants to measure the impact of rules/skills/workflows, compare versions, or validate that a rule pack improves outputs.
+description: Benchmark and evaluate rules, skills, and workflows with quantitative before/after comparisons. Use whenever the user wants to measure the impact of rules/skills/workflows, compare versions, or validate that a rule pack improves outputs.
 user-invocable: true
 ---
 
 # /benchmark — Benchmark & Evaluation Framework
 
-Measure the real impact of Claude Code rules and skills by running with/without comparisons, grading outputs against assertions, and presenting the findings inline.
+Measure the real impact of rules and skills by running with/without comparisons, grading outputs against assertions, and presenting the findings inline.
 
 ## When to use this skill
 

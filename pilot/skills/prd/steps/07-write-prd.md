@@ -15,6 +15,12 @@ mkdir -p docs/prd
 
 Created: YYYY-MM-DD
 Author: [user email from pilot status]
+<!-- CC-ONLY -->
+Agent: [Claude Code if $CLAUDE_CODE_ENTRYPOINT is set, otherwise Codex]
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+Agent: Codex
+CODEX-END -->
 Category: [one of: Feature, Infrastructure, UX, API, Performance, Security, Documentation, Integration]
 Status: Draft
 Research: [Quick | Standard | Deep | None]
@@ -69,6 +75,13 @@ Research: [Quick | Standard | Deep | None]
 ```
 
 If the command returns a non-empty email, include `Author: <email>` in the header. If empty or fails, omit the Author line.
+
+<!-- CC-ONLY -->
+**Agent detection:** If `$CLAUDE_CODE_ENTRYPOINT` is set, write `Agent: Claude Code`. Otherwise, write `Agent: Codex`.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Agent:** Write `Agent: Codex`.
+CODEX-END -->
 
 **Category selection:** During the conversation (Step 4 or Step 6), use `AskUserQuestion` to select the PRD category from the fixed set: Feature, Infrastructure, UX, API, Performance, Security, Documentation, Integration.
 

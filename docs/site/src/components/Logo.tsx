@@ -16,7 +16,7 @@ const Logo = ({ variant = "hero" }: LogoProps) => {
         src="/logo_sm.webp"
         srcSet="/logo_sm.webp 980w, /logo.webp 1228w"
         sizes="(min-width: 1024px) 600px, (min-width: 768px) 500px, (min-width: 640px) 400px, (min-width: 475px) 280px, 240px"
-        alt="Pilot Shell — how real engineers run Claude Code"
+        alt="Pilot Shell — how real engineers run Claude Code and Codex"
         className={`${sizeClass} h-auto animate-glow logo-fade-mask`}
         loading={isEager ? "eager" : "lazy"}
         decoding={isEager ? "sync" : "async"}

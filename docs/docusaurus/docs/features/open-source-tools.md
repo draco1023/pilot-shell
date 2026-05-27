@@ -6,7 +6,7 @@ description: Open-source tools installed alongside Pilot Shell — Semble, ripgr
 
 # Open Source Tools
 
-Pilot Shell installs the following open-source tools during setup. Each tool is installed only if not already present on your system. All tools retain their original licenses and are not modified or redistributed by Pilot Shell. **Claude Code** (proprietary, by Anthropic) is also installed automatically if missing — it is the foundation that Pilot Shell extends.
+Pilot Shell installs the following open-source tools during setup. Each tool is installed only if not already present on your system. All tools retain their original licenses and are not modified or redistributed by Pilot Shell. **Claude Code** (proprietary, by Anthropic) is also installed automatically if missing. **Codex CLI** (OpenAI) is auto-detected and configured if present.
 
 ## System Prerequisites
 

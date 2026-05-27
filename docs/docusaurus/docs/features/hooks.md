@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: Hooks Pipeline
-description: 15 quality hooks across 7 Claude Code lifecycle events — auto-format, lint, type-check, and TDD enforcement that fire automatically at every stage of work.
+description: 19 quality hooks across 7 Claude Code lifecycle events — auto-format, lint, type-check, and TDD enforcement that fire automatically at every stage of work.
 ---
 
 # Hooks Pipeline
 
-15 hook registrations across 7 lifecycle events — quality enforcement on autopilot.
+19 hook registrations across 7 lifecycle events — quality enforcement on autopilot.
 
 Blocking hooks reject actions or force fixes. Non-blocking hooks warn without interrupting. Async hooks run in the background. Two additional command-scoped Stop hooks run during `/spec` phases.
 
@@ -16,6 +16,8 @@ Blocking hooks reject actions or force fixes. Non-blocking hooks warn without in
 
 | Hook | Type | Description |
 |------|------|-------------|
+| `license_check.py` | Blocking | Verifies Pilot Shell license via `pilot verify --json`; blocks session if invalid |
+| `codegraph_init.py` | Async | Initializes and syncs CodeGraph for the current project (init, embeddings, index/sync, WASM SQLite auto-repair) |
 | Worker context bootstrap | Blocking | Restores session context through the worker service on startup, `/clear`, and after compaction |
 | `post_compact_restore.py` | Blocking | Re-injects the active plan and task state after compaction |
 | `session_clear.py` | Blocking | Resets Pilot session state on `/clear` |
@@ -28,6 +30,7 @@ Blocking hooks reject actions or force fixes. Non-blocking hooks warn without in
 | Hook | Type | Description |
 |------|------|-------------|
 | `spec_mode_guard.py` | Blocking | Blocks `/spec` in plan mode, warns when not in bypassPermissions mode |
+| `spec_handoff_resume.py` | Blocking | Detects model switch handoff and resumes `/spec` implementation |
 | Session initializer | Async | Registers the session with the Console worker daemon |
 
 ## PreToolUse

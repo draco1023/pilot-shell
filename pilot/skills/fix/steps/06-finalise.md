@@ -17,18 +17,22 @@ The conventional `fix:` prefix triggers a patch release if/when this branch ship
 
 Read `PILOT_PLAN_APPROVAL_ENABLED`. If `"false"` → skip 6.2 entirely, mark done.
 
+<!-- CC-ONLY -->
 Read `PILOT_CODEX_CHANGES_REVIEW_ENABLED` to decide whether to offer the optional Codex review:
 
 ```bash
 echo "CODEX_REVIEW=$PILOT_CODEX_CHANGES_REVIEW_ENABLED"
 ```
+<!-- /CC-ONLY -->
 
 When approval is enabled, summarise + ask. Build the `options` array in this order:
 
 1. `"Approve — done"`
 2. `"Request changes"`
 3. `"Explain the fix in more detail"` — always present.
+<!-- CC-ONLY -->
 4. `"Run Codex adversarial review for added confidence"` — **only when** `PILOT_CODEX_CHANGES_REVIEW_ENABLED == "true"`. Omit the entry entirely otherwise; do NOT show a disabled / greyed option.
+<!-- /CC-ONLY -->
 
 ```
 AskUserQuestion(
@@ -42,6 +46,7 @@ Handle:
 - **Approve** → done.
 - **Request changes** → user describes problem in free-form. Treat as a new investigation: re-run Step 1.3 (re-trace) → Step 2 onward.
 - **Explain the fix in more detail** → write a fuller walkthrough (causal chain from trigger → root cause; why the boundary you fixed at is correct; line-by-line meaning of the diff; alternatives considered and rejected). Do NOT modify code. Then re-ask 6.2 — drop the "Explain" option from the new list to avoid loops; keep the Codex option if still applicable.
+<!-- CC-ONLY -->
 - **Run Codex adversarial review** (only present when enabled) → run sub-step 6.2.a, then re-ask 6.2 with this option removed (one Codex run per `/fix` invocation).
 
 #### 6.2.a Optional Codex Adversarial Review
@@ -149,6 +154,7 @@ except Exception: print('parse_error')" 2>/dev/null)
    ```
 
 7. **Launch failure handling.** If `$JOB_ID` is empty after the completion notification, or `storedJob.status` is `"failed"`: surface the captured stderr to the user, do **not** silently mark the bugfix done. Return to 6.2 with the Codex option removed.
+<!-- /CC-ONLY -->
 
 ### 6.3 Console notification (always, when binary present)
 

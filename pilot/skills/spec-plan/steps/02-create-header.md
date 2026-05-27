@@ -59,6 +59,13 @@
 
    If the command returns a non-empty email, include `Author: <email>` in the header. If empty or fails, omit the Author line entirely.
 
+<!-- CC-ONLY -->
+4b. **Detect agent:** If `$CLAUDE_CODE_ENTRYPOINT` is set, agent is `Claude Code`. Otherwise, agent is `Codex`.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+4b. **Set agent:** Use `Codex`.
+CODEX-END -->
+
 5. **Write initial header:**
 
    ```markdown
@@ -66,6 +73,12 @@
 
    Created: [Date]
    Author: [email if available]
+   <!-- CC-ONLY -->
+   Agent: [Claude Code|Codex]
+   <!-- /CC-ONLY -->
+   <!-- CODEX-START
+   Agent: Codex
+   CODEX-END -->
    Status: PENDING
    Approved: No
    Iterations: 0

@@ -26,12 +26,24 @@ def is_managed_elsewhere(config_file: Path) -> bool:
 
 
 def get_alias_lines(shell_type: str) -> str:
-    """Get pilot and ccp alias lines for the given shell type."""
+    """Get PATH, pilot alias, and claude/codex session wrapper functions."""
     if shell_type == "fish":
         path_line = f'set -gx PATH "{PILOT_BIN_DIR}" "{BUN_BIN_PATH}" $PATH'
+        session_funcs = (
+            'function claude; set -l _sid %self-(random); '
+            'set -lx PILOT_SESSION_ID $_sid; '
+            'set -lx CLAUDE_CODE_TASK_LIST_ID "pilot-$_sid"; '
+            'command claude $argv; end\n'
+            'function codex; set -lx PILOT_SESSION_ID %self-(random); '
+            'command codex $argv; end'
+        )
     else:
         path_line = f'export PATH="{PILOT_BIN_DIR}:{BUN_BIN_PATH}:$PATH"'
-    return f'{CLAUDE_ALIAS_MARKER}\n{path_line}\nalias pilot="{PILOT_BIN}"\nalias ccp="{PILOT_BIN}"'
+        session_funcs = (
+            'claude() { local _sid="$$-$RANDOM"; PILOT_SESSION_ID=$_sid CLAUDE_CODE_TASK_LIST_ID="pilot-$_sid" command claude "$@"; }\n'
+            'codex() { PILOT_SESSION_ID="$$-$RANDOM" command codex "$@"; }'
+        )
+    return f'{CLAUDE_ALIAS_MARKER}\n{path_line}\nalias pilot="{PILOT_BIN}"\nalias ccp="{PILOT_BIN}"\n{session_funcs}'
 
 
 def alias_exists_in_file(config_file: Path) -> bool:
@@ -64,9 +76,11 @@ def remove_old_alias(config_file: Path) -> bool:
         or "alias pilot" in content
         or "ccp()" in content
         or "claude()" in content
+        or "codex()" in content
         or "pilot()" in content
         or "function ccp" in content
         or "function claude" in content
+        or "function codex" in content
         or "function pilot" in content
         or 'PATH="$HOME/.bun/bin' in content
         or 'PATH="$HOME/.pilot/bin' in content
@@ -109,6 +123,9 @@ def remove_old_alias(config_file: Path) -> bool:
         elif stripped.startswith("claude()") or stripped == "claude () {":
             inside_function = True
             brace_count = 0
+        elif stripped.startswith("codex()") or stripped == "codex () {":
+            inside_function = True
+            brace_count = 0
         elif stripped.startswith("pilot()") or stripped == "pilot () {":
             inside_function = True
             brace_count = 0
@@ -121,6 +138,7 @@ def remove_old_alias(config_file: Path) -> bool:
         if (
             stripped.startswith("function ccp")
             or stripped.startswith("function claude")
+            or stripped.startswith("function codex")
             or stripped.startswith("function pilot")
         ):
             inside_function = True

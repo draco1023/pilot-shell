@@ -176,6 +176,22 @@ class TestAliasLines:
         assert CLAUDE_ALIAS_MARKER in result
 
 
+    def test_bash_session_id_is_unique_per_invocation(self):
+        """Bash/zsh session wrapper must NOT use bare $$ as session ID."""
+        result = get_alias_lines("bash")
+        assert "PILOT_SESSION_ID=$$" not in result.replace("PILOT_SESSION_ID=$_sid", ""), (
+            "Bare $$ reuses the parent shell PID across invocations"
+        )
+
+    def test_fish_session_id_is_unique_per_invocation(self):
+        """Fish session wrapper must NOT use bare %self as session ID."""
+        result = get_alias_lines("fish")
+        lines_without_sid_ref = result.replace("$_sid", "")
+        assert "PILOT_SESSION_ID %self;" not in lines_without_sid_ref, (
+            "Bare %self reuses the fish PID across invocations"
+        )
+
+
 class TestAliasDetection:
     """Test alias detection in config files."""
 

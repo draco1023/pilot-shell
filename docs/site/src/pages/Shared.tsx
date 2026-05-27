@@ -57,6 +57,26 @@ type PageState =
   | { status: "error"; message: string }
   | { status: "ready"; payload: SharePayload };
 
+interface SpecMetadata {
+  agent?: string;
+  specType?: string;
+  status?: string;
+  author?: string;
+}
+
+function parseSpecMetadata(content: string): SpecMetadata {
+  const meta: SpecMetadata = {};
+  const agentMatch = content.match(/^Agent:\s*(.+)/m);
+  if (agentMatch) meta.agent = agentMatch[1].trim();
+  const typeMatch = content.match(/^Type:\s*(\w+)/m);
+  if (typeMatch) meta.specType = typeMatch[1].trim();
+  const statusMatch = content.match(/^Status:\s*(\w+)/m);
+  if (statusMatch) meta.status = statusMatch[1].trim();
+  const authorMatch = content.match(/^Author:\s*(.+)/m);
+  if (authorMatch) meta.author = authorMatch[1].trim();
+  return meta;
+}
+
 /** Computed once at module load — stable constant, never changes after page load */
 const BROWSER_ERROR = checkBrowserSupport();
 
@@ -239,6 +259,7 @@ export default function Shared() {
     : "";
 
   const contentLabel = payload?.contentType === "requirement" ? "Requirement" : "Specification";
+  const specMeta = useMemo(() => payload ? parseSpecMetadata(payload.specContent) : {}, [payload]);
 
   return (
     <>
@@ -366,10 +387,19 @@ export default function Shared() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold">Shared {contentLabel}</span>
                           <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Annotatable</Badge>
+                          {specMeta.specType && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">{specMeta.specType}</Badge>
+                          )}
+                          {specMeta.agent && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">{specMeta.agent}</Badge>
+                          )}
+                          {specMeta.status && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1.5">{specMeta.status}</Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                          {payload.author && (
-                            <span>by {payload.author}</span>
+                          {(specMeta.author || payload.author) && (
+                            <span>by {specMeta.author || payload.author}</span>
                           )}
                           {sharedAt && <span>{sharedAt}</span>}
                           <span className="flex items-center gap-1 text-green-600 dark:text-green-400">

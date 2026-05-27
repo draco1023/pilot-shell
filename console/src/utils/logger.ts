@@ -49,7 +49,8 @@ export type Component =
   | "CLEANUP"
   | "DATA"
   | "VECTOR_DB_GUARD"
-  | "FEEDBACK_POLL";
+  | "FEEDBACK_POLL"
+  | "CODEX_PARSER";
 
 interface LogContext {
   sessionId?: number;

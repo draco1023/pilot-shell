@@ -39,6 +39,12 @@
 2b. **Create worktree early (if `--worktree=yes`):** Same pattern as spec-plan Step 2.
 3. **Generate filename:** `docs/plans/YYYY-MM-DD-<bug-slug>.md`
 4. **Fetch author email** (best-effort): same as spec-plan Step 2 step 4. If non-empty, include `Author: <email>` in header. If empty/fails, omit.
+<!-- CC-ONLY -->
+4b. **Detect agent:** If `$CLAUDE_CODE_ENTRYPOINT` is set, agent is `Claude Code`. Otherwise, agent is `Codex`.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+4b. **Set agent:** Use `Codex`.
+CODEX-END -->
 5. **Write header:**
 
    ```markdown
@@ -46,6 +52,12 @@
 
    Created: [Date]
    Author: [email if available]
+   <!-- CC-ONLY -->
+   Agent: [Claude Code|Codex]
+   <!-- /CC-ONLY -->
+   <!-- CODEX-START
+   Agent: Codex
+   CODEX-END -->
    Status: PENDING
    Approved: No
    Iterations: 0

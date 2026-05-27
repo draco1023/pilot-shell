@@ -8,6 +8,7 @@
 
 ## Task Complexity Triage
 
+<!-- CC-ONLY -->
 Default is quick mode (direct execution).
 
 | Complexity | Action |
@@ -35,9 +36,39 @@ When the user sends a new request mid-work: STOP, TaskCreate for the new request
 - **Cross-session isolation:** Tasks are scoped per session via `CLAUDE_CODE_TASK_LIST_ID`. Memory is shared across sessions; references in memory that aren't in your `TaskList` belong elsewhere. **`TaskList` is the sole source of truth.**
 - **Continuations** (same `CLAUDE_CODE_TASK_LIST_ID`): `TaskList` first, don't recreate, resume first uncompleted.
 - **Deferring a request:** TaskCreate immediately — never just say "noted."
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+Default is quick mode (direct execution).
+
+| Complexity | Action |
+|------------|--------|
+| Trivial (single file, no active tasks) | Execute directly |
+| Any request while tasks exist | Update the current `update_plan` plan first |
+| Moderate (2–5 files) | Create or refresh an `update_plan` plan, then execute |
+| High (architectural, 10+ files) | **Ask** if user wants `$spec` or quick mode |
+
+## Task Management
+
+**Use `update_plan` in quick mode for non-trivial work.** Plans are working memory — without them, requests get lost during compaction. Skip only for a truly trivial one-shot.
+
+### Quick Mode: Plan-First
+
+For every non-trivial user request, create or update a concise `update_plan` plan before substantive code/research work: in_progress → work → completed.
+
+### On-Demand Interrupts
+
+When the user sends a new request mid-work: update the plan as your first tool call, then assess priority. If it is not tracked in the plan, it can be forgotten.
+
+### Other Rules
+
+- **Session start / continuation:** inspect current state, then create or refresh the `update_plan` plan for the active request.
+- **Cross-session isolation:** use the current conversation's plan as the source of truth; memory may contain other sessions and must not be treated as this session's task list.
+- **Deferring a request:** add it to the plan immediately — never just say "noted."
+CODEX-END -->
 
 ## Tool Usage
 
+<!-- CC-ONLY -->
 ### ⛔ Tool Parameter Names — Use EXACT names
 
 | Tool | Correct | Wrong |
@@ -47,7 +78,14 @@ When the user sends a new request mid-work: STOP, TaskCreate for the new request
 | `Write` | `content` | `contents`, `text`, `body` |
 | `Edit` | `old_string`, `new_string` | `old`, `new`, `search`, `replace` |
 | `Grep` | `pattern` | `query`, `search`, `regex` |
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+### Tool Parameters — Use the Current Tool Schema
 
+Codex tools may not share Claude Code's parameter names. Use the schema shown for the currently available tool. For repository edits, prefer `apply_patch`; for shell commands, use the available command-execution tool's schema exactly.
+CODEX-END -->
+
+<!-- CC-ONLY -->
 ### ⛔ Agent Tool — Explore / Plan / Research blocked
 
 Hook blocks `subagent_type` of `Explore`/`Plan`, AND any description starting with "Research" or containing "Explore" (regardless of subagent_type — `general-purpose` with `"Explore codebase"` description is the same violation).
@@ -55,10 +93,21 @@ Hook blocks `subagent_type` of `Explore`/`Plan`, AND any description starting wi
 Use direct tools instead — see `development-practices.md` and `mcp-servers.md` for CodeGraph + Semble workflow.
 
 **Whitelisted (pass through silently):** `web-search-agent`,`changes-review`, `spec-review`.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+### Agent Tools
+
+Do not assume Claude Code's agent tool or subagent names exist in Codex. Use only agent tools that are actually listed in the current Codex tool schema; otherwise work directly with CodeGraph, Semble, shell commands, and file reads.
+CODEX-END -->
 
 ### ⛔ Web Search/Fetch
 
+<!-- CC-ONLY -->
 Built-in `WebFetch` / `WebSearch` are hook-blocked. Use ToolSearch:
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+Use the current Codex tool schema for web access. If Pilot web MCP tools are lazy-loaded, use ToolSearch:
+CODEX-END -->
 
 | Need | Query |
 |------|-------|
@@ -66,11 +115,18 @@ Built-in `WebFetch` / `WebSearch` are hook-blocked. Use ToolSearch:
 | GitHub README | `+web-search fetch` |
 | Fetch page | `+web-fetch fetch` |
 
+<!-- CC-ONLY -->
 ### Sub-agents
 
 - Launch with `run_in_background=true`
 - ⛔ NEVER use `TaskOutput` — agents write JSON files; poll with bash file-existence loop, then Read once.
 - Sub-agents do NOT inherit rules; they can read `~/.claude/rules/*.md` and `.claude/rules/*.md`.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+### Sub-agents
+
+Do not assume Claude Code's sub-agent tools exist in Codex. Use only agent tools that are actually listed in the current Codex tool schema; otherwise work directly with CodeGraph, Semble, shell commands, and file reads.
+CODEX-END -->
 
 ### Background Bash
 
@@ -88,7 +144,12 @@ Use `run_in_background=true` only for long-running processes (dev servers, watch
 
 ### ⛔ Dispatcher Integrity
 
+<!-- CC-ONLY -->
 `/spec` dispatcher is a thin router. **Only allowed tools:** `Bash` (env-var reads), `Read` (plan files), `AskUserQuestion`, `Skill()`. Any Grep/Glob/Task/Edit/Write is a workflow violation.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+`$spec` dispatcher is a thin router. **Only allowed actions:** read env vars, read existing plan files, ask plain-text numbered questions when needed, then continue immediately with the selected phase skill instructions. Do not run exploration, search, edits, or implementation work inside the dispatcher.
+CODEX-END -->
 
 ### Phase Dispatch
 
@@ -153,7 +214,12 @@ Auto-fix: inline + tests if applicable, do NOT expand scope. Outside `/spec`, re
 
 ### Stop Guard
 
+<!-- CC-ONLY -->
 When the stop guard blocks a stop during `/spec`, do NOT acknowledge it, output resume instructions, or say goodbye. Your **very next action** must be a tool call (TaskList, Read plan, code change). No text-only responses after a stop block. Same applies after user interruptions ("Continue", new mid-task messages) — re-read the plan, resume.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+When the stop guard blocks a stop during `$spec`, do NOT acknowledge it, output resume instructions, or say goodbye. Your **very next action** must be a tool call: re-read the plan, refresh `update_plan`, or make the next code/test change. No text-only responses after a stop block. Same applies after user interruptions ("Continue", new mid-task messages) — re-read the plan, resume.
+CODEX-END -->
 
 ### Worktree
 

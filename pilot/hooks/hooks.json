@@ -3,6 +3,28 @@
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/license_check.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/codegraph_init.py\"",
+            "async": true,
+            "timeout": 120
+          },
+          {
+            "type": "command",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/codex_skill_sync.py\"",
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      },
+      {
         "matcher": "startup|clear|compact",
         "hooks": [
           {
@@ -23,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/session_clear.py\"",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/session_clear.py\"",
             "timeout": 5
           }
         ]
@@ -33,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/post_compact_restore.py\"",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/post_compact_restore.py\"",
             "timeout": 5
           }
         ]
@@ -44,7 +66,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/spec_mode_guard.py\""
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/spec_mode_guard.py\""
           }
         ]
       },
@@ -52,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/spec_handoff_resume.py\""
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/spec_handoff_resume.py\""
           }
         ]
       },
@@ -73,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/tool_redirect.py\""
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/tool_redirect.py\""
           }
         ]
       },
@@ -82,7 +104,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/tool_token_saver.py\""
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/tool_token_saver.py\""
           }
         ]
       }
@@ -93,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/file_checker.py\""
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/file_checker.py\""
           }
         ]
       },
@@ -102,7 +124,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/context_monitor.py\""
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/context_monitor.py\""
           }
         ]
       },
@@ -123,7 +145,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/spec_stop_guard.py\""
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/spec_stop_guard.py\""
           },
           {
             "type": "command",
@@ -139,7 +161,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/session_end.py\"",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/session_end.py\"",
             "timeout": 15
           }
         ]
@@ -150,7 +172,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.claude/hooks/pre_compact.py\"",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/pre_compact.py\"",
             "timeout": 15
           }
         ]

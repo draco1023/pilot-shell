@@ -7,11 +7,13 @@
 **⛔ ALWAYS run this first** — regardless of whether changes-review is enabled. Spec-review findings are stale artifacts from the planning phase that were already addressed during implementation.
 
 ```bash
-rm -f ~/.pilot/sessions/$PILOT_SESSION_ID/findings-spec-review-*.json
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
+test -d "$SESS_DIR" && find "$SESS_DIR" -maxdepth 1 -name 'findings-spec-review-*.json' -delete
 ```
 
 ---
 
+<!-- CC-ONLY -->
 **⛔ If `PILOT_CHANGES_REVIEW_ENABLED` is `"false"` (from Step 0),** skip the rest of this step and proceed to Step 2. (Automated checks in Step 2 still run; only the agent-based review is skipped.)
 
 **When enabled:** Launch the reviewer IMMEDIATELY — it works in the background while you run automated checks.
@@ -36,7 +38,8 @@ Output path: `~/.pilot/sessions/<session-id>/findings-changes-review-<plan-slug>
 **⛔ Delete stale changes-review findings before launching** (previous run may have left a file):
 
 ```bash
-rm -f ~/.pilot/sessions/$PILOT_SESSION_ID/findings-changes-review-*.json
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
+test -d "$SESS_DIR" && find "$SESS_DIR" -maxdepth 1 -name 'findings-changes-review-*.json' -delete
 ```
 
 ```
@@ -134,3 +137,9 @@ pathlib.Path(os.environ["PROMPT_FILE"]).write_text(text)
    If `$JOB_ID` is empty after this check, skip Step 3 polling and proceed with Claude reviewer only.
 
 **Do NOT wait** — proceed to Step 2 immediately. You'll be notified when the polling bash (Step 3) completes.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Skip automated code review agents.** They are not available in Codex CLI. Proceed directly to Step 2 (Automated Checks).
+
+Self-review the implementation diff before proceeding: `git diff --stat` to verify scope matches the plan, and spot-check changed files for obvious issues (security, missing error handling, dead code).
+CODEX-END -->

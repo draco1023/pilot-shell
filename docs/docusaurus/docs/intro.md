@@ -24,8 +24,8 @@ No more re-explaining decisions, chasing skipped tests, or reviewing 15-file cha
 # Install
 curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.sh | bash
 
-# Start
-cd your-project && pilot
+# Start (Pilot loads automatically)
+cd your-project && claude
 
 # Generate project rules
 > /setup-rules
@@ -44,8 +44,8 @@ cd your-project && pilot
 
 Pilot enhances Claude Code with:
 
-- **18 hook registrations** across 7 lifecycle events for automatic quality and security enforcement (includes a built-in credential scanner)
-- **6 MCP servers** for library docs, memory, web search, code search, page fetching, and code intelligence
+- **19 hook registrations** across 7 lifecycle events for automatic quality and security enforcement (includes a built-in credential scanner)
+- **7 MCP servers** for library docs, memory, web search, code search, page fetching, and code intelligence
 - **3 language servers** (Python, TypeScript, Go) for real-time diagnostics
 - **Intelligent model routing** — Opus for planning, Sonnet for implementation
 - **Persistent memory** via local SQLite — decisions and context survive across sessions

@@ -14,7 +14,7 @@
 
    Returns entry points, related symbols, and key code locations.
 
-2. **Semble pattern search** (skip if `codegraph_context` already returned ≥3 highly relevant hits AND the task has no clear noun targets — keep total budget under ~2s):
+2. **Semble intent search** (always — catches cross-cutting code, mutation sites, and cross-language connections that CodeGraph's structural graph misses):
 
    ```
    mcp__semble__search(query="<2-3 key nouns from task>")

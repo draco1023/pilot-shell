@@ -10,6 +10,7 @@ const sidebars: SidebarsConfig = {
       items: [
         "getting-started/prerequisites",
         "getting-started/installation",
+        "getting-started/codex-cli",
       ],
     },
     {

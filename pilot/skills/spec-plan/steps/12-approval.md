@@ -38,6 +38,7 @@ Pull `$PILOT_PLAN_APPROVAL_ENABLED` and `$PILOT_MODEL_SWITCH_ENABLED` from Step 
 
 ### 12.3 Handoff decision
 
+<!-- CC-ONLY -->
 **If `PILOT_MODEL_SWITCH_ENABLED` is `"true"` (default):** write the handoff sentinel and print the short model-switch message, then end the turn. Do NOT invoke `Skill('spec-implement')` — the user will resume after optionally switching models, and the `spec_handoff_resume` hook will route the next prompt straight to implementation.
 
 ```bash
@@ -67,5 +68,9 @@ Tip: disable "Model Switching" in Settings → Automation to skip this step.
 After printing the message, end the turn — the stop guard's handoff sentinel will allow the stop, and the next user prompt will trigger `Skill('spec-implement', '<plan-path>')` automatically (Option A). For Option B the user runs `/clear` then `/spec <plan-path>`, which the dispatcher routes directly to implementation.
 
 **If `PILOT_MODEL_SWITCH_ENABLED` is `"false"`:** do NOT write a sentinel. Invoke `Skill(skill='spec-implement', args='<plan-path>')` directly to continue plan → implement on the current model in the same session.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+Codex has no callable phase-dispatch tool and model switching is not available in Codex CLI. Continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`.
+CODEX-END -->
 
 ARGUMENTS: $ARGUMENTS

@@ -6,6 +6,12 @@
 # [Bug Description] Fix Plan
 
 Created: [Date]
+<!-- CC-ONLY -->
+Agent: [Claude Code|Codex — from Step 1 detection]
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+Agent: Codex
+CODEX-END -->
 Status: PENDING
 Approved: No
 Iterations: 0

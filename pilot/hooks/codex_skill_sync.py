@@ -1,0 +1,326 @@
+"""SessionStart hook: rebuild Codex SKILL.md files from CC skill sources.
+
+Runs on every session start for both Claude Code (async) and Codex (sync).
+If the license is invalid or deactivated, deletes built SKILL.md files so
+unlicensed users cannot invoke the skills.
+
+The build logic is self-contained (no launcher/installer imports) to respect
+the package boundary. It replicates the same transformations as
+``installer.steps.codex_files.build_codex_skill_md``:
+  1. Concatenate orchestrator + steps from manifest.json
+  2. Strip ``<!-- CC-ONLY -->`` blocks
+  3. Unwrap ``<!-- CODEX-START ... CODEX-END -->`` blocks
+  4. Transform ``Skill()`` calls to Codex skill-instruction handoffs
+  5. Replace ``/skill-name`` with ``$skill-name``
+  6. Replace ``AskUserQuestion`` with Codex alternative note
+  7. Prepend Codex YAML frontmatter
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+from pathlib import Path
+
+_SUPPORTED_SKILLS = frozenset(
+    {
+        "spec",
+        "spec-plan",
+        "spec-bugfix-plan",
+        "spec-implement",
+        "spec-verify",
+        "spec-bugfix-verify",
+        "fix",
+        "prd",
+        "benchmark",
+        "setup-rules",
+        "create-skill",
+    }
+)
+
+_PILOT_SKILL_NAMES = frozenset(
+    {
+        "spec",
+        "spec-plan",
+        "spec-bugfix-plan",
+        "spec-implement",
+        "spec-verify",
+        "spec-bugfix-verify",
+        "setup-rules",
+        "create-skill",
+        "prd",
+        "benchmark",
+        "fix",
+        "bot-boot",
+        "bot-channel-task",
+        "bot-defaults",
+        "bot-heartbeat",
+        "bot-jobs",
+    }
+)
+
+_SKILL_INVOCATION_RE = re.compile(
+    r"(?<![a-zA-Z0-9_/])/"
+    r"(" + "|".join(re.escape(s) for s in sorted(_PILOT_SKILL_NAMES, key=len, reverse=True)) + r")"
+    r"(?![a-zA-Z0-9_/])"
+)
+
+_CC_ONLY_RE = re.compile(r"<!-- CC-ONLY -->\n?.*?<!-- /CC-ONLY -->\n?", re.DOTALL)
+_CODEX_BLOCK_RE = re.compile(r"<!-- CODEX-START\n(.*?)CODEX-END -->(?:\n?)", re.DOTALL)
+_SKILL_CALL_RE = re.compile(
+    r"Skill\(\s*(?:skill\s*=\s*)?['\"]([^'\"]+)['\"]\s*"
+    r"(?:,\s*args\s*=\s*['\"]([^'\"]*)['\"])?\s*\)"
+)
+
+_ASK_USER_QUESTION_BLOCK_RE = re.compile(
+    r"^(?P<indent>[ \t]*)AskUserQuestion\(\n(?P<body>.*?)(?=^[ \t]*\)\s*$)^[ \t]*\)\s*$",
+    re.DOTALL | re.MULTILINE,
+)
+
+
+def _check_license() -> bool:
+    pilot_bin = Path.home() / ".pilot" / "bin" / "pilot"
+    if not pilot_bin.is_file():
+        return True
+    try:
+        result = subprocess.run(
+            [str(pilot_bin), "verify", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        data = json.loads(result.stdout)
+        return data.get("valid", False)
+    except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, ValueError):
+        return True
+
+
+def _canonicalize(text: str) -> str:
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    lines = [line.rstrip() for line in text.split("\n")]
+    text = "\n".join(lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def _build_skill(skill_dir: Path) -> str | None:
+    manifest_path = skill_dir / "manifest.json"
+    if not manifest_path.is_file():
+        return None
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    orch_path = skill_dir / manifest.get("orchestrator", "orchestrator.md")
+    if not orch_path.is_file():
+        return None
+
+    parts = [orch_path.read_text(encoding="utf-8")]
+    for step in manifest.get("steps", []):
+        step_path = skill_dir / step["file"]
+        if not step_path.is_file():
+            return None
+        parts.append(step_path.read_text(encoding="utf-8"))
+
+    return _canonicalize("\n\n".join(parts))
+
+
+def _extract_metadata(content: str) -> tuple[str, str]:
+    if content.startswith("---\n"):
+        end = content.find("\n---", 3)
+        if end != -1:
+            fm = content[4:end]
+            name = desc = ""
+            for line in fm.split("\n"):
+                if line.startswith("name:"):
+                    name = line[5:].strip()
+                elif line.startswith("description:"):
+                    desc = line[12:].strip()
+            return name or "unknown", desc
+    return "unknown", ""
+
+
+def _adapt(content: str) -> str:
+    adapted = _CC_ONLY_RE.sub("", content)
+    adapted = _CODEX_BLOCK_RE.sub(lambda m: m.group(1), adapted)
+
+    def _replace_skill_call(m: re.Match[str]) -> str:
+        skill = m.group(1)
+        args = m.group(2) or ""
+        if args:
+            return f"the `${skill}` skill instructions with arguments: `{args}`"
+        return f"the `${skill}` skill instructions"
+
+    adapted = _SKILL_CALL_RE.sub(_replace_skill_call, adapted)
+    adapted = _ASK_USER_QUESTION_BLOCK_RE.sub(
+        lambda m: (
+            f"{m.group('indent')}Present numbered options in plain text using this prompt and option list:\n"
+            f"{m.group('body').rstrip()}"
+        ),
+        adapted,
+    )
+    adapted = _SKILL_INVOCATION_RE.sub(lambda m: "$" + m.group(1), adapted)
+    adapted = adapted.replace(
+        "AskUserQuestion(multiSelect: true)",
+        "plain-text numbered options with multi-select",
+    )
+    for old, new in (
+        ("`AskUserQuestion` tool", "`plain-text numbered options` format"),
+        ("AskUserQuestion tool", "plain-text numbered options format"),
+        ("`AskUserQuestion` calls", "`plain-text numbered options` prompts"),
+        ("AskUserQuestion calls", "plain-text numbered options prompts"),
+        ("`AskUserQuestion` call", "`plain-text numbered options` prompt"),
+        ("AskUserQuestion call", "plain-text numbered options prompt"),
+    ):
+        adapted = adapted.replace(old, new)
+    adapted = adapted.replace(
+        "AskUserQuestion",
+        "plain-text numbered options",
+    )
+    return adapted
+
+
+def _build_codex_skill(skill_dir: Path) -> str | None:
+    content = _build_skill(skill_dir)
+    if content is None:
+        return None
+    name, desc = _extract_metadata(content)
+    desc = _adapt(desc)
+    adapted = _adapt(content)
+    if adapted.startswith("---\n"):
+        end = adapted.find("\n---", 3)
+        if end != -1:
+            adapted = adapted[end + 4 :].lstrip("\n")
+    return f"---\nname: {name}\ndescription: {desc}\n---\n\n{adapted}"
+
+
+def _remove_codex_skills() -> int:
+    agents_dir = Path.home() / ".agents" / "skills"
+    removed = 0
+    for skill_name in _SUPPORTED_SKILLS:
+        skill_md = agents_dir / skill_name / "SKILL.md"
+        if skill_md.is_file():
+            skill_md.unlink()
+            removed += 1
+    return removed
+
+
+def _sync_codex_skills() -> tuple[int, int]:
+    cc_skills = Path.home() / ".claude" / "skills"
+    agents_dir = Path.home() / ".agents" / "skills"
+    built = 0
+    failed = 0
+
+    if not cc_skills.is_dir():
+        return 0, 0
+
+    for skill_name in _SUPPORTED_SKILLS:
+        skill_dir = cc_skills / skill_name
+        if not skill_dir.is_dir() or not (skill_dir / "manifest.json").is_file():
+            continue
+        try:
+            codex_content = _build_codex_skill(skill_dir)
+            if codex_content is None:
+                failed += 1
+                continue
+            dest = agents_dir / skill_name
+            dest.mkdir(parents=True, exist_ok=True)
+            tmp = dest / "SKILL.md.tmp"
+            tmp.write_text(codex_content, encoding="utf-8")
+            os.replace(str(tmp), str(dest / "SKILL.md"))
+            built += 1
+        except Exception:
+            failed += 1
+
+    return built, failed
+
+
+_ENV_MARKER_START = "# --- pilot-shell managed env vars ---"
+_ENV_MARKER_END = "# --- end pilot-shell managed env vars ---"
+
+
+def _sync_codex_env_vars() -> int:
+    """Read Console settings and inject PILOT_* env vars into Codex config."""
+    config_path = Path.home() / ".pilot" / "config.json"
+    codex_config = Path.home() / ".codex" / "config.toml"
+
+    if not codex_config.is_file():
+        return 0
+
+    try:
+        raw = json.loads(config_path.read_text(encoding="utf-8")) if config_path.is_file() else {}
+    except (OSError, json.JSONDecodeError):
+        raw = {}
+
+    spec = raw.get("specWorkflow", {})
+    reviewers = raw.get("reviewerAgents", {})
+    codex_rev = raw.get("codexReviewers", {})
+
+    env_vars = {
+        "PILOT_BRANCH_ISOLATION_ENABLED": "true" if spec.get("branchIsolation", True) else "false",
+        "PILOT_PLAN_QUESTIONS_ENABLED": "true" if spec.get("askQuestionsDuringPlanning", True) else "false",
+        "PILOT_PLAN_APPROVAL_ENABLED": "true" if spec.get("planApproval", True) else "false",
+        "PILOT_MODEL_SWITCH_ENABLED": "true" if spec.get("modelSwitch", True) else "false",
+        "PILOT_SPEC_REVIEW_ENABLED": "true" if reviewers.get("specReview", True) else "false",
+        "PILOT_CHANGES_REVIEW_ENABLED": "true" if reviewers.get("changesReview", True) else "false",
+        "PILOT_CODEX_SPEC_REVIEW_ENABLED": "true" if codex_rev.get("specReview", False) else "false",
+        "PILOT_CODEX_CHANGES_REVIEW_ENABLED": "true" if codex_rev.get("changesReview", False) else "false",
+    }
+
+    env_lines = [f'{k} = "{v}"' for k, v in sorted(env_vars.items())]
+    managed_block = (
+        f"\n{_ENV_MARKER_START}\n"
+        "[shell_environment_policy.set]\n"
+        + "\n".join(env_lines)
+        + f"\n{_ENV_MARKER_END}\n"
+    )
+
+    try:
+        existing = codex_config.read_text(encoding="utf-8")
+    except OSError:
+        return 0
+
+    if _ENV_MARKER_START in existing and _ENV_MARKER_END in existing:
+        start = existing.index(_ENV_MARKER_START)
+        end = existing.index(_ENV_MARKER_END) + len(_ENV_MARKER_END)
+        new_content = existing[:start].rstrip("\n") + managed_block + existing[end:].lstrip("\n")
+    else:
+        new_content = existing.rstrip("\n") + managed_block
+
+    if new_content != existing:
+        tmp = codex_config.with_suffix(".toml.tmp")
+        tmp.write_text(new_content, encoding="utf-8")
+        os.replace(str(tmp), str(codex_config))
+        return len(env_vars)
+    return 0
+
+
+def main() -> None:
+    codex_bin = Path.home() / ".codex" / "bin" / "codex"
+    codex_on_path = any((Path(p) / "codex").is_file() for p in os.environ.get("PATH", "").split(os.pathsep) if p)
+    if not codex_bin.is_file() and not codex_on_path:
+        print(json.dumps({"continue": True}))
+        return
+
+    valid = _check_license()
+
+    if valid:
+        built, failed = _sync_codex_skills()
+        env_synced = _sync_codex_env_vars()
+        msg = f"Codex skills synced: {built} built"
+        if failed:
+            msg += f", {failed} failed"
+        if env_synced:
+            msg += f", {env_synced} env vars"
+        print(json.dumps({"continue": True, "systemMessage": msg}))
+    else:
+        removed = _remove_codex_skills()
+        msg = f"License invalid — removed {removed} Codex skill(s)" if removed else ""
+        print(json.dumps({"continue": True, "systemMessage": msg} if msg else {"continue": True}))
+
+
+if __name__ == "__main__":
+    main()

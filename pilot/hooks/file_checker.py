@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -63,6 +64,23 @@ def _tdd_check(tool_name: str, tool_input: dict, file_path: str) -> str:
     return ""
 
 
+def _extract_file_paths(tool_input: dict) -> list[str]:
+    """Extract file paths from tool_input for both CC and Codex formats.
+
+    Claude Code Edit/Write: tool_input.file_path
+    Codex apply_patch: tool_input.command with '*** Update File:' / '*** Add File:' markers
+    """
+    file_path = tool_input.get("file_path", "")
+    if file_path:
+        return [file_path]
+
+    command = tool_input.get("command", "")
+    if command:
+        return re.findall(r"\*\*\* (?:Update|Add) File:\s*(.+)", command)
+
+    return []
+
+
 def main() -> int:
     """Single entry point — file quality + TDD in one pass."""
     try:
@@ -72,31 +90,34 @@ def main() -> int:
 
     tool_name = hook_data.get("tool_name", "")
     tool_input = hook_data.get("tool_input", {})
-    file_path_str = tool_input.get("file_path", "")
-    if not file_path_str:
-        return 0
 
-    target_file = Path(file_path_str)
-    if not target_file.exists():
+    file_paths = _extract_file_paths(tool_input)
+    if not file_paths:
         return 0
 
     git_root = find_git_root()
     if git_root:
         os.chdir(git_root)
 
-    file_reason = ""
-    if target_file.suffix == ".py":
-        _, file_reason = check_python(target_file)
-    elif target_file.suffix in TS_EXTENSIONS:
-        _, file_reason = check_typescript(target_file)
-    elif target_file.suffix == ".go":
-        _, file_reason = check_go(target_file)
+    all_reasons: list[str] = []
+    for file_path_str in file_paths:
+        target_file = Path(file_path_str)
+        if not target_file.exists():
+            continue
 
-    tdd_reason = _tdd_check(tool_name, tool_input, file_path_str)
+        file_reason = ""
+        if target_file.suffix == ".py":
+            _, file_reason = check_python(target_file)
+        elif target_file.suffix in TS_EXTENSIONS:
+            _, file_reason = check_typescript(target_file)
+        elif target_file.suffix == ".go":
+            _, file_reason = check_go(target_file)
 
-    reasons = [r for r in (file_reason, tdd_reason) if r]
-    if reasons:
-        print(post_tool_use_context("\n".join(reasons)))
+        tdd_reason = _tdd_check(tool_name, tool_input, file_path_str)
+        all_reasons.extend(r for r in (file_reason, tdd_reason) if r)
+
+    if all_reasons:
+        print(post_tool_use_context("\n".join(all_reasons)))
 
     return 0
 

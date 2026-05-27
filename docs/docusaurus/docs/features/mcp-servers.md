@@ -121,20 +121,24 @@ codegraph_context(task="refactor authentication flow")
 | `codegraph_context` | Task-driven context retrieval — entry points, related symbols, and code |
 | `codegraph_node` | Get details and source code for a specific symbol |
 
-**When to use Semble vs CodeGraph:**
+**When to use CodeGraph vs Semble:**
+
+CodeGraph and Semble are **co-primary** — each excels at different query types.
 
 | Question | Best tool |
 |----------|-----------|
-| "How does authentication work?" | **Semble** — natural-language hybrid search (BM25 + Model2Vec) |
 | "Who calls this function?" | **CodeGraph** — `codegraph_callers` with exact caller list |
 | "What's the blast radius of my changes?" | **CodeGraph** — `codegraph_impact` shows transitive affected symbols |
 | "Find functions matching a name" | **CodeGraph** — `codegraph_search` with kind filter |
 | "Get context for a task" | **CodeGraph** — `codegraph_context` returns entry points and related code |
-| "Find code similar to a specific location" | **Semble** — `find_related` discovers parallel implementations and call sites |
 | "Get details and source for one symbol" | **CodeGraph** — `codegraph_node` (Semble does not extract by symbol name) |
+| "How does authentication work?" | **Semble** — natural-language hybrid search (BM25 + Model2Vec) |
+| "Where does settings.json get modified?" | **Semble** — finds mutation sites across languages, not just type definitions |
+| "How does the notification system work?" | **Semble** — surfaces the full feature stack (UI hooks, routes, business logic) |
+| "Find code similar to a specific location" | **Semble** — `find_related` discovers parallel implementations |
 
 :::info Tool selection
-Rules specify the preferred order — Semble first for intent-based codebase questions, CodeGraph for structural queries (call tracing, impact analysis), context7 for library API lookups, grep-mcp for production code examples, web-search for current information. The `tool_redirect.py` hook blocks the built-in WebSearch/WebFetch and the Explore agent, redirecting to these alternatives.
+Rules specify the combined workflow — `codegraph_context` first for structural orientation, then Semble for intent-based discovery (concept search, cross-language connections, mutation sites). context7 for library API lookups, grep-mcp for production code examples, web-search for current information. The `tool_redirect.py` hook blocks the built-in WebSearch/WebFetch and the Explore agent, redirecting to these alternatives.
 
 curl/wget and WebFetch are blocked entirely — use the dedicated web-fetch and web-search MCP servers instead.
 :::

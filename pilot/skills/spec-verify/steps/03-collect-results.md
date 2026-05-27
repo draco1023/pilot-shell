@@ -1,7 +1,10 @@
 ## Step 3: Collect Review Results & Re-Verify
 
+<!-- CC-ONLY -->
 **⛔ If `PILOT_CHANGES_REVIEW_ENABLED` is `"false"` (from Step 0 — Step 1 was skipped),** skip this step entirely and proceed to Step 4 (Phase B). There are no findings to collect.
+<!-- /CC-ONLY -->
 
+<!-- CC-ONLY -->
 **When enabled — mandatory. Never skip** — even if you're confident, context is high, or tests pass.
 
 **⛔ NEVER use `TaskOutput`** to retrieve results — it dumps the full agent transcript into context, wasting thousands of tokens.
@@ -100,3 +103,7 @@ rm -f "/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md"
 **Skip** when fixes were localized (terminology, error handling, test updates, minor bugs). Run tests + lint to confirm, proceed to Phase B.
 
 **Re-verify** when fixes required new functionality, changed APIs, or significant new code paths: re-launch changes-review, fix new findings. Max 2 iterations before adding remaining issues to plan.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Skip** — no reviewer agents were launched (not available in Codex CLI). Proceed directly to Step 4 (Phase B — Build).
+CODEX-END -->

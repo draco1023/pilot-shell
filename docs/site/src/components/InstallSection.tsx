@@ -123,7 +123,7 @@ const InstallSection = () => {
             loop
             playsInline
             preload="none"
-            aria-label="Pilot Shell in action — spec-driven development with Claude Code"
+            aria-label="Pilot Shell in action — spec-driven development with Claude Code and Codex"
           >
             <source src="/demo.webm" type="video/webm" />
             <source src="/demo.mp4" type="video/mp4" />

@@ -8,7 +8,7 @@ description: Command reference for the pilot binary at ~/.pilot/bin/pilot — se
 
 Command reference for the `pilot` binary at `~/.pilot/bin/pilot`.
 
-Run `pilot` or `ccp` with no arguments to start Claude with Pilot enhancements. Most commands support `--json` for structured output. Multiple sessions can run in parallel on the same project.
+Pilot Shell loads automatically when you run `claude` or `codex` directly — no need to launch through `pilot`. The `pilot` CLI is for admin tasks: license management, updates, worktrees, and diagnostics. Most commands support `--json` for structured output.
 
 ## Session & context
 

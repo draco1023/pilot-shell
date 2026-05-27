@@ -36,9 +36,9 @@ codegraph_impact(symbol="processOrder", depth=2)
 
 ---
 
-### Semble — Hybrid Code Search
+### Semble — Hybrid Code Search (CO-PRIMARY)
 
-**Intent-based code search.** Hybrid BM25 + Model2Vec embeddings, code-aware chunking, ~1.5ms queries, ~263ms cold-index per repo (cached after). Auto-reindex on file change for local paths. Two tools:
+**Intent-based code search — co-primary with CodeGraph.** Excels at concept/feature discovery, cross-language search, finding mutation sites, and debugging queries where CodeGraph's name-based matching falls short. Hybrid BM25 + Model2Vec embeddings, code-aware chunking, ~1.5ms queries, ~263ms cold-index per repo (cached after). Auto-reindex on file change for local paths. Two tools:
 
 | Tool | Purpose |
 |------|---------|
@@ -113,9 +113,13 @@ Useful options: `waitUntil` (`load`/`domcontentloaded`/`networkidle`), `returnHt
 | Need | Tool |
 |------|------|
 | Task orientation (FIRST on every task) | `codegraph_context` |
-| Symbol search / call tracing / impact | CodeGraph (`search` / `callers` / `callees` / `impact`) |
-| Deep code understanding (multiple files) | `codegraph_explore` |
-| Codebase search by intent | Semble (`mcp__semble__search` or `semble search`) |
+| Symbol search by name | `codegraph_search` |
+| Call tracing / impact analysis | CodeGraph (`callers` / `callees` / `impact`) |
+| Deep code understanding (known symbols) | `codegraph_explore` |
+| Concept / feature area search | Semble (`mcp__semble__search` or `semble search`) |
+| "Where is X modified / configured" | Semble — finds mutation sites across languages |
+| Cross-cutting concern discovery | Semble — surfaces full feature stack (UI, routes, logic) |
+| Find similar code / parallel patterns | Semble `find_related` (unique — no CodeGraph equivalent) |
 | Past work / decisions | mem-search 3-step |
 | Library/framework docs | context7 |
 | Web search | web-search |

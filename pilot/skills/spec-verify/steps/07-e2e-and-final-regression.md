@@ -26,7 +26,12 @@ When the harness blocks `curl`, substitute `mcp__plugin_pilot_web-fetch__fetch_u
 
 If Tier 1 fails AND the plan's Runtime Environment names a start command (`bun run dev`, `npm run dev`, `vercel dev --listen <port>`, `flask run`, `uvicorn ...`):
 
+<!-- CC-ONLY -->
 1. Start in background: `Bash(command="cd <cwd> && <start command>", run_in_background=true, timeout=180000)`
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+1. Start the server as a background process from `<cwd>` using `<start command>`. Use the available background process tool or dev-server workflow, and keep the session id isolated when required by `browser-automation.md`.
+CODEX-END -->
 2. Poll the health endpoint for up to 60s (200/301/302 = ready)
 3. On success: `TARGET_URL=http://localhost:<port>`, proceed
 4. On failure: capture the last 30 lines of the background process's output file and INCLUDE THEM in the verification report — do NOT silently drop to Tier 3
@@ -75,9 +80,11 @@ Failing to record this gap in the verification report is a `must_fix` finding by
 
 **4-tier priority** (see `browser-automation.md`): Chrome → Chrome DevTools MCP → playwright-cli → agent-browser.
 
+<!-- CC-ONLY -->
 1. **Claude Code Chrome:** Check if `mcp__claude-in-chrome__*` tools are in your available/deferred tools list. If available, use Chrome for all E2E steps below. Load tools via `ToolSearch(query="select:mcp__claude-in-chrome__<tool>")`. No session isolation needed.
 
 2. **Chrome DevTools MCP:** If Chrome extension is unavailable, check for `mcp__plugin_chrome-devtools-mcp_chrome-devtools__*` tools. Load via `ToolSearch(query="chrome-devtools-mcp", max_results=30)`. Use `take_snapshot()` for a11y tree with uids, `click(uid=...)` / `fill(uid=...)` for interaction.
+<!-- /CC-ONLY -->
 
 3. **playwright-cli (CLI fallback):** If neither Chrome tool is available, use playwright-cli for thorough E2E.
 ```bash
@@ -110,27 +117,33 @@ Then skip to 7e (close browser + write results).
 
 ### 7c: Execute Structured Scenarios
 
-Create one task per scenario for tracking. Execute Critical first, then High, then Medium.
+Execute Critical first, then High, then Medium.
+
+<!-- CC-ONLY -->
+Create one task per scenario for tracking:
 
 ```
 TaskCreate(subject="TS-NNN: [name]", description="[priority] | [preconditions]")
 ```
+<!-- /CC-ONLY -->
 
 **For each scenario:**
 
+<!-- CC-ONLY -->
 1. `TaskUpdate → in_progress`
-2. Execute each step using the resolved browser tool:
+<!-- /CC-ONLY -->
+1. Execute each step using the resolved browser tool:
    - **Chrome:** `navigate` to open pages, `read_page` after interactions, `computer`/`form_input` per the step's action
    - **Chrome DevTools MCP:** `navigate_page` to open pages, `take_snapshot` after interactions, `click(uid=...)`/`fill(uid=...)` per the step's action
    - **playwright-cli:** `open`/`goto` to navigate, `snapshot` after interactions, `click`/`fill`/`press` per the step's action (refs are bare: `e1` not `@e1`)
    - **agent-browser:** `open`/`goto` to navigate, `snapshot -i` after interactions, `click`/`fill`/`press` per the step's action (refs use `@`: `@e1`)
    - Verify the expected result by reading the page output
-3. **PASS:** All steps match expected results → `TaskUpdate → completed`, note `TS-NNN: PASS`
+3. **PASS:** All steps match expected results → note `TS-NNN: PASS`
 4. **FAIL:** Step result doesn't match expected:
    - Analyze root cause, implement minimal fix, re-run relevant tests (stay in Phase B — no code changes that need re-review)
    - Re-execute the scenario (counts as fix attempt 1)
    - If still failing: implement second fix, re-execute (fix attempt 2)
-   - After 2 failed fix attempts: `TaskUpdate → completed`, note `TS-NNN: KNOWN_ISSUE — [description]`
+   - After 2 failed fix attempts: note `TS-NNN: KNOWN_ISSUE — [description]`
 5. **Critical KNOWN_ISSUE** → run the iteration-cap check from Step 11 (read `Iterations:` from the plan header; if `>= 3` ask the user Continue / Pivot / Abandon before incrementing). On Continue: set `Status: PENDING`, increment `Iterations`, register status change, invoke `Skill(skill='spec-implement', args='<plan-path>')` — do not proceed to VERIFIED. On Pivot/Abandon: do not invoke spec-implement; surface to user per Step 11.
 6. **High/Medium KNOWN_ISSUE** → document and continue (non-blocking)
 

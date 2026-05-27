@@ -20,9 +20,9 @@ Look for the commit that introduced the bug. If recent, read that diff. If nothi
 
 ### 1.3 Trace to root cause
 
-**Start with `codegraph_context(task="<bug description>")`** — single call, returns entry points and related symbols. Read it carefully.
+**Start with `codegraph_context(task="<bug description>")`** for structure, then `mcp__semble__search` for intent ("where does X get modified", "how is Y configured") — especially for cross-language or cross-cutting bugs.
 
-For local bugs (single file, single function): one or two targeted `Read`s on the file from the codegraph output is enough. **Do not** run `codegraph_callers`/`callees`/`impact` for local bugs — that's the full-lane bias and it's the single biggest time sink for trivial fixes.
+For local bugs (single file, single function): one or two targeted `Read`s is enough. **Do not** run `codegraph_callers`/`callees`/`impact` for local bugs — that's the full-lane bias and it's the single biggest time sink for trivial fixes.
 
 For bugs that span 2 files in the same component (e.g. service.ts + service.test.ts): targeted `Read`s. Still no full call-graph traversal.
 

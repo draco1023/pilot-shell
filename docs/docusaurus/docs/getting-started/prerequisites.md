@@ -1,20 +1,20 @@
 ---
 sidebar_position: 1
 title: Prerequisites
-description: What you need before installing Pilot Shell — Claude Code installed via the native installer, an active Anthropic subscription, and a POSIX shell environment.
+description: What you need before installing Pilot Shell — at least one AI agent (Claude Code or Codex CLI), a subscription or API key, and a POSIX shell environment.
 ---
 
 # Prerequisites
 
 What you need before installing Pilot Shell.
 
-## Claude Code
+## At Least One AI Agent
 
-Install [Claude Code](https://code.claude.com/docs/en/quickstart) using the **native installer** before setting up Pilot Shell. If you have the `npm` or `brew` version installed, uninstall it first. If no Claude Code installation is detected, the Pilot installer will attempt to set it up for you.
+Pilot Shell supports **Claude Code** (Anthropic, primary — full feature coverage) and **Codex CLI** (OpenAI — core `/spec`, `/fix`, `/prd`). Install at least one. The Pilot installer auto-detects and configures both.
 
-## Claude Subscription
+### Claude Code
 
-Pilot enhances Claude Code — it doesn't replace it. You need an active Claude subscription. Solo developers, teams, and enterprise organizations are all supported.
+Install [Claude Code](https://code.claude.com/docs/en/quickstart) using the **native installer**. If you have the `npm` or `brew` version, uninstall it first. Requires a Claude subscription:
 
 | Plan | Audience | Notes |
 |------|----------|-------|
@@ -23,13 +23,15 @@ Pilot enhances Claude Code — it doesn't replace it. You need an active Claude 
 | **Team Premium** | Teams | 6.25x usage per member + SSO, admin tools, billing management |
 | **Enterprise** | Companies | For organizations with compliance, procurement, or security requirements |
 
-## Codex Plugin (Included)
+### Codex CLI
 
-The [Codex plugin](https://github.com/openai/codex-plugin-cc) is installed automatically with Pilot. It provides adversarial code review powered by OpenAI Codex — an independent second opinion during `/spec` planning and verification phases.
+Install [Codex CLI](https://developers.openai.com/codex/cli) via `npm i -g @openai/codex`. Requires an [OpenAI API key](https://platform.openai.com/api-keys). See the [Codex CLI guide](/docs/getting-started/codex-cli) for the detailed feature matrix.
 
-**Setup:** Run `/codex:setup` once to authenticate with your OpenAI account, then enable the reviewers in Console Settings → Reviewers. Pilot auto-detects the plugin — Codex reviewer toggles appear grayed out until setup is complete.
+## Codex Companion Plugin (Included)
 
-A [ChatGPT Plus](https://chatgpt.com/#pricing) subscription ($20/mo) covers the Codex API usage needed for code reviews.
+The [Codex companion plugin](https://github.com/openai/codex-plugin-cc) is installed automatically with Pilot. It provides adversarial code review powered by OpenAI — an independent second opinion during Claude Code's `/spec` planning and verification.
+
+**Setup:** Run `/codex:setup` once to authenticate, then enable the reviewers in Console Settings → Reviewers. This is separate from Codex CLI — the companion runs from within Claude Code.
 
 ## System Requirements
 

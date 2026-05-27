@@ -28,15 +28,15 @@ rtk proxy <cmd>       # Bypass filtering (debugging)
 rtk --version         # Verify install
 ```
 
-All other commands are auto-rewritten by the Claude Code hook (e.g., `git status` → `rtk git status`, transparent).
+All other commands are auto-rewritten by the Pilot shell hook when that hook is active (e.g., `git status` → `rtk git status`, transparent).
 
 ⚠️ **Name collision:** if `rtk gain` errors, you may have `reachingforthejack/rtk` (Rust Type Kit) on PATH instead.
 
 ---
 
-### Semble — Code Search (CLI + MCP)
+### Semble — Code Search (CLI + MCP) — CO-PRIMARY
 
-**Intent-based code search.** For symbol/structure queries, prefer CodeGraph (`mcp-servers.md`); for grep-style exact text, prefer Grep. Semble sits between them — hybrid (BM25 + Model2Vec semantic embeddings), code-aware chunking, ~1.5ms queries, ranks by relevance.
+**Intent-based code search — co-primary with CodeGraph.** CodeGraph for structural queries (callers, callees, impact, symbol enumeration); Semble for intent queries (concept discovery, cross-cutting features, mutation sites, debugging, cross-language search). Grep for exact text in known files. Hybrid (BM25 + Model2Vec semantic embeddings), code-aware chunking, ~1.5ms queries, ranks by relevance.
 
 Installed via `uv tool install semble` (also available as an MCP server — see `mcp-servers.md`). Verify with `semble --help`.
 

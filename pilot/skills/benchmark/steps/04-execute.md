@@ -6,6 +6,7 @@ Run the runner **in the background** so the user gets live status updates while 
 
 Use the `Bash` tool with `run_in_background=true`. Capture the returned task ID; you will need it to read output and check completion.
 
+<!-- CC-ONLY -->
 ```
 Bash(
   command="PYTHONPATH=~/.claude/skills/benchmark uv run python -m scripts.runner \
@@ -15,12 +16,25 @@ Bash(
   run_in_background=true,
 )
 ```
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+```bash
+PYTHONPATH=~/.agents/skills/benchmark uv run python -m scripts.runner \
+  --config benchmarks/<target-name>/evals.json \
+  --skip-permissions --agent codex
+```
+CODEX-END -->
 
 That's it for arguments — defaults handle the rest. The runner reads the target skill's `model:` frontmatter and uses that for both executor and grader. Rules targets and skills without a `model:` field fall back to `claude-sonnet-4-6`.
 
 **Why `uv run`:** every Python invocation in this project uses `uv run` — no system `python` or `python3`. It ensures the right interpreter and dependency set.
 
+<!-- CC-ONLY -->
 **Why `--skip-permissions`:** all benchmark runs need this flag because `claude -p` is spawned non-interactively (no terminal to answer permission prompts). It passes `--dangerously-skip-permissions` to every executor and grader subprocess. Only use in a trusted environment — the grader reads arbitrary file paths passed by evals.json.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Why `--skip-permissions`:** all benchmark runs need this flag because `codex exec` is spawned non-interactively. It configures full-access sandbox permissions for every executor and grader subprocess. Only use in a trusted environment — the grader reads arbitrary file paths passed by evals.json.
+CODEX-END -->
 
 ## Surface the plan header to the user immediately
 
@@ -86,7 +100,12 @@ When you see `failed.json` referenced (or a `✗ failed:` line):
 
 - `reason: timeout` — bump `--timeout` or reduce `--runs`.
 - `reason: no-result-event` — stream-json stream was malformed. Inspect `outputs/transcript.jsonl` for the raw stream.
+<!-- CC-ONLY -->
 - `reason: claude-cli-not-found` — the `claude` CLI isn't on PATH. Install Claude Code first.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- `reason: agent-cli-not-found` — the `codex` CLI isn't on PATH. Install Codex CLI first.
+CODEX-END -->
 - `reason: grader-no-output` / `grader-invalid-json` — the grader subagent failed. Retry or bump `--grader-model` a tier.
 
 A few failed runs do not abort the rest of the benchmark — each writes its own `failed.json` and the runner continues. Surface failures to the user but only stop everything if more than half are failing.

@@ -22,6 +22,12 @@ If you find yourself writing the same fact in two places, delete one — the lon
 # [Feature Name] Implementation Plan
 
 Created: [Date]
+<!-- CC-ONLY -->
+Agent: [Claude Code|Codex — from Step 2 detection]
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+Agent: Codex
+CODEX-END -->
 Status: PENDING
 Approved: No
 Iterations: 0

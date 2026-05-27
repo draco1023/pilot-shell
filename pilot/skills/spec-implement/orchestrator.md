@@ -22,7 +22,12 @@ user-invocable: false
 - **NEVER SKIP TASKS** — every task must be fully implemented, no "MVP scope" exceptions
 - **Quality over speed** — never rush due to context pressure. Context warnings are informational. Finish current task with full quality — auto-compaction handles the rest.
 - **Plan file is source of truth** — re-read after auto-compaction, don't rely on conversation memory
+<!-- CC-ONLY -->
 - **NEVER stop during implementation** — the stop guard blocks premature exits. If blocked: your very next action must be a tool call (TaskList, Read plan, or code change). After user interruptions or "Continue" messages: re-read the plan and resume from the current task. Never produce text-only responses when work remains.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- **NEVER stop during implementation** — the stop guard blocks premature exits. If blocked: your very next action must be a tool call (refresh the plan, read the plan, or make the next code/test change). After user interruptions or "Continue" messages: re-read the plan and resume from the current task. Never produce text-only responses when work remains.
+CODEX-END -->
 
 ---
 

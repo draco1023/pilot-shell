@@ -10,7 +10,12 @@ import time
 from pathlib import Path
 from unittest.mock import patch
 
-from context_monitor import _is_throttled, _resolve_context, run_context_monitor
+from context_monitor import (
+    _is_throttled,
+    _resolve_context,
+    _estimate_codex_context_pct,
+    run_context_monitor,
+)
 
 
 class TestContextMonitorAutocompact:
@@ -551,3 +556,46 @@ class TestRunContextMonitorOrchestrator:
         assert exit_code == 0
         # 30% on a 1M window is far below the AUTOCOMPACT threshold (75%) — no warning.
         assert "Auto-compact approaching" not in output
+
+
+class TestCodexTranscriptEstimation:
+    """Context estimation from Codex transcript file size when statusline cache is unavailable."""
+
+    def test_estimate_returns_percentage_from_file_size(self, tmp_path: Path) -> None:
+        transcript = tmp_path / "transcript.jsonl"
+        transcript.write_text("x" * 800_000)
+        pct = _estimate_codex_context_pct(str(transcript), "gpt-4.1")
+        assert pct is not None
+        assert 15 < pct < 25
+
+    def test_estimate_uses_default_window_for_unknown_model(self, tmp_path: Path) -> None:
+        transcript = tmp_path / "transcript.jsonl"
+        transcript.write_text("x" * 400_000)
+        pct = _estimate_codex_context_pct(str(transcript), "unknown-model")
+        assert pct is not None
+        assert pct > 40
+
+    def test_estimate_returns_none_for_missing_file(self) -> None:
+        pct = _estimate_codex_context_pct("/nonexistent/path.jsonl", "gpt-4.1")
+        assert pct is None
+
+    def test_estimate_returns_none_for_empty_path(self) -> None:
+        pct = _estimate_codex_context_pct("", "gpt-4.1")
+        assert pct is None
+
+    def test_resolve_context_falls_back_to_transcript(self, tmp_path: Path) -> None:
+        transcript = tmp_path / "transcript.jsonl"
+        transcript.write_text("x" * 600_000)
+        session_id = "codex-test-sess"
+
+        with patch("context_monitor._read_statusline_context_pct", return_value=None):
+            result = _resolve_context(
+                session_id,
+                transcript_path=str(transcript),
+                model="o4-mini",
+            )
+
+        assert result is not None
+        pct, tokens, shown_80 = result
+        assert pct > 0
+        assert tokens > 0

@@ -18,9 +18,9 @@ Complete each sub-step before the next. No shortcuts.
 
 ### 2.3 Trace the root cause
 
-**Start with `codegraph_context(task="<bug description and symptoms>")`** — single call, returns entry points, related symbols, and code context. Read it before going deeper.
+**Start with `codegraph_context(task="<bug description and symptoms>")`** — single call, returns entry points, related symbols, and code context. Then `mcp__semble__search` for the bug's *intent* ("where does X get modified", "error handling in Y") — catches cross-language connections and mutation sites the graph misses.
 
-**Deep dive when needed:** `codegraph_search` to find a specific symbol, then `codegraph_explore(query="<symbol names>")` for full source from all relevant files in one call.
+**Deep dive when needed:** `codegraph_search` to find a specific symbol, then `codegraph_explore(query="<symbol names>")` for full source. Use `mcp__semble__find_related` from the bug site to discover parallel implementations that may share the same flaw.
 
 **Backward tracing (symptom → source):**
 

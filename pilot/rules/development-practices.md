@@ -6,18 +6,26 @@ CodeGraph (structure) and Semble (intent) are primary; Grep/Glob are *verifiers*
 
 **⛔ NEVER pass `projectPath` to CodeGraph for the current project** — it causes "not initialized" errors. The MCP server defaults correctly.
 
-#### Mandatory Checkpoints
+#### Tool Selection by Scenario
 
-| Before you... | Use |
-|---------------|-----|
+CodeGraph and Semble are **co-primary**. Pick by scenario, not by habit.
+
+| Scenario | Tool |
+|----------|------|
 | Start any new task | `codegraph_context(task=...)` — ALWAYS FIRST |
 | Find a symbol by name | `codegraph_search` (NOT Grep) |
-| Modify a function | `codegraph_callers` + `codegraph_callees`, then `Grep` as completeness check |
-| Plan a change | `codegraph_impact` for blast radius |
-| Explore by intent | `semble search "query" ./` (or MCP `mcp__semble__search`) |
-| Deep dive across files | `codegraph_explore(query="SymA SymB file.ts")` — replaces dozens of Reads |
+| Enumerate callers / callees | `codegraph_callers` + `codegraph_callees`, then `Grep` for completeness |
+| Blast radius | `codegraph_impact` |
+| Deep dive across known symbols | `codegraph_explore(query="SymA SymB file.ts")` |
+| Understand a concept / feature area | `semble search "how does X work" ./` |
+| Find where something is modified | `semble search "settings.json modify write" ./` |
+| Cross-cutting concerns | `semble search "notification push events" ./` |
+| Debug: "where does X happen" | `semble search "error handling recovery" ./` |
+| Find similar patterns | `semble find-related <file> <line> ./` (unique — no CodeGraph equivalent) |
 
-Grep/Glob are valid only for: (1) verifying CodeGraph completeness on a specific symbol name, (2) exact text/regex in a known file. See `mcp-servers.md` for full CodeGraph reference and `cli-tools.md` for Semble.
+**Combined workflow:** `codegraph_context` first (structure), then `semble search` (intent) — especially for cross-language connections and non-structural relationships.
+
+Grep/Glob: (1) verifying CodeGraph/Semble completeness, (2) exact text/regex in a known file.
 
 ### Change Discipline
 
@@ -42,7 +50,7 @@ Grep/Glob are valid only for: (1) verifying CodeGraph completeness on a specific
 **No fixes without root cause investigation.** Phases run sequentially:
 
 1. **Root cause** — read errors completely, reproduce consistently, check `git diff`, instrument at boundaries.
-2. **Pattern analysis** — Semble to find working examples; compare; identify ALL differences.
+2. **Pattern analysis** — `semble search` to find working examples and related code; `semble find-related` from the bug site to discover parallel implementations. Compare; identify ALL differences.
 3. **Hypothesis** — specific, falsifiable ("state resets because component remounts on route change"). Test with minimal change, one variable at a time.
 4. **Implementation** — failing test first (TDD), single fix, verify completely.
 

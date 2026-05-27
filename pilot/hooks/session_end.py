@@ -72,12 +72,26 @@ def _complete_session() -> None:
         pass
 
 
+def _extract_session_pid(name: str) -> int | None:
+    """Extract PID from session directory name.
+
+    Supports '{PID}' (wrapper) and '{PID}-{suffix}' (shell alias) formats.
+    """
+    first = name.split("-", 1)[0] if name else ""
+    try:
+        return int(first)
+    except ValueError:
+        return None
+
+
 def _has_other_active_sessions() -> bool:
-    """Check if any other Pilot wrapper sessions are still active.
+    """Check if any other sessions are still active.
 
     Iterates session directories directly (no subprocess) to avoid failures
-    during shutdown. Skips the current session via PILOT_SESSION_ID.
-    Returns True on any error (safe default: don't stop the worker).
+    during shutdown. Supports both Pilot wrapper ('{PID}') and shell-alias
+    ('{PID}-{suffix}') session directory formats. Skips the current session
+    via PILOT_SESSION_ID. Returns True on any error (safe default: don't
+    stop the worker).
     """
     try:
         if not SESSIONS_DIR.exists():
@@ -90,21 +104,18 @@ def _has_other_active_sessions() -> bool:
                 continue
             if entry.name == my_session:
                 continue
-            try:
-                pid = int(entry.name)
-            except ValueError:
+            pid = _extract_session_pid(entry.name)
+            if pid is None:
                 continue
             try:
                 os.kill(pid, 0)
             except OSError:
                 continue
 
-            # Another wrapper PID is alive → another session exists
             return True
 
         return False
     except OSError:
-        # Can't read directory → assume other sessions exist (safe default)
         return True
 
 

@@ -115,7 +115,7 @@ const WhatsInside = () => {
             What's Inside
           </h2>
           <p className="text-muted-foreground text-lg sm:text-xl max-w-3xl mx-auto">
-            One install to bring battle-tested practices and quality standards to Claude Code.
+            One install to bring battle-tested practices and quality standards to Claude Code and Codex.
             <br></br>A shared baseline so every developer can focus on building, not configuring.
           </p>
         </div>

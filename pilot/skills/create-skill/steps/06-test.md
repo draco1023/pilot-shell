@@ -17,8 +17,9 @@ margin column. Revenue is in column C, costs in D i think"
 
 Share them with the user: "Here are a few test cases I'd like to try. Do these look right, or do you want to add more?"
 
-### Step 6.2: Run Tests with Subagents
+### Step 6.2: Run Tests
 
+<!-- CC-ONLY -->
 For each test prompt, spawn a subagent that has access to the skill and ask it to complete the task. Save outputs to a workspace directory.
 
 ```
@@ -43,6 +44,32 @@ Save outputs to: [workspace]/iteration-N/test-ID/with-skill/
 **Baseline run** — same prompt, but tell the subagent to NOT use the skill. This reveals what value the skill actually adds.
 
 Launch all runs in parallel (with-skill AND baseline for each test case) to save time.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+For each test prompt, run `codex exec` in isolated sandbox directories — one with the skill installed, one without. Save outputs to a workspace directory.
+
+```
+Workspace structure:
+<skill-name>-workspace/
+└── iteration-1/
+    ├── test-1-descriptive-name/
+    │   ├── with-skill/      # Output from codex exec with skill installed
+    │   └── without-skill/   # Baseline output (no skill)
+    └── test-2-descriptive-name/
+        ├── with-skill/
+        └── without-skill/
+```
+
+**With-skill run** — create a temp directory with the skill installed under `.agents/skills/<name>/SKILL.md`, then:
+```bash
+cd <workspace>/iteration-N/test-ID/with-skill/
+codex exec "Complete this task: [test prompt]. Save outputs to the current directory."
+```
+
+**Baseline run** — same prompt, but in a directory without the skill installed.
+
+Run all test cases sequentially (Codex does not support parallel subagents).
+CODEX-END -->
 
 ### Step 6.3: Evaluate Results
 
@@ -103,11 +130,20 @@ After the skill works well, optimize its triggering accuracy.
 
 **Test triggering accuracy:**
 
+<!-- CC-ONLY -->
 ```bash
 # For each query, test if Claude would trigger the skill
 # Run in a new session or use claude -p (pipe mode)
 echo "<test query>" | claude -p "Would you use the [skill-name] skill for this request? Answer only YES or NO."
 ```
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+```bash
+# For each query, test if Codex would trigger the skill
+# Run in a new session or use codex exec
+codex exec "Would you use the [skill-name] skill for this request? Answer only YES or NO. Request: <test query>"
+```
+CODEX-END -->
 
 **Iterate on the description** based on mismatches:
 - Should-trigger but didn't → add relevant trigger phrases/scenarios to description

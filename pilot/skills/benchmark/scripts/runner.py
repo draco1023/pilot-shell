@@ -65,6 +65,8 @@ class RunConfig:
     timeout: int
     grader_timeout: int
     skip_permissions: bool = False
+    agent: str = "claude"
+    grader_agent: str = "claude"
 
 
 @dataclass(frozen=True, slots=True)
@@ -333,9 +335,10 @@ def prepare_config_dir(target: TargetConfig, config_kind: str, tmp_root: Path) -
     return dest
 
 
-def _make_subprocess_env() -> dict[str, str]:
-    """Strip CLAUDECODE so nested `claude -p` calls don't hit the nesting guard."""
-    return {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+def _make_subprocess_env(agent: str = "claude") -> dict[str, str]:
+    """Strip nesting guards so nested agent calls don't hit guard checks."""
+    skip = {"CLAUDECODE"} if agent == "claude" else {"CODEX_SANDBOX_TYPE"}
+    return {k: v for k, v in os.environ.items() if k not in skip}
 
 
 def _write_failed_marker(run_dir: Path, reason: str, details: str = "") -> None:
@@ -353,7 +356,29 @@ def _write_failed_marker(run_dir: Path, reason: str, details: str = "") -> None:
     )
 
 
-def execute_run(
+def execute_run(  # noqa: PLR0913
+    *,
+    prompt: str,
+    config_dir: Path,
+    run_dir: Path,
+    model: str,
+    timeout: int,
+    skip_permissions: bool = False,
+    agent: str = "claude",
+) -> ExecuteResult:
+    """Run an agent once in config_dir. Saves transcript + timing.json or failed.json."""
+    if agent == "codex":
+        return _execute_run_codex(
+            prompt=prompt, config_dir=config_dir, run_dir=run_dir,
+            model=model, timeout=timeout, skip_permissions=skip_permissions,
+        )
+    return _execute_run_claude(
+        prompt=prompt, config_dir=config_dir, run_dir=run_dir,
+        model=model, timeout=timeout, skip_permissions=skip_permissions,
+    )
+
+
+def _execute_run_claude(
     *,
     prompt: str,
     config_dir: Path,
@@ -362,7 +387,7 @@ def execute_run(
     timeout: int,
     skip_permissions: bool = False,
 ) -> ExecuteResult:
-    """Run `claude -p` once in config_dir. Saves transcript + timing.json or failed.json."""
+    """Run `claude -p` once in config_dir."""
     run_dir.mkdir(parents=True, exist_ok=True)
     outputs = run_dir / "outputs"
     outputs.mkdir(exist_ok=True)
@@ -383,7 +408,7 @@ def execute_run(
             cmd,
             input=prompt,
             cwd=str(config_dir),
-            env=_make_subprocess_env(),
+            env=_make_subprocess_env("claude"),
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -418,6 +443,7 @@ def execute_run(
         return ExecuteFailure(success=False, reason="malformed-result")
 
     timing: dict[str, object] = {
+        "agent": "claude",
         "duration_ms": parsed["duration_ms"],
         "duration_api_ms": parsed["duration_api_ms"],
         "total_duration_seconds": round(parsed["duration_ms"] / 1000.0, 3),
@@ -440,23 +466,100 @@ def execute_run(
     )
 
 
-def _run_grader(
+def _execute_run_codex(
+    *,
+    prompt: str,
+    config_dir: Path,
+    run_dir: Path,
+    model: str,
+    timeout: int,
+    skip_permissions: bool = False,
+) -> ExecuteResult:
+    """Run `codex exec` once in config_dir."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    outputs = run_dir / "outputs"
+    outputs.mkdir(exist_ok=True)
+
+    import time
+
+    cmd = ["codex", "exec", "--model", model]
+    if skip_permissions:
+        cmd.extend(["-c", 'approval_policy="never"', "-c", 'sandbox_mode="danger-full-access"'])
+
+    start_ns = time.monotonic_ns()
+    try:
+        completed = subprocess.run(
+            cmd,
+            input=prompt,
+            cwd=str(config_dir),
+            env=_make_subprocess_env("codex"),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        _write_failed_marker(run_dir, reason="timeout", details=f"after {timeout}s")
+        return ExecuteFailure(success=False, reason="timeout")
+    except FileNotFoundError:
+        _write_failed_marker(run_dir, reason="codex-cli-not-found")
+        return ExecuteFailure(success=False, reason="codex-cli-not-found")
+
+    elapsed_ms = (time.monotonic_ns() - start_ns) // 1_000_000
+
+    if completed.returncode != 0:
+        _write_failed_marker(
+            run_dir, reason="codex-exec-failed",
+            details=f"exit={completed.returncode}; stderr: {(completed.stderr or '')[:300]}",
+        )
+        return ExecuteFailure(success=False, reason="codex-exec-failed")
+
+    stdout = completed.stdout or ""
+    _ = (outputs / "transcript.txt").write_text(stdout)
+    if completed.stderr:
+        _ = (outputs / "stderr.log").write_text(completed.stderr)
+    _ = (outputs / "output.txt").write_text(stdout)
+
+    timing: dict[str, object] = {
+        "agent": "codex",
+        "duration_ms": elapsed_ms,
+        "duration_api_ms": 0,
+        "total_duration_seconds": round(elapsed_ms / 1000.0, 3),
+        "total_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_cost_usd": 0,
+        "session_id": "",
+        "note": "token counts not available from codex exec",
+    }
+    _ = (run_dir / "timing.json").write_text(json.dumps(timing, indent=2))
+
+    return ExecuteSuccess(
+        success=True,
+        duration_ms=elapsed_ms,
+        total_tokens=0,
+        run_dir=str(run_dir),
+    )
+
+
+def _run_grader(  # noqa: PLR0913
     run_dir: Path,
     assertions: list[str],
     target_type: str,
     model: str,
     timeout: int,
     skip_permissions: bool = False,
+    agent: str = "claude",
 ) -> GraderResult:
-    """Spawn the grader via `claude -p` with the grader.md prompt.
-
-    Grader writes `grading.json` into run_dir. Returns a summary dict.
-    """
+    """Spawn the grader agent. Writes `grading.json` into run_dir."""
     grader_prompt_path = Path(__file__).resolve().parent.parent / "agents" / "grader.md"
     grader_instructions = grader_prompt_path.read_text()
 
     outputs_dir = run_dir / "outputs"
-    transcript = outputs_dir / "transcript.jsonl"
+    transcript_name = "transcript.jsonl" if agent == "claude" else "transcript.txt"
+    transcript = outputs_dir / transcript_name
     expectations_block = "\n".join(f"- {a}" for a in assertions)
     prompt = (
         f"{grader_instructions}\n\n"
@@ -469,14 +572,19 @@ def _run_grader(
         f"Write your JSON verdict to: {run_dir / 'grading.json'}"
     )
 
-    grader_cmd = ["claude", "-p", "--output-format", "text", "--model", model]
-    if skip_permissions:
-        grader_cmd.append("--dangerously-skip-permissions")
+    if agent == "codex":
+        grader_cmd = ["codex", "exec", "--model", model]
+        if skip_permissions:
+            grader_cmd.extend(["-c", 'approval_policy="never"', "-c", 'sandbox_mode="danger-full-access"'])
+    else:
+        grader_cmd = ["claude", "-p", "--output-format", "text", "--model", model]
+        if skip_permissions:
+            grader_cmd.append("--dangerously-skip-permissions")
     try:
         _ = subprocess.run(
             grader_cmd,
             input=prompt,
-            env=_make_subprocess_env(),
+            env=_make_subprocess_env(agent),
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -547,6 +655,7 @@ def _run_single_run(
             model=run_cfg.model,
             timeout=run_cfg.timeout,
             skip_permissions=run_cfg.skip_permissions,
+            agent=run_cfg.agent,
         )
         if isinstance(result, ExecuteSuccess):
             _ = _run_grader(
@@ -556,6 +665,7 @@ def _run_single_run(
                 model=run_cfg.grader_model,
                 timeout=run_cfg.grader_timeout,
                 skip_permissions=run_cfg.skip_permissions,
+                agent=run_cfg.grader_agent,
             )
             if reporter is not None:
                 reporter.on_completed(
@@ -768,9 +878,8 @@ def main() -> None:
         "--skip-permissions",
         action="store_true",
         default=False,
-        help="Pass --dangerously-skip-permissions to all claude -p calls. Required for automated "
-        "runs (no interactive terminal). Grants the executor and grader permission to use any tool "
-        "without prompting — only enable when running in a trusted, isolated environment.",
+        help="Grant full permissions to all executor and grader subprocess calls. Required for "
+        "automated runs (no interactive terminal). Only enable in a trusted, isolated environment.",
     )
     parser.add_argument(
         "--no-isolate-global",
@@ -786,6 +895,18 @@ def main() -> None:
         default=False,
         help="Recover any .pilot-bench-hidden-* files left behind by a crashed prior "
         "run and exit. No benchmark is executed.",
+    )
+    parser.add_argument(
+        "--agent",
+        default="claude",
+        choices=["claude", "codex"],
+        help="Agent CLI to use for execution: claude (default) or codex",
+    )
+    parser.add_argument(
+        "--grader-agent",
+        default=None,
+        choices=["claude", "codex"],
+        help="Agent CLI for grading (default: same as --agent)",
     )
     parser.add_argument("--version", action="store_true", help="Print version and exit")
     args = parser.parse_args()
@@ -820,6 +941,9 @@ def main() -> None:
     executor_model: str = args.model or resolve_executor_model(target)
     grader_model: str = args.grader_model or executor_model
 
+    agent: str = args.agent
+    grader_agent: str = args.grader_agent or agent
+
     run_cfg = RunConfig(
         runs=args.runs,
         model=executor_model,
@@ -827,6 +951,8 @@ def main() -> None:
         timeout=args.timeout,
         grader_timeout=args.grader_timeout,
         skip_permissions=args.skip_permissions,
+        agent=agent,
+        grader_agent=grader_agent,
     )
     code = run_benchmark(
         config_path=args.config,

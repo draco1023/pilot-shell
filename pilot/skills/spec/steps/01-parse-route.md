@@ -4,7 +4,7 @@
 IF arguments end with ".md" AND file exists:
     → Read plan, dispatch by status (Section 2)
 ELSE:
-    → Detect type, ask worktree, invoke Skill, STOP
+    → Detect type, ask worktree, route to the planning phase (Section 1.3)
 ```
 
 ### 1.1 Detect Type (new plans only)
@@ -18,7 +18,7 @@ ELSE:
 **⛔ MANDATORY FIRST STEP — read env vars before ANY user interaction:**
 
 ```bash
-echo "BRANCH_ISO=$PILOT_BRANCH_ISOLATION_ENABLED QUESTIONS=$PILOT_PLAN_QUESTIONS_ENABLED APPROVAL=$PILOT_PLAN_APPROVAL_ENABLED"
+echo "BRANCH_ISO=${PILOT_BRANCH_ISOLATION_ENABLED:-false} QUESTIONS=${PILOT_PLAN_QUESTIONS_ENABLED:-true} APPROVAL=${PILOT_PLAN_APPROVAL_ENABLED:-true}"
 ```
 
 **⛔ When `BRANCH_ISO` is `"false"`: NEVER ask about branch choice. The dispatcher invokes the planning skill immediately with `--worktree=no` (defaults to the current branch).**
@@ -44,9 +44,19 @@ echo "BRANCH_ISO=$PILOT_BRANCH_ISOLATION_ENABLED QUESTIONS=$PILOT_PLAN_QUESTIONS
 
 **⛔ When the user selects "New branch" or sends a custom response mentioning "new branch", "clean branch", or "branch from master/main": pass `--new-branch`, NOT `--worktree=yes`.** `AskUserQuestion` allows users to type a free-text "Other" response, and previously such responses requesting a new branch were misinterpreted as worktree requests. This rule applies only when `BRANCH_ISO=true` — when off, the question is not asked.
 
-### 1.3 Invoke Skill and STOP
+### 1.3 Route to Planning
+
+<!-- CC-ONLY -->
+Invoke the selected planning skill and stop in this dispatcher:
 
 - **Bugfix:** `Skill(skill='spec-bugfix-plan', args='<task_description> --worktree=yes|no|--new-branch')`
 - **Feature:** `Skill(skill='spec-plan', args='<task_description> --worktree=yes|no|--new-branch')`
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+Codex has no callable phase-dispatch tool. Continue immediately with the selected planning phase instructions instead of stopping in the dispatcher:
+
+- **Bugfix:** continue immediately with the `$spec-bugfix-plan` skill instructions using arguments: `<task_description> --worktree=yes|no|--new-branch`
+- **Feature:** continue immediately with the `$spec-plan` skill instructions using arguments: `<task_description> --worktree=yes|no|--new-branch`
+CODEX-END -->
 
 **Note:** Users who want a bugfix workflow without a plan file invoke `/fix` directly — that's a separate user-facing command. The `/spec` dispatcher does not route to `/fix`. When a user types `/spec`, they want the full spec workflow.

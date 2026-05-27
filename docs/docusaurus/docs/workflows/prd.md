@@ -49,7 +49,7 @@ The entire flow is conversational — one question at a time, no rushing to solu
 
 ### 1. Understand the Idea
 
-Restates your idea, explores project context with CodeGraph, identifies the core problem, and **scope-checks** — if the request describes multiple independent subsystems (e.g., "build a platform with chat, billing, and analytics"), helps you decompose into multiple PRDs before continuing. Doesn't jump to solutions.
+Restates your idea, explores project context with CodeGraph (structure) and Semble (intent), identifies the core problem, and **scope-checks** — if the request describes multiple independent subsystems (e.g., "build a platform with chat, billing, and analytics"), helps you decompose into multiple PRDs before continuing. Doesn't jump to solutions.
 
 ### 2. Research (Optional)
 

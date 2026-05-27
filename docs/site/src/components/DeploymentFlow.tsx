@@ -31,7 +31,7 @@ const steps = [
     icon: Rocket,
     label: "Launch",
     detail:
-      "Run pilot. Session wrapper starts Claude Code with license check and context injection.",
+      "Run claude or codex. Pilot Shell loads automatically with license check and context injection.",
     color: "text-primary",
     bgColor: "bg-primary/10",
     borderColor: "border-primary/30",

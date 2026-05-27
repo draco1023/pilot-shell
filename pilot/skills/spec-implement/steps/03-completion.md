@@ -4,7 +4,13 @@
 2. **For migrations:** Feature parity check against old code. If features missing: add tasks, do NOT mark complete. See sub-section 3.1 below.
 3. Set `Status: COMPLETE` in plan
 4. Register: `~/.pilot/bin/pilot register-plan "<plan_path>" "COMPLETE" 2>/dev/null || true`
-5. Read `Type:` field → Bugfix: `Skill(skill='spec-bugfix-verify', args='<plan-path>')` | Otherwise: `Skill(skill='spec-verify', args='<plan-path>')`
+5. Read `Type:` field.
+   <!-- CC-ONLY -->
+   Bugfix: `Skill(skill='spec-bugfix-verify', args='<plan-path>')` | Otherwise: `Skill(skill='spec-verify', args='<plan-path>')`
+   <!-- /CC-ONLY -->
+   <!-- CODEX-START
+   Codex has no callable phase-dispatch tool. Bugfix: continue immediately with the `$spec-bugfix-verify` skill instructions using arguments: `<plan-path>` | Otherwise: continue immediately with the `$spec-verify` skill instructions using arguments: `<plan-path>`.
+   CODEX-END -->
 
 ### 3.1 Migration/Refactoring Additions (only when `## Feature Inventory` is present in the plan)
 
