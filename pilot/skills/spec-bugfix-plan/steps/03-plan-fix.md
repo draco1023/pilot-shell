@@ -20,6 +20,10 @@ If any NO → return to Step 2.
 
 When a genuine choice exists AND `PILOT_PLAN_QUESTIONS_ENABLED` is not `"false"`: use `AskUserQuestion` to pick.
 
+<!-- CODEX-START
+Codex override: if the source-level fix is clearly correct and reversible, choose it without asking and record the decision in `## Fix Approach`. Ask one bundled plain-text question only when the wrong choice would change multiple tasks, add a new dependency, or alter user-visible behavior outside the bug.
+CODEX-END -->
+
 ```bash
 ~/.pilot/bin/pilot notify plan_approval "Fix Approach" "<plan-slug> — fix strategy" --plan-path "<plan_path>" 2>/dev/null || true
 ```

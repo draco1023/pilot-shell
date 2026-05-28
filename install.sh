@@ -209,7 +209,7 @@ confirm_local_install() {
 	echo ""
 	echo "  Local installation will:"
 	echo "    • Add 'pilot' and 'ccp' command to your favorite shell config (~/.bashrc, ~/.zshrc, fish)"
-	echo "    • Configure Claude Code to Pilot best-practices (~/.claude.json, ~/.claude/settings.json)"
+	echo "    • Configure Claude Code (~/.claude.json, ~/.claude/settings.json) and Codex CLI (~/.codex/config.toml) to Pilot best-practices"
 	echo "    • Install additional tool dependencies via Homebrew or NPM on your system"
 	echo ""
 	confirm=""

@@ -1,14 +1,19 @@
 ---
 sidebar_position: 4
 title: Rules & Standards
-description: Production-tested rules and standards loaded into every Claude Code session — TDD enforcement, language standards, MCP routing, and project conventions.
+description: Production-tested rules and standards loaded into every Claude Code and Codex session — TDD enforcement, language standards, MCP routing, and project conventions.
 ---
 
 # Rules & Standards
 
 Production-tested best practices loaded into every session.
 
-Rules load automatically at session start — they're enforced standards, not suggestions. Pilot ships 10 built-in rules plus 5 coding standards. Coding standards load conditionally by file type to keep context lean. Your project-level rules in `.claude/rules/` take precedence over Pilot's built-ins.
+Rules load automatically at session start — enforced standards, not suggestions. Pilot ships 10 built-in rules plus 5 coding standards activated by file type.
+
+- **Claude Code:** rules in `~/.claude/rules/` (global) and `.claude/rules/` (project). Project rules take precedence.
+- **Codex:** rules delivered via `~/.codex/AGENTS.md`, adapted from the same source. Custom rules work the same way.
+
+Run `/setup-rules` (or `$setup-rules` on Codex) to generate project-specific rules from your codebase.
 
 ## Built-in Rule Categories
 
@@ -56,10 +61,6 @@ The default `testing.md` rule defines the agent's testing posture. Pilot's defau
 - **Coverage gate scoped to critical paths** (business logic, security, data integrity, error handling). No blanket numeric threshold on glue code, configuration plumbing, simple CRUD, or trivial UI bindings. Coverage padding to push a number above a threshold is an anti-pattern.
 - **TDD with documented escapes.** Red-green-refactor remains the default. The `Trivial:` plan-task field is the documented opt-out for changes ≤ 5 net new lines with no new branch, public symbol, or error path, and it must name an existing covering test or verification command. Bugfixes never qualify — a reproducing RED test is the bugfix lane's anti-regression guarantee.
 - **Post-implementation enforcement.** The `changes-review` reviewer agent and the `spec-verify` Step 5 audit ("Test Parsimony Audit" + "Trivial: claim audit") verify the doctrine against the actual diff — the planner's claim is not authoritative.
-
-### Why parsimony
-
-User feedback (paraphrased): *"90% of the time, the agent tries to test too much, doing redundant tests that just add to the maintenance cost. It also tends to create one test class for each tiny part of the logic of a given class instead of 1 class = 1 unit test + 1 functional test (if needed)."* The default codifies that complaint as the rule.
 
 ### Override the testing posture
 

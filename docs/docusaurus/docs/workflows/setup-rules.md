@@ -8,11 +8,14 @@ description: Generate project rules and document MCP servers — /setup-rules ex
 
 Generate project rules and document your development environment.
 
-Run `/setup-rules` to explore your project structure, discover your conventions and undocumented patterns, update project documentation, and document your MCP servers. This is how Pilot adapts to your project — not the other way around. Run it once initially, then any time your codebase changes significantly.
+Run `/setup-rules` (or `$setup-rules` on Codex) to explore your project structure, discover your conventions and undocumented patterns, update project documentation, and document your MCP servers. This is how Pilot adapts to your project — not the other way around. Run it once initially, then any time your codebase changes significantly.
+
+The skill writes Claude Code rules into `.claude/rules/` and `~/.claude/rules/`, and syncs them into `~/.codex/AGENTS.md` (and the project-level `AGENTS.md` if you keep one) so Codex sees the same context.
 
 ```bash
-$ pilot
-> /setup-rules
+# Claude Code         # Codex CLI
+claude                codex
+> /setup-rules        > $setup-rules
 ```
 
 ## What /setup-rules Does

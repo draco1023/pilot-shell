@@ -13,12 +13,18 @@ Internally consider 2-3 implementation approaches based on exploration findings.
 - **Trade-offs** — frame as **"X at the cost of Y"** — never recommend without stating what it costs
 - **Recommendation** — pick a preferred approach with reasoning
 
+<!-- CC-ONLY -->
 If exploration also revealed scope ambiguity (gaps, optional features, multiple directions), include scope items as part of this step. `AskUserQuestion(multiSelect: true)` for scope items; unselected items go to "Out of Scope" or "Deferred Ideas."
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+If exploration reveals scope ambiguity, prefer the smallest implementable scope that satisfies the request and record excluded items under "Out of Scope". Ask a Codex Batch 2 question only when choosing the wrong option would cause rework across multiple tasks or a user-visible mismatch.
+CODEX-END -->
 
 #### Part B: Design Decisions
 
 Within the chosen approach, resolve remaining design choices. Each decision gets 2-3 concrete options with trade-offs and your recommendation.
 
+<!-- CC-ONLY -->
 **Notify, then ask (Batch 2):**
 
 ```bash
@@ -28,6 +34,12 @@ Within the chosen approach, resolve remaining design choices. Each decision gets
 Use `AskUserQuestion` — Part A (approach selection) and Part B (design decisions) can be combined into a single Batch 2 interaction when the decisions are related.
 
 **When questions are disabled (`PILOT_PLAN_QUESTIONS_ENABLED=false`):** Still evaluate approaches and design decisions internally. Select the recommended approach, resolve design decisions with reasonable defaults, and document all choices with reasoning in the plan's "Autonomous Decisions" section.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Codex Batch 2 policy:** do not ask a second question batch for ordinary trade-offs. Resolve them internally, state the chosen approach with one cost sentence, and proceed. If a Batch 2 question is unavoidable, notify first and ask one bundled plain-text prompt; after the answer, write the plan immediately.
+
+**When questions are disabled (`PILOT_PLAN_QUESTIONS_ENABLED=false`):** select the recommended approach, resolve design decisions with reasonable defaults, and document non-obvious choices in the plan's "Autonomous Decisions" section.
+CODEX-END -->
 
 **What ends up in the plan (`## Approach` section, Step 9):** only the chosen approach's **Name** and **Why** (1-2 sentences capturing what it gives us and what it costs). Do NOT list rejected alternatives in the plan — they're decision exhaust, not implementer information. The only exception: if a user-rejected option is one an implementer might re-derive ("why aren't we just doing X?"), capture that rejection as a single sentence inside the `Why:` line.
 

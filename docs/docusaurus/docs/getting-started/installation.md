@@ -24,7 +24,7 @@ Run from any directory — it installs globally to `~/.pilot/` and `~/.claude/` 
 |------|-------|-------------|
 | 1 | Prerequisites | Checks/installs Homebrew, Node.js, Python 3.12+, uv, git, jq |
 | 2 | Claude files | Sets up `~/.claude/` plugin — rules, commands, hooks, MCP servers |
-| 3 | Codex files | Sets up `~/.codex/` assets — hooks, skills, rules, and MCP config for Codex CLI |
+| 3 | Codex files | Sets up `~/.codex/` assets — hooks, skills, rules, MCP config, and managed review agents for Codex CLI |
 | 4 | Config files | Creates `.nvmrc` and project config |
 | 5 | Dependencies | Installs Semble, RTK, CodeGraph, Chrome DevTools MCP, playwright-cli, agent-browser, language servers |
 | 6 | Shell integration | Auto-configures bash, fish, and zsh with the `pilot` alias. Add `# pilot-shell:managed-elsewhere` to a config file to opt out (for framework-managed shells) |
@@ -33,16 +33,17 @@ Run from any directory — it installs globally to `~/.pilot/` and `~/.claude/` 
 
 ## Browser Automation
 
-For the best browser automation and E2E testing experience, install the [Claude Code Chrome extension](https://code.claude.com/docs/en/chrome). It provides richer visual context and direct access to your existing browser sessions.
+Pilot installs three browser tools automatically: **Chrome DevTools MCP**, **playwright-cli**, and **agent-browser**.
 
-Pilot uses a 4-tier browser tool selection: **Chrome extension** (preferred) → **[Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)** (enterprise fallback via CDP — Lighthouse, performance tracing, device emulation) → **playwright-cli** (thorough E2E with persistent sessions, tracing, network mocking) → **agent-browser** (lightweight, fast startup). The three CLI/MCP tools are installed automatically. The Chrome extension must be installed manually via the browser extension store. In environments where the Chrome extension can't be installed (enterprise restrictions, dev containers), Pilot falls back to Chrome DevTools MCP first, then to CLI tools.
+- **Claude Code:** also install the [Claude Code Chrome extension](https://code.claude.com/docs/en/chrome) for the richest browser context. Tier order: Chrome extension → Chrome DevTools MCP → playwright-cli → agent-browser.
+- **Codex CLI:** the Chrome extension is not available. Tier order: Chrome DevTools MCP → playwright-cli → agent-browser.
 
 ## Codex Companion Plugin (Included)
 
 The [Codex companion plugin](https://github.com/openai/codex-plugin-cc) is installed automatically by the Pilot installer. It provides adversarial code review powered by OpenAI — an independent second opinion during Claude Code's `/spec` planning and verification.
 
 1. Run `/codex:setup` in any Pilot session to authenticate with your OpenAI account
-2. Enable the Codex reviewers in Console Settings → Reviewers
+2. Enable the Codex Companion Reviewers in Console Settings → Reviewers
 
 This is separate from [Codex CLI support](/docs/getting-started/codex-cli) — the companion plugin runs from within Claude Code, while Codex CLI is a standalone agent.
 
@@ -72,27 +73,28 @@ See [releases](https://github.com/maxritter/pilot-shell/releases) for all availa
 curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/uninstall.sh | bash
 ```
 
-Removes binary, plugin files, managed commands/rules, settings, and shell aliases. Your project's custom `.claude/` files are preserved.
+Removes binary, plugin files, managed commands/rules, settings, and shell aliases. Your project's custom `.claude/` and `.codex/` files are preserved.
 
 ## Reset & Refresh
 
-Claude Code's session logs and Pilot's caches grow over time and can degrade performance. A periodic reset every few weeks restores a clean baseline.
+Accumulated session logs and Pilot's caches grow over time and can degrade performance. A periodic reset every few weeks restores a clean baseline.
 
 ```bash
-# 1. Inside Claude Code, log out
+# 1. If using Claude Code, log out first
 /logout
 
 # 2. Back up your current config (just in case)
 mv ~/.claude.json ~/.claude.json.bak
 mv ~/.claude       ~/.claude.bak
+mv ~/.codex        ~/.codex.bak
 mv ~/.pilot        ~/.pilot.bak
 
 # 3. Reinstall Pilot Shell from the official installer
 curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.sh | bash
 
-# 4. Start Pilot, sign in to Claude, and re-activate your license
-pilot
+# 4. Re-activate your license, then start your agent
 pilot activate <your-license-key>
+claude   # or: codex
 ```
 
 Once Pilot Shell is running smoothly again, you can delete the `.bak` copies. Forgot your license key? Recover it in the [Pilot members area](https://polar.sh/max-ritter/portal).

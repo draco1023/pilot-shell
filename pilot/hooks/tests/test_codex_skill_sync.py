@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import tomllib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,12 +18,16 @@ if str(_hooks_dir) not in sys.path:
 
 from codex_skill_sync import (  # noqa: E402
     _adapt,
+    _build_codex_review_agent,
     _build_codex_skill,
     _build_skill,
     _check_license,
+    _remove_codex_review_agents,
     _remove_codex_skills,
     _sync_codex_env_vars,
+    _sync_codex_review_agents,
     _sync_codex_skills,
+    main,
 )
 
 
@@ -119,8 +124,36 @@ class TestBuildCodexSkill:
         assert result is not None
         assert "Codex has no callable phase-dispatch tool" in result
         assert "continue immediately with the `$spec-plan` skill instructions" in result
+        assert "sub-agents (spec-review, changes-review), and the Codex companion reviewer are not available" not in result
+        assert "Native `spec-review` and `changes-review` run as managed Codex custom agents" in result
+        assert "The current running session may not expose newly generated skills or agent types until the next install or SessionStart sync" in result
         assert "Skill(skill=" not in result
         assert "Skill('" not in result
+
+    def test_real_spec_plan_codex_uses_native_review_agent(self) -> None:
+        result = _build_codex_skill(Path("pilot/skills/spec-plan"))
+        assert result is not None
+        assert "review agents are not available in Codex CLI" not in result
+        assert "Skip automated plan review agents" not in result
+        assert "multi_agent_v1.spawn_agent" in result
+        assert "multi_agent_v1.wait_agent" in result
+        assert 'agent_type="spec-review"' in result
+        assert "PILOT_SPEC_REVIEW_ENABLED" in result
+        assert "PILOT_CODEX_SPEC_REVIEW_ENABLED" not in result
+
+    def test_real_spec_verify_codex_uses_native_review_agent(self) -> None:
+        result = _build_codex_skill(Path("pilot/skills/spec-verify"))
+        assert result is not None
+        assert "No reviewer agents in Codex" not in result
+        assert "Skip automated code review agents" not in result
+        assert "reviewer agents were launched (not available in Codex CLI)" not in result
+        assert "multi_agent_v1.spawn_agent" in result
+        assert "multi_agent_v1.wait_agent" in result
+        assert 'agent_type="changes-review"' in result
+        assert "changes-review-agent-id-" in result
+        assert "Do not silently skip review" in result
+        assert "PILOT_CHANGES_REVIEW_ENABLED" in result
+        assert "PILOT_CODEX_CHANGES_REVIEW_ENABLED" not in result
 
     @pytest.mark.parametrize(
         "skill_name",
@@ -176,6 +209,55 @@ class TestSyncCodexSkills:
         assert built == 1
 
 
+class TestSyncCodexReviewAgents:
+    def test_builds_review_agent_toml_without_output_path_contract(self) -> None:
+        result = _build_codex_review_agent(Path("pilot/agents/spec-review.md"))
+        assert result is not None
+        data = tomllib.loads(result)
+        assert data["name"] == "spec-review"
+        instructions = data["developer_instructions"]
+        assert "Output ONLY valid JSON" in instructions
+        assert '"issues"' in instructions
+        assert "output_path" not in instructions
+        assert "MANDATORY: Write output" not in instructions
+        assert "Your LAST action MUST be `Write`" not in instructions
+
+    def test_syncs_review_agents_to_codex_agents_dir(self, tmp_path: Path) -> None:
+        claude_agents_dir = tmp_path / ".claude" / "agents"
+        claude_agents_dir.mkdir(parents=True)
+        (claude_agents_dir / "spec-review.md").write_text(Path("pilot/agents/spec-review.md").read_text())
+        (claude_agents_dir / "changes-review.md").write_text(Path("pilot/agents/changes-review.md").read_text())
+        codex_agents_dir = tmp_path / ".codex" / "agents"
+        codex_agents_dir.mkdir(parents=True)
+        (codex_agents_dir / "user-agent.toml").write_text('name = "user-agent"\n')
+
+        with patch("codex_skill_sync.Path.home", return_value=tmp_path):
+            built, failed = _sync_codex_review_agents()
+
+        assert built == 2
+        assert failed == 0
+        assert tomllib.loads((codex_agents_dir / "spec-review.toml").read_text())["name"] == "spec-review"
+        assert tomllib.loads((codex_agents_dir / "changes-review.toml").read_text())["name"] == "changes-review"
+        assert (codex_agents_dir / "user-agent.toml").exists()
+
+    def test_syncs_review_agents_to_codex_home_agents_dir(self, tmp_path: Path) -> None:
+        claude_agents_dir = tmp_path / ".claude" / "agents"
+        claude_agents_dir.mkdir(parents=True)
+        (claude_agents_dir / "spec-review.md").write_text(Path("pilot/agents/spec-review.md").read_text())
+        codex_home = tmp_path / "custom-codex"
+
+        with (
+            patch("codex_skill_sync.Path.home", return_value=tmp_path),
+            patch.dict("codex_skill_sync.os.environ", {"CODEX_HOME": str(codex_home)}),
+        ):
+            built, failed = _sync_codex_review_agents()
+
+        assert built == 1
+        assert failed == 0
+        assert (codex_home / "agents" / "spec-review.toml").exists()
+        assert not (tmp_path / ".codex" / "agents" / "spec-review.toml").exists()
+
+
 class TestRemoveCodexSkills:
     def test_removes_existing_skill_files(self, skill_tree: Path) -> None:
         agents_dir = skill_tree / ".agents" / "skills" / "fix"
@@ -191,6 +273,49 @@ class TestRemoveCodexSkills:
         with patch("codex_skill_sync.Path.home", return_value=skill_tree):
             removed = _remove_codex_skills()
         assert removed == 0
+
+
+class TestRemoveCodexReviewAgents:
+    def test_removes_managed_review_agent_files_only(self, tmp_path: Path) -> None:
+        agents_dir = tmp_path / ".codex" / "agents"
+        agents_dir.mkdir(parents=True)
+        (agents_dir / "spec-review.toml").write_text('# pilot-shell managed Codex review agent\nname = "spec-review"\n')
+        (agents_dir / "changes-review.toml").write_text('# pilot-shell managed Codex review agent\nname = "changes-review"\n')
+        (agents_dir / "user-agent.toml").write_text('name = "user-agent"\n')
+
+        with patch("codex_skill_sync.Path.home", return_value=tmp_path):
+            removed = _remove_codex_review_agents()
+
+        assert removed == 2
+        assert not (agents_dir / "spec-review.toml").exists()
+        assert not (agents_dir / "changes-review.toml").exists()
+        assert (agents_dir / "user-agent.toml").exists()
+
+    def test_preserves_unmarked_same_name_review_agents(self, tmp_path: Path) -> None:
+        agents_dir = tmp_path / ".codex" / "agents"
+        agents_dir.mkdir(parents=True)
+        (agents_dir / "spec-review.toml").write_text('name = "spec-review"\n')
+
+        with patch("codex_skill_sync.Path.home", return_value=tmp_path):
+            removed = _remove_codex_review_agents()
+
+        assert removed == 0
+        assert (agents_dir / "spec-review.toml").exists()
+
+    def test_removes_managed_review_agents_from_codex_home(self, tmp_path: Path) -> None:
+        codex_home = tmp_path / "custom-codex"
+        agents_dir = codex_home / "agents"
+        agents_dir.mkdir(parents=True)
+        (agents_dir / "changes-review.toml").write_text('# pilot-shell managed Codex review agent\nname = "changes-review"\n')
+
+        with (
+            patch("codex_skill_sync.Path.home", return_value=tmp_path),
+            patch.dict("codex_skill_sync.os.environ", {"CODEX_HOME": str(codex_home)}),
+        ):
+            removed = _remove_codex_review_agents()
+
+        assert removed == 1
+        assert not (agents_dir / "changes-review.toml").exists()
 
 
 class TestCheckLicense:
@@ -218,6 +343,28 @@ class TestCheckLicense:
                 mock_run.return_value.stdout = '{"valid": false}'
                 assert _check_license() is False
 
+    def test_main_invalid_license_removes_skills_and_review_agents(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+        codex_bin = tmp_path / ".codex" / "bin" / "codex"
+        codex_bin.parent.mkdir(parents=True)
+        codex_bin.write_text("#!/bin/sh\n")
+        skill_dir = tmp_path / ".agents" / "skills" / "fix"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("old skill")
+        codex_agents_dir = tmp_path / ".codex" / "agents"
+        codex_agents_dir.mkdir(parents=True)
+        (codex_agents_dir / "spec-review.toml").write_text('# pilot-shell managed Codex review agent\nname = "spec-review"\n')
+
+        with (
+            patch("codex_skill_sync.Path.home", return_value=tmp_path),
+            patch("codex_skill_sync._check_license", return_value=False),
+        ):
+            main()
+
+        assert not (skill_dir / "SKILL.md").exists()
+        assert not (codex_agents_dir / "spec-review.toml").exists()
+        output = json.loads(capsys.readouterr().out)
+        assert "removed 2 Codex managed asset(s)" in output["systemMessage"]
+
 
 class TestSyncCodexEnvVars:
     def test_writes_env_vars_from_config(self, tmp_path: Path) -> None:
@@ -243,6 +390,22 @@ class TestSyncCodexEnvVars:
         assert 'PILOT_PLAN_APPROVAL_ENABLED = "false"' in content
         assert 'PILOT_BRANCH_ISOLATION_ENABLED = "true"' in content
         assert 'PILOT_PLAN_QUESTIONS_ENABLED = "true"' in content
+
+    def test_writes_env_vars_to_codex_home_config(self, tmp_path: Path) -> None:
+        codex_home = tmp_path / "custom-codex"
+        codex_config = codex_home / "config.toml"
+        codex_config.parent.mkdir(parents=True)
+        codex_config.write_text('approval_policy = "never"\n')
+
+        with (
+            patch("codex_skill_sync.Path.home", return_value=tmp_path),
+            patch.dict("codex_skill_sync.os.environ", {"CODEX_HOME": str(codex_home)}),
+        ):
+            count = _sync_codex_env_vars()
+
+        assert count == 8
+        assert 'PILOT_CHANGES_REVIEW_ENABLED = "true"' in codex_config.read_text()
+        assert not (tmp_path / ".codex" / "config.toml").exists()
 
     def test_replaces_existing_managed_block(self, tmp_path: Path) -> None:
         config = tmp_path / ".pilot" / "config.json"

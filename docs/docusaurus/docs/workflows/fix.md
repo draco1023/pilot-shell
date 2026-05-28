@@ -11,10 +11,17 @@ Bugfix workflow with TDD. Investigates the bug, writes a failing test, fixes at 
 Use `/fix` for bugs. Use [`/spec`](/docs/workflows/spec) for features and architectural changes — including bugfixes that warrant a full plan with approval and code review.
 
 ```bash
-$ pilot
+# Claude Code
+claude
 > /fix "annotation persistence drops fields between save and reload"
 > /fix "off-by-one in pagination at boundary"
 > /fix "wrong default for max_retries"
+
+# Codex CLI
+codex
+> $fix "annotation persistence drops fields between save and reload"
+> $fix "off-by-one in pagination at boundary"
+> $fix "wrong default for max_retries"
 ```
 
 `/fix` is **always quick**. If investigation reveals the bug is multi-component, architectural, or otherwise larger than a quick fix, `/fix` stops cleanly and tells you to re-invoke with `/spec`. It does not silently switch lanes.
@@ -45,7 +52,7 @@ The primary correctness signal. Run the actual program with the original input a
 
 | Bug surface | Tool | Evidence |
 | --- | --- | --- |
-| **UI / web** | 4-tier browser stack: **Claude Code Chrome** → **Chrome DevTools MCP** → **playwright-cli** → **agent-browser** | Page state, element values |
+| **UI / web** | Browser automation — Claude Code prefers its Chrome extension; Codex uses Chrome DevTools MCP. Both fall back to playwright-cli / agent-browser. | Page state, element values |
 | **CLI** | The exact command the user ran | Stdout, exit code |
 | **HTTP API** | `curl` / HTTP client with the user's body | Status code, response field |
 | **Library / SDK / function** | `python -c '…'`, `node -e '…'`, REPL, scratch script | Returned value |

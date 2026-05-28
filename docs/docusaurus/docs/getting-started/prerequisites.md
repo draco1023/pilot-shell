@@ -25,13 +25,19 @@ Install [Claude Code](https://code.claude.com/docs/en/quickstart) using the **na
 
 ### Codex CLI
 
-Install [Codex CLI](https://developers.openai.com/codex/cli) via `npm i -g @openai/codex`. Requires an [OpenAI API key](https://platform.openai.com/api-keys). See the [Codex CLI guide](/docs/getting-started/codex-cli) for the detailed feature matrix.
+Install [Codex CLI](https://developers.openai.com/codex/cli) using the **native installer**. If you have the `npm` or `brew` version, uninstall it first. Authenticate with your ChatGPT account or an API key on first run. Requires a ChatGPT subscription:
 
-## Codex Companion Plugin (Included)
+| Plan | Audience | Notes |
+|------|----------|-------|
+| **Plus** | Solo — moderate usage | Good for focused coding sessions each week |
+| **Pro $100** | Solo — heavy usage | 5x Plus limits — recommended for full-time AI-assisted development |
+| **Pro $200** | Solo — very heavy usage | 20x Plus limits — for the most intensive workflows |
+| **Business** | Teams | Flexible credit-based pricing, cloud integrations |
+| **Enterprise** | Companies | Compliance, admin tools, organization-wide access |
 
-The [Codex companion plugin](https://github.com/openai/codex-plugin-cc) is installed automatically with Pilot. It provides adversarial code review powered by OpenAI — an independent second opinion during Claude Code's `/spec` planning and verification.
+**API key** is available for automation and CI but is pay-per-token and lacks cloud features (GitHub code review, Slack integration, delayed model access). See [pricing](https://developers.openai.com/codex/pricing) for details.
 
-**Setup:** Run `/codex:setup` once to authenticate, then enable the reviewers in Console Settings → Reviewers. This is separate from Codex CLI — the companion runs from within Claude Code.
+See the [agent comparison](/docs/getting-started/codex-cli) for the full feature matrix.
 
 ## System Requirements
 

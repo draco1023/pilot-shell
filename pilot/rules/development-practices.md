@@ -25,6 +25,12 @@ CodeGraph and Semble are **co-primary**. Pick by scenario, not by habit.
 
 **Combined workflow:** `codegraph_context` first (structure), then `semble search` (intent) — especially for cross-language connections and non-structural relationships.
 
+<!-- CODEX-START
+#### Codex Planning Budget
+
+During `$spec` and `$prd` planning, the Codex planning contracts override generic "always" search rules. One CodeGraph orientation call plus one Semble search is enough for most plans. If either result is irrelevant, pivot to direct file reads and draft the plan or PRD. Do not run callers/callees/impact analysis for docs, rules, markdown, config, UI-copy changes, or local bugfixes; for runtime code, run it only for functions you are about to modify or have identified as the likely root cause.
+CODEX-END -->
+
 Grep/Glob: (1) verifying CodeGraph/Semble completeness, (2) exact text/regex in a known file.
 
 ### Change Discipline

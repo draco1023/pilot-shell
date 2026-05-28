@@ -46,10 +46,10 @@ const insideItems: InsideItem[] = [
   },
   {
     icon: Plug2,
-    title: "MCP & LSP Servers",
+    title: "MCP Servers",
     description: "Pre-configured, zero setup",
     summary:
-      "Seven MCP servers ship pre-configured: docs, web search, persistent memory, code graphs, hybrid code search (Semble). Python, TypeScript, and Go language servers auto-install for real-time diagnostics on every edit.",
+      "Seven MCP servers ship pre-configured for both Claude Code and Codex: library docs, web search, persistent memory, code graphs, hybrid code search (Semble), GitHub code search, and web fetching.",
     href: "/docs/features/mcp-servers",
   },
   {
@@ -81,7 +81,7 @@ const insideItems: InsideItem[] = [
     title: "Customization",
     description: "Modify what Pilot auto-installs",
     summary:
-      "Tweak the built-in /spec workflow, adjust rules, add hooks and agents, swap MCP/LSP servers, override Claude settings. Ship as a team git repo or a local dir. Upstream drift detected automatically.",
+      "Tweak the built-in /spec workflow, adjust rules, add hooks and agents, register additional MCP servers, override Claude Code settings. Ship as a team git repo or a local dir. Upstream drift detected automatically.",
     href: "/docs/features/customization",
   },
 ];
@@ -115,7 +115,7 @@ const WhatsInside = () => {
             What's Inside
           </h2>
           <p className="text-muted-foreground text-lg sm:text-xl max-w-3xl mx-auto">
-            One install to bring battle-tested practices and quality standards to Claude Code and Codex.
+            One install to bring best-practices and standards to Claude Code and Codex.
             <br></br>A shared baseline so every developer can focus on building, not configuring.
           </p>
         </div>

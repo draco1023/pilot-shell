@@ -67,7 +67,7 @@ Before committing to a full eval set:
    ```bash
    PYTHONPATH=~/.agents/skills/benchmark uv run python -m scripts.runner \
        --config benchmarks/<target>/evals.json --configs without --runs 1 \
-       --skip-permissions --agent codex
+       --skip-permissions --agent codex --grader-timeout 600
    ```
 CODEX-END -->
 3. Inspect the baseline output (read `grading.json` for each run). If baseline passes 3/3 assertions, **rewrite the assertions** — they're not discriminating.

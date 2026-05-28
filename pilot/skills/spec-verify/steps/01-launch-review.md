@@ -139,7 +139,47 @@ pathlib.Path(os.environ["PROMPT_FILE"]).write_text(text)
 **Do NOT wait** — proceed to Step 2 immediately. You'll be notified when the polling bash (Step 3) completes.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-**Skip automated code review agents.** They are not available in Codex CLI. Proceed directly to Step 2 (Automated Checks).
+**⛔ If `PILOT_CHANGES_REVIEW_ENABLED` is `"false"` (from Step 0),** skip the rest of this step and proceed directly to Step 2 (Automated Checks).
+
+**When enabled:** launch the managed Codex custom agent immediately. It runs while automated checks execute in Step 2.
+
+Gather context first:
+
+```bash
+git status --short
+```
+
+Collect: changed files list, runtime environment info, test framework constraints, and plan risks section. Derive the plan slug from the plan filename by stripping the date prefix and `.md`.
+
+Persist the returned agent id so Step 3 can survive long checks or compaction. Use a deterministic session file:
+
+```bash
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
+AGENT_ID_FILE="$SESS_DIR/changes-review-agent-id-<plan-slug>.txt"
+mkdir -p "$SESS_DIR"
+```
+
+```python
+review = multi_agent_v1.spawn_agent(
+    agent_type="changes-review",
+    message="""
+    Plan file: <plan-path>
+    User request: <original task description that invoked $spec>
+    Changed files: [file list]
+    Runtime environment: [how to start, port, deploy path]
+    Test framework constraints: [what it can/cannot test]
+
+    Review implementation: compliance, quality, and goal achievement.
+    Return ONLY valid JSON matching the changes-review schema.
+    Include the plan file path in the `plan_file` field.
+    """,
+)
+CHANGES_REVIEW_AGENT_ID = review.agent_id
+```
+
+After spawning, write `CHANGES_REVIEW_AGENT_ID` to `$AGENT_ID_FILE`.
+
+Do NOT wait here. Proceed directly to Step 2.
 
 Self-review the implementation diff before proceeding: `git diff --stat` to verify scope matches the plan, and spot-check changed files for obvious issues (security, missing error handling, dead code).
 CODEX-END -->

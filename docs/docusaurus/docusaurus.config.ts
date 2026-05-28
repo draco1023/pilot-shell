@@ -55,7 +55,7 @@ const config: Config = {
           path: "./blog",
           blogTitle: "Pilot Shell Blog",
           blogDescription:
-            "Insights on Claude Code, AI engineering, and the Pilot Shell platform — guides, tools, and model comparisons.",
+            "Insights on Claude Code, Codex CLI, AI engineering, and the Pilot Shell platform — guides, tools, and model comparisons.",
           blogSidebarTitle: "Recent posts",
           blogSidebarCount: "ALL",
           postsPerPage: 12,
@@ -64,7 +64,7 @@ const config: Config = {
             type: ["rss", "atom"],
             title: "Pilot Shell Blog",
             description:
-              "Latest posts from the Pilot Shell blog — Claude Code engineering, AI tools, and model deep-dives.",
+              "Latest posts from the Pilot Shell blog — Claude Code and Codex CLI engineering, AI tools, and model deep-dives.",
             copyright: `Copyright © ${new Date().getFullYear()} Pilot Shell.`,
           },
         },
@@ -86,7 +86,7 @@ const config: Config = {
       {
         name: "keywords",
         content:
-          "how real engineers run Claude Code, Claude Code engineering platform, Claude Code, Claude Code platform, Claude Code framework, spec-driven development, Pilot Shell, TDD enforcement, AI coding agent, MCP servers, Claude Code best practices",
+          "how real engineers run Claude Code and Codex, Claude Code, Codex CLI, OpenAI Codex, Claude Code engineering platform, Codex engineering platform, Claude Code framework, Codex framework, spec-driven development, Pilot Shell, TDD enforcement, AI coding agent, GPT-5, GPT-5.5, MCP servers, Claude Code best practices, Codex best practices",
       },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@maxritter" },

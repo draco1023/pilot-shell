@@ -2,11 +2,21 @@
 
 **⛔ ALWAYS use the `AskUserQuestion` tool** — never list numbered questions in plain text. Each question gets its own entry with 2-4 predefined options users can select. This provides a structured form UI that is much easier to answer than freeform text.
 
+<!-- CC-ONLY -->
 **One question at a time, building on previous answers.** Each `AskUserQuestion` call focuses on a single decision point, and the next question must follow from what the user just said — not from a fixed checklist. If the user's answer exposes a new assumption or constraint, pivot there instead of marching through pre-planned topics.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Codex clarification cap:** ask one bundled plain-text prompt with at most 3 decision points. If the user's answer opens a major new unknown, ask one follow-up prompt; otherwise draft the PRD with documented assumptions.
+CODEX-END -->
 
 **⛔ Skip obvious questions.** Do not ask anything already answered by the one-line idea, the codebase exploration in Step 1, or earlier answers in this conversation. The goal is to surface what the user hasn't thought about yet, not to collect a standard intake form.
 
+<!-- CC-ONLY -->
 **⛔ Code-first rule.** Before each question, ask "can the codebase answer this?" If yes — read the code. Use `codegraph_context`, `codegraph_search`, `codegraph_explore`, or Semble to resolve "how does X currently work / where does Y live / what's the existing pattern for Z". Only ask the user about things code can't tell you: purpose, priorities, audience, constraints, scope boundaries, behavioural expectations not yet encoded. Asking the user about facts the code already encodes wastes their time and signals you didn't explore.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**⛔ Code-first rule.** Before asking, answer codebase facts with the bounded context from Step 1 and targeted reads. Only ask about purpose, priorities, audience, scope boundaries, and behavior the code cannot encode.
+CODEX-END -->
 
 Coverage areas (ask only where genuinely unclear):
 - **Purpose** — what's the core outcome the user wants?
@@ -24,4 +34,9 @@ Coverage areas (ask only where genuinely unclear):
 - Surface trade-offs — "That's possible, but it comes at the cost of Z"
 - Be constructive but strategic — don't be a yes-man
 - If the idea has red flags or scope creep risks, raise them now
+<!-- CC-ONLY -->
 - Typically 3-6 questions total, depending on complexity — stop asking once you have 90% of the spec
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- Typically 1 bundled prompt, plus one follow-up only for a real blocking unknown — stop asking once you have enough to draft a useful PRD.
+CODEX-END -->

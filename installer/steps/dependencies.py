@@ -1092,10 +1092,6 @@ def install_pbt_tools() -> bool:
     Go PBT is handled by the built-in 'go test -fuzz' (Go 1.18+) — no install needed.
     Both packages are best-effort: failure does not block installation.
     """
-    if command_exists("hypothesis") and command_exists("fast-check"):
-        _record_outcome(_OUTCOME_UNCHANGED)
-        return True
-
     ok = True
 
     if not _run_bash_with_retry("uv tool install --upgrade hypothesis", timeout=UV_TOOL_INSTALL_TIMEOUT):

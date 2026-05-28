@@ -1,14 +1,14 @@
 ---
 sidebar_position: 3
 title: Context Optimization
-description: Keep the Claude context window lean and recover cleanly when it fills up — auto-compaction hooks, memory persistence, and routing for token-heavy tasks.
+description: Keep the context window lean and recover cleanly when it fills up — strategies and memory persistence for Claude Code and Codex.
 ---
 
 # Context Optimization
 
-Two things matter for a long-running Claude session: keeping the context window lean so tokens go to your code, and handling the moments when it fills up anyway.
+Two things matter for a long-running session: keeping the context window lean so tokens go to your code, and handling the moments when it fills up anyway.
 
-With 1M context windows (API subscribers on Team and Enterprise get this on all models; Max plan users can opt into 1M per-row on Opus rows — see [Smart Model Routing](./model-routing.md)), compaction is rare — most sessions complete well within the available context. Pilot Shell's strategies focus on **staying lean**, and making **compaction and parallel work** painless when they happen.
+These strategies apply to both **Claude Code** and **Codex CLI**. Compaction (automatic context summarization) applies to Claude Code; on Codex, context is managed per the model's native window.
 
 ## Keeping context lean
 
@@ -21,7 +21,7 @@ With 1M context windows (API subscribers on Team and Enterprise get this on all 
 | **Scoped MCP tools** | Variable | MCP tool schemas are lazy-loaded via `ToolSearch` — only fetched when needed, not preloaded |
 | **Routing hooks** | Variable | PreToolUse hooks block `curl`/`wget`/built-in `WebFetch` and redirect to the dedicated web-fetch MCP, so large pages don't dump into context |
 
-## Status line display
+## Status line display *(Claude Code only)*
 
 The status line shows context usage as a visual progress bar:
 
@@ -31,7 +31,7 @@ Opus 4.7 [1M] | █████░▓ 60% | ...
 
 Claude Code reserves ~16.5% of the context window as a compaction buffer, triggering auto-compaction at ~83.5% raw usage. Pilot Shell rescales this to an **effective 0–100% range** so the bar fills naturally to 100% right before compaction fires. A `▓` indicator shows the reserved zone. The monitor warns at ~80% effective (informational) and ~90%+ effective (caution).
 
-## When compaction fires
+## When compaction fires *(Claude Code only)*
 
 On 200K windows, compaction happens more often. Pilot Shell preserves state automatically across the three lifecycle events:
 

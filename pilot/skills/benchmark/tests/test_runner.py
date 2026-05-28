@@ -9,10 +9,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from scripts.runner import (
+    CODEX_DEFAULT_MODEL,
     REQUIRED_RESULT_FIELDS,
     SANDBOX_PLACEHOLDER,
     RunConfig,
     _make_subprocess_env,
+    _resolve_run_models,
     _run_grader,
     _safe_prefixes,
     _validate_target_path,
@@ -25,6 +27,7 @@ from scripts.runner import (
     validate_prompt_isolation,
 )
 from scripts.utils import (
+    DEFAULT_FALLBACK_MODEL,
     ExecuteFailure,
     ExecuteSuccess,
     GraderFailure,
@@ -540,6 +543,44 @@ class TestRunConfig:
         assert cfg.agent == "codex"
 
 
+class TestResolveRunModels:
+    def test_codex_executor_with_claude_grader_does_not_pass_codex_default_to_claude(self) -> None:
+        executor_model, grader_model = _resolve_run_models(
+            agent="codex",
+            grader_agent="claude",
+            model_arg=None,
+            grader_model_arg=None,
+            target={"type": "rules"},
+        )
+
+        assert executor_model == CODEX_DEFAULT_MODEL
+        assert grader_model == DEFAULT_FALLBACK_MODEL
+
+    def test_claude_executor_with_codex_grader_uses_codex_default(self) -> None:
+        executor_model, grader_model = _resolve_run_models(
+            agent="claude",
+            grader_agent="codex",
+            model_arg=None,
+            grader_model_arg=None,
+            target={"type": "rules"},
+        )
+
+        assert executor_model == DEFAULT_FALLBACK_MODEL
+        assert grader_model == CODEX_DEFAULT_MODEL
+
+    def test_same_agent_grader_inherits_executor_model(self) -> None:
+        executor_model, grader_model = _resolve_run_models(
+            agent="codex",
+            grader_agent="codex",
+            model_arg="gpt-5.5",
+            grader_model_arg=None,
+            target={"type": "rules"},
+        )
+
+        assert executor_model == "gpt-5.5"
+        assert grader_model == "gpt-5.5"
+
+
 class TestExecuteRunCodex:
     def test_codex_agent_invokes_codex_exec(self, tmp_path: Path) -> None:
         config_dir = tmp_path / "cfg"
@@ -558,6 +599,7 @@ class TestExecuteRunCodex:
         cmd_arg = mock_run.call_args.args[0]
         assert cmd_arg[0] == "codex"
         assert "exec" in cmd_arg
+        assert "--skip-git-repo-check" in cmd_arg
         assert isinstance(result, ExecuteSuccess)
 
     def test_codex_agent_omits_model_flag_for_codex_default(self, tmp_path: Path) -> None:
@@ -664,6 +706,7 @@ class TestRunGraderCodex:
         cmd_arg = mock_run.call_args.args[0]
         assert cmd_arg[0] == "codex"
         assert "exec" in cmd_arg
+        assert "--skip-git-repo-check" in cmd_arg
         assert isinstance(result, GraderSuccess)
 
     def test_codex_grader_omits_model_flag_for_codex_default(self, tmp_path: Path) -> None:

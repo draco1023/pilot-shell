@@ -45,5 +45,15 @@ The entire flow is conversational. One question at a time. No rushing to solutio
 **⛔ ALWAYS use the `AskUserQuestion` tool** for user questions during convergent phases (Steps 4-8) — never list numbered questions in plain text.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-**⛔ ALWAYS use plain-text numbered options** for user questions — never refer to `AskUserQuestion` as a callable tool in Codex. Present 2-4 concrete options with trade-offs, and wait for the user's response.
+**⛔ ALWAYS use plain-text numbered options** for user questions — never refer to the unavailable Claude question tool as callable in Codex. Present 2-4 concrete options with trade-offs, and wait for the user's response.
+
+### Codex PRD Pacing Contract
+
+For Codex, PRD quality means enough product clarity to hand off to `$spec`, not exhaustive discovery.
+
+- Reach a first complete PRD draft before context reaches 40% unless the user explicitly asks for deep research or brainstorming.
+- Use one bounded project-context pass: one CodeGraph orientation call and one Semble search at most, then targeted reads.
+- Default to Quick research for repo-local ideas. Ask about Standard or Deep research only when the user requests market/current external context or the idea depends on external facts.
+- Ask at most two decision prompts before the PRD draft: one scope/requirements prompt and one approach/scope confirmation prompt. If the answer is reversible, document the assumption and draft.
+- Do not keep ideating after a viable direction exists. Capture alternatives as deferred ideas and move to the PRD.
 CODEX-END -->

@@ -6,13 +6,20 @@ description: Brainstorm vague ideas into Product Requirements Documents through 
 
 # /prd
 
-`/prd` is the **brainstorming surface** for ideas that aren't yet specs. Use it when you have a vague idea, a problem statement without a solution, or just want to think out loud and have Claude pressure-test directions before committing to a plan. The conversation produces a Product Requirements Document (PRD) you can hand directly to `/spec`.
+`/prd` is the **brainstorming surface** for ideas that aren't yet specs. Use it when you have a vague idea, a problem statement without a solution, or just want to think out loud and have the agent pressure-test directions before committing to a plan. The conversation produces a Product Requirements Document (PRD) you can hand directly to `/spec`.
 
 ```bash
-$ pilot
+# Claude Code
+claude
 > /prd "Add real-time notifications for team updates"
 > /prd "We need better onboarding — users drop off after signup"
 > /prd "Build an API for third-party integrations"
+
+# Codex CLI
+codex
+> $prd "Add real-time notifications for team updates"
+> $prd "We need better onboarding — users drop off after signup"
+> $prd "Build an API for third-party integrations"
 ```
 
 ## When to Use
@@ -34,8 +41,8 @@ $ pilot
 
 `/prd` has two distinct conversational modes — divergent for generating ideas, convergent for locking them down:
 
-- **Divergent (Ideate):** Free-form prose. Claude pitches 3-5 distinct directions, you react ("yes that one, but…"), Claude pressure-tests viability and pitches the next round. No structured forms — this is where the riffing happens.
-- **Convergent (Clarify → Converge → Write):** Structured `AskUserQuestion` forms with predefined options. Used once the shape is known and you're nailing down details.
+- **Divergent (Ideate):** Free-form prose. The agent pitches 3-5 distinct directions, you react ("yes that one, but…"), it pressure-tests viability and pitches the next round. No structured forms — this is where the riffing happens.
+- **Convergent (Clarify → Converge → Write):** Structured questions with predefined options (interactive forms on Claude Code; numbered plain-text on Codex). Used once the shape is known and you're nailing down details.
 
 The skill picks the mode automatically based on how concrete your input is. A vague problem statement triggers Ideate; a concrete request like "Add Google OAuth" skips it.
 
@@ -65,7 +72,7 @@ Research findings are embedded in the PRD under a dedicated section.
 
 ### 2b. Ideate (Optional — Divergent Brainstorming)
 
-When the idea is vague, this step kicks in **before** structured questions. Claude pitches 3-5 distinct directions in plain prose:
+When the idea is vague, this step kicks in **before** structured questions. The agent pitches 3-5 distinct directions in plain prose:
 
 > A few directions for "better onboarding":
 > - **Reduce surface area** — cut the signup form to email-only, defer the rest
@@ -75,13 +82,13 @@ When the idea is vague, this step kicks in **before** structured questions. Clau
 >
 > Which resonate, or where am I off?
 
-You react in your own words. Claude pressure-tests your reaction (where does it break? what does it cost?), then pitches the next round shaped by your answer. Usually 1-3 rounds — the signal to converge is when you start saying "yes, and…" instead of "no, but…".
+You react in your own words. The agent pressure-tests your reaction (where does it break? what does it cost?), then pitches the next round shaped by your answer. Usually 1-3 rounds — the signal to converge is when you start saying "yes, and…" instead of "no, but…".
 
-This step is **skipped automatically** when your input is concrete (e.g., "Add Google OAuth" — Claude won't pitch alternatives you didn't ask for).
+This step is **skipped automatically** when your input is concrete (e.g., "Add Google OAuth" — the agent won't pitch alternatives you didn't ask for).
 
 ### 3. Ask Clarifying Questions
 
-Switches to structured `AskUserQuestion` forms. One question at a time, with 2-4 predefined options each. Focuses on purpose, users, constraints, success criteria, and scope boundaries. Challenges assumptions and surfaces trade-offs. Typically 3-6 questions.
+One question at a time with 2-4 options. Focuses on purpose, users, constraints, success criteria, and scope boundaries. Challenges assumptions and surfaces trade-offs. Typically 3-6 questions. (Interactive forms on Claude Code; numbered plain-text on Codex.)
 
 ### 4. Propose Approaches
 
@@ -104,11 +111,11 @@ Saves a PRD to `docs/prd/YYYY-MM-DD-<slug>.md` with structured metadata and thes
 | **Key Decisions** | Trade-offs made during the conversation with reasoning |
 | **Research Findings** | Embedded research results (when research tier was Standard or Deep) |
 
-After writing, Claude runs a 4-point self-review (placeholders, consistency, scope, ambiguity), then **asks you to open the file in your editor and read it through** before you confirm. If you request changes, Claude edits the specific sections in place — it doesn't rewrite the whole document, so you don't lose your editor scroll position or have to re-read everything.
+After writing, the agent runs a 4-point self-review (placeholders, consistency, scope, ambiguity), then **asks you to open the file in your editor and read it through** before you confirm. If you request changes, it edits the specific sections in place — no full rewrite, so you don't lose your editor scroll position.
 
 ### 7. Hand Off to /spec
 
-After you confirm the PRD, asks whether to hand off to `/spec` immediately or save for later. If yes, `/spec` is invoked automatically with a reference to the PRD.
+After you confirm the PRD, asks whether to hand off to `/spec` (or `$spec` on Codex) immediately or save for later. If yes, the spec workflow is invoked automatically with a reference to the PRD.
 
 ## PRD Output
 

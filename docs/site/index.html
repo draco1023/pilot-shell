@@ -13,7 +13,7 @@
     />
     <meta
       name="keywords"
-      content="How real engineers run Claude Code and Codex, Claude Code engineering platform, Claude Code, Claude Code platform, Claude Code framework, spec-driven development, Pilot Shell, Anthropic Claude, AI pair programming, TDD enforcement, AI coding agent, Claude Sonnet 4.6, Claude Opus 4.7, MCP servers, Claude Code productivity, AI development environment, Claude Code best practices"
+      content="how real engineers run Claude Code and Codex, Claude Code, Codex CLI, OpenAI Codex, Claude Code engineering platform, Codex engineering platform, Claude Code framework, Codex framework, spec-driven development, Pilot Shell, Anthropic Claude, OpenAI GPT-5, AI pair programming, TDD enforcement, AI coding agent, Claude Sonnet 4.6, Claude Opus 4.7, GPT-5, GPT-5.5, MCP servers, Claude Code productivity, Codex productivity, AI development environment, Claude Code best practices, Codex best practices"
     />
     <meta name="author" content="Max Ritter" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -123,7 +123,7 @@
           "@type": "Blog",
           "name": "Pilot Shell Blog",
           "url": "https://pilot-shell.com/blog/",
-          "description": "Guides and insights on Claude Code, AI-powered development workflows, TDD enforcement, and quality automation"
+          "description": "Guides and insights on Claude Code, Codex CLI, AI-powered development workflows, TDD enforcement, and quality automation"
         }
       }
     </script>
@@ -139,7 +139,7 @@
         "applicationCategory": "DeveloperApplication",
         "applicationSubCategory": "AI Development Tools",
         "operatingSystem": "Windows, macOS, Linux",
-        "softwareRequirements": "Claude Code CLI",
+        "softwareRequirements": "Claude Code CLI or Codex CLI",
         "releaseNotes": "https://github.com/maxritter/pilot-shell/releases",
         "screenshot": "https://pilot-shell.com/logo.png",
         "downloadUrl": "https://github.com/maxritter/pilot-shell",
@@ -168,11 +168,11 @@
           "Quality Hooks — auto-format, lint, type-check on every edit",
           "Persistent Memory — context carries across sessions",
           "Semantic Code Search — find code by meaning",
-          "MCP & LSP Servers — language tooling for Claude Code",
+          "MCP & LSP Servers — language tooling for Claude Code and Codex",
           "Worktree Isolation — safe parallel work via git worktrees",
           "Python, TypeScript, and Go support"
         ],
-        "keywords": "Claude Code, AI coding, TDD, quality automation, spec-driven development, MCP, LSP"
+        "keywords": "Claude Code, Codex CLI, OpenAI Codex, AI coding, TDD, quality automation, spec-driven development, MCP, LSP"
       }
     </script>
 
@@ -181,17 +181,17 @@
       {
         "@context": "https://schema.org",
         "@type": "HowTo",
-        "name": "How to install Pilot Shell for Claude Code",
-        "description": "Install Pilot Shell once and use it across every project to add spec-driven workflows, TDD enforcement, and quality hooks to Claude Code.",
+        "name": "How to install Pilot Shell for Claude Code and Codex",
+        "description": "Install Pilot Shell once and use it across every project to add spec-driven workflows, TDD enforcement, and quality hooks to Claude Code and Codex CLI.",
         "totalTime": "PT2M",
         "supply": [
           {
             "@type": "HowToSupply",
-            "name": "Active Claude Code subscription (Max 5x, Max 20x, Team Premium, or API key)"
+            "name": "Active Claude Code subscription (Max 5x, Max 20x, Team Premium) or OpenAI Codex subscription (Plus, Pro, Business, Enterprise)"
           }
         ],
         "tool": [
-          { "@type": "HowToTool", "name": "Claude Code CLI" },
+          { "@type": "HowToTool", "name": "Claude Code CLI or Codex CLI" },
           { "@type": "HowToTool", "name": "Bash, Zsh, or compatible shell" }
         ],
         "step": [
@@ -205,8 +205,8 @@
           {
             "@type": "HowToStep",
             "position": 2,
-            "name": "Launch Pilot",
-            "text": "Run pilot in any project directory to start a Claude Code session with Pilot Shell loaded.",
+            "name": "Launch your agent",
+            "text": "Run claude or codex in any project directory — Pilot Shell is loaded automatically into the session.",
             "url": "https://pilot-shell.com/#installation"
           },
           {
@@ -235,10 +235,10 @@
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "Do I need a separate Anthropic subscription to use Pilot Shell?",
+            "name": "Do I need a separate AI agent subscription to use Pilot Shell?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes. Pilot Shell enhances Claude Code — it doesn't replace it. You need an active Claude subscription (Max 5x or 20x for solo developers, or Team Premium for teams). Using the Anthropic API directly also works but may lead to higher costs. Pilot Shell adds quality automation on top of whatever Claude Code access you already have."
+              "text": "Yes. Pilot Shell enhances Claude Code and Codex CLI — it doesn't replace them. You need at least one active subscription: Claude (Max 5x or 20x for solo developers, or Team Premium for teams) or OpenAI Codex (Plus or Pro for solo developers, Business or Enterprise for teams). Pilot Shell adds quality automation on top of whichever agent you use."
             }
           },
           {
@@ -254,7 +254,7 @@
             "name": "Does Pilot Shell work with other AI coding tools?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Pilot Shell is built specifically for Claude Code. Every hook, rule, command, and workflow is engineered for Claude's tool-use protocol, prompt format, and session lifecycle. The optional Codex plugin adds OpenAI-powered adversarial review during /spec — disabled by default."
+              "text": "Pilot Shell is built for Claude Code and Codex CLI as first-class agents. Every hook, rule, command, and workflow is engineered for both — Claude's tool-use protocol and Codex's session lifecycle. The installer auto-detects whichever agents you have and configures them together; you can run one or both side by side. Optional Codex Companion reviewers add an independent second opinion during /spec."
             }
           },
           {
@@ -270,7 +270,7 @@
             "name": "Which programming languages does Pilot Shell support?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Pilot Shell's quality hooks (auto-formatting, linting, type checking) currently support Python, TypeScript/JavaScript, and Go out of the box. TDD enforcement, spec-driven development, persistent memory, and all rules and standards work with any language Claude Code supports."
+              "text": "Pilot Shell's quality hooks (auto-formatting, linting, type checking) currently support Python, TypeScript/JavaScript, and Go out of the box. TDD enforcement, spec-driven development, persistent memory, and all rules and standards work with any language Claude Code or Codex CLI supports."
             }
           },
           {
@@ -333,7 +333,7 @@
       </header>
       <main>
         <section>
-          <h2>What Pilot Shell adds to Claude Code</h2>
+          <h2>What Pilot Shell adds to Claude Code and Codex</h2>
           <ul>
             <li>
               <strong>Spec-Driven Development</strong> — Plan, approve, implement, verify with the /spec workflow.
@@ -342,7 +342,7 @@
             <li><strong>Quality Hooks</strong> — Auto-format, lint, and type-check on every edit.</li>
             <li><strong>Persistent Memory</strong> — Context carries across sessions automatically.</li>
             <li><strong>Semantic Code Search</strong> — Find code by meaning, not just keywords.</li>
-            <li><strong>MCP &amp; LSP Servers</strong> — Pre-wired language tooling.</li>
+            <li><strong>MCP &amp; LSP Servers</strong> — Pre-wired language tooling for both agents.</li>
             <li><strong>Worktree Isolation</strong> — Safe parallel work via git worktrees.</li>
           </ul>
         </section>
@@ -351,8 +351,8 @@
           <p>Run the installer in your terminal:</p>
           <pre><code>curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.sh | bash</code></pre>
           <p>
-            Then run <code>pilot</code> in any project, generate rules with <code>/setup-rules</code>, and ship features
-            with <code>/spec</code>.
+            Then run <code>claude</code> or <code>codex</code> in any project, generate rules with
+            <code>/setup-rules</code>, and ship features with <code>/spec</code>.
           </p>
         </section>
         <section>

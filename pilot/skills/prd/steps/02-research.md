@@ -1,6 +1,11 @@
 ## Step 2: Research (Optional)
 
+<!-- CC-ONLY -->
 **After understanding the idea, ask the user which research tier they want.** Use `AskUserQuestion` with these options:
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Codex default:** choose Quick unless the user explicitly asked for research or the PRD depends on current external facts. If research is needed, ask one plain-text tier question with these options:
+CODEX-END -->
 
 - **Quick (Recommended for simple ideas)** — "Skip research, go straight to brainstorming or clarification"
 - **Standard** — "Quick web research: competitors, prior art, best practices (5-10 searches)"
@@ -23,9 +28,9 @@ Skip this phase entirely. Proceed to Step 4.
 4. **Optionally fetch full pages** for promising results: `ToolSearch(query="+web-fetch fetch")` then `fetch_url(url="...")`
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-2. **Use available web tools directly:** prefer the web-search MCP tool (`mcp__web-search__search`) when available.
+2. **Use available web tools directly:** prefer the web-search MCP tool (`mcp__web_search__search`) when available.
 3. **Execute searches sequentially**, gathering key findings from each.
-4. **Optionally fetch full pages** for promising results with the web-fetch MCP tool (`mcp__web-fetch__fetch_url`) when available.
+4. **Optionally fetch full pages** for promising results with the web-fetch MCP tool (`mcp__web_fetch__fetch_url`) when available.
 CODEX-END -->
 5. **Compile research summary:**
    - Key findings (3-5 bullet points)
@@ -66,16 +71,21 @@ CODEX-END -->
 4. **Read all output files** and synthesize into a comprehensive research summary
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-2. **Run searches sequentially** (one per angle, 5 search queries max per angle). Use the web-search MCP tool or `mcp__web-search__search` if available. For each angle:
-   - Execute 3-5 targeted searches
-   - Optionally fetch full pages for promising results via `mcp__web-fetch__fetch_url`
+2. **Run searches sequentially** (one per angle, 3 search queries max per angle). Use the web-search MCP tool or `mcp__web_search__search` if available. For each angle:
+   - Execute 2-3 targeted searches
+   - Optionally fetch full pages for promising results via `mcp__web_fetch__fetch_url`
    - Compile findings per angle
 3. **Synthesize findings** across all angles into a comprehensive research summary
 CODEX-END -->
 5. **Present synthesized findings to user** — organized by angle, with key insights highlighted
 6. **Clean up temp files:** `find /tmp -maxdepth 1 -name 'prd-research-*.md' -delete`
 
+<!-- CC-ONLY -->
 **Cap:** Maximum 4 research angles, each limited to 5 search queries.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Codex cap:** Standard means 3-5 total searches. Deep means at most 2 research angles with 2-3 searches each unless the user explicitly asks for exhaustive research.
+CODEX-END -->
 
 ### Research Output
 

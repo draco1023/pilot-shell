@@ -16,6 +16,7 @@
    - If `Greenfield?: yes` in the scan output, fall back to generic options and note the fallback under "Autonomous Decisions" in Step 9.
    - If the scan output names symbols/files relevant to a question, generic labels are a regression — use the names. Asking the user about facts already in the codebase, or asking with abstract options when grounded ones are available, is the single biggest source of unnecessary friction in planning.
 
+<!-- CC-ONLY -->
 5. **Ask Batch 1 questions** → notify, then use `AskUserQuestion` with each question as a separate entry with predefined options:
 
    ```bash
@@ -25,3 +26,11 @@
    Each question must have 2-4 concrete options. Use `multiSelect: true` when choices aren't mutually exclusive.
 
    Even when the task seems clear, ask about: scope boundaries (what's explicitly out), priority trade-offs (speed vs completeness), or behavioral expectations (error handling, edge cases). **Only skip if the task is a trivial single-file change.**
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+5. **Codex Batch 1 policy:** ask only when the answer would change task boundaries, architecture, or user-visible behavior and cannot be inferred from the request or code.
+
+   - If no blocking question remains, continue and record any reversible defaults in the plan under "Assumptions" or "Autonomous Decisions".
+   - If asking, notify first, then send one plain-text prompt with at most 3 short questions and 2-3 concrete options each.
+   - Do not ask the user to choose between facts the codebase can answer. Read the relevant file instead.
+CODEX-END -->

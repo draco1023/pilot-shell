@@ -89,6 +89,25 @@ SANDBOX_PLACEHOLDER = "{sandbox}"
 CODEX_DEFAULT_MODEL = "codex-default"
 
 
+def _resolve_run_models(
+    *,
+    agent: str,
+    grader_agent: str,
+    model_arg: str | None,
+    grader_model_arg: str | None,
+    target: TargetConfig,
+) -> tuple[str, str]:
+    """Resolve executor and grader models without leaking agent-specific sentinels."""
+    executor_model = model_arg or (CODEX_DEFAULT_MODEL if agent == "codex" else resolve_executor_model(target))
+    if grader_model_arg:
+        return executor_model, grader_model_arg
+    if grader_agent == agent:
+        return executor_model, executor_model
+    if grader_agent == "codex":
+        return executor_model, CODEX_DEFAULT_MODEL
+    return executor_model, resolve_executor_model(target)
+
+
 def substitute_sandbox(prompt: str, sandbox_path: Path) -> str:
     """Replace {sandbox} in the prompt with the per-run isolated directory.
 
@@ -536,7 +555,7 @@ def _execute_run_codex(
 
     import time
 
-    cmd = ["codex", "exec"]
+    cmd = ["codex", "exec", "--skip-git-repo-check"]
     if model and model != CODEX_DEFAULT_MODEL:
         cmd.extend(["--model", model])
     if skip_permissions:
@@ -629,7 +648,7 @@ def _run_grader(  # noqa: PLR0913
     )
 
     if agent == "codex":
-        grader_cmd = ["codex", "exec"]
+        grader_cmd = ["codex", "exec", "--skip-git-repo-check"]
         if model and model != CODEX_DEFAULT_MODEL:
             grader_cmd.extend(["--model", model])
         if skip_permissions:
@@ -998,9 +1017,12 @@ def main() -> None:
 
     agent: str = args.agent
     grader_agent: str = args.grader_agent or agent
-    executor_model: str = args.model or (CODEX_DEFAULT_MODEL if agent == "codex" else resolve_executor_model(target))
-    grader_model: str = args.grader_model or (
-        CODEX_DEFAULT_MODEL if grader_agent == "codex" and agent != "codex" else executor_model
+    executor_model, grader_model = _resolve_run_models(
+        agent=agent,
+        grader_agent=grader_agent,
+        model_arg=args.model,
+        grader_model_arg=args.grader_model,
+        target=target,
     )
 
     run_cfg = RunConfig(

@@ -1,12 +1,16 @@
 ---
 sidebar_position: 10
 title: Customization
-description: Customize what Pilot Shell auto-installs — skills, rules, hooks, agents, MCP servers, LSP servers, and Claude settings on Team and Enterprise plans.
+description: Customize what Pilot Shell auto-installs into ~/.claude/ — skills, rules, hooks, agents, MCP servers, and Claude Code settings. Team and Enterprise plans.
 ---
 
 # Customization
 
-Customize everything Pilot Shell auto-installs on your machine. Tweak the built-in `/spec` workflow, modify existing rules, register additional hooks on top of Pilot's defaults, change which MCP or LSP servers get configured, adjust the auto-applied `settings.json` and `claude.json` — all without forking Pilot or hand-editing `~/.claude/` after every update. Available on **Team** and **Enterprise** plans.
+Customize everything Pilot Shell auto-installs. Tweak the built-in `/spec` workflow, modify rules, register additional hooks, add MCP servers, adjust `settings.json` and `claude.json` — all without hand-editing `~/.claude/` after every update. Available on **Team** and **Enterprise** plans.
+
+:::note Claude Code focus
+Customization currently targets Claude Code assets (`~/.claude/` — skills, rules, hooks, agents, settings). Codex assets (`~/.codex/`) are configured independently. Use `rules/*.md` and `agents/*.md` for content that applies to both agents.
+:::
 
 - **Team-wide (git URL):** publish your customization as a git repo; every developer runs `pilot customize install <git-url>` once, and `pilot customize update` pulls your team's latest.
 - **Individual (local path):** drop the same files into a folder on your machine (e.g. `~/my-pilot-patch/`) and run `pilot customize install ~/my-pilot-patch`. `pilot customize update` re-applies directly from the same folder, so your edits take effect on the next update.
@@ -167,7 +171,7 @@ Your step now appears in `~/.claude/skills/<skill>/SKILL.md` right after the anc
 
 ## Overriding top-level config
 
-Three Pilot config files can be overridden from your repo root. All three use deep-merge — Pilot is no longer registered as a Claude Code plugin, so MCP servers live at the native user-scope location (`~/.claude.json` `mcpServers` key) instead of a plugin-local file. LSP servers are now installed via Anthropic's [`Piebald-AI/claude-code-lsps`](https://github.com/Piebald-AI/claude-code-lsps) marketplace and are no longer Pilot-managed; teams that need additional LSPs ship them as separate Claude Code plugins.
+Three Pilot config files can be overridden from your repo root. All three use deep-merge. MCP servers live at the native user-scope location (`~/.claude.json` `mcpServers` key). Language servers are installed via Anthropic's [`Piebald-AI/claude-code-lsps`](https://github.com/Piebald-AI/claude-code-lsps) marketplace — to add a custom LSP, ship it as a separate Claude Code plugin.
 
 | File in repo | Destination | Strategy | Notes |
 |--------------|-------------|----------|-------|

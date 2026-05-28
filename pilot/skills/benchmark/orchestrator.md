@@ -68,7 +68,7 @@ Follow these steps sequentially:
 **Runner:** `PYTHONPATH=~/.claude/skills/benchmark uv run python -m scripts.runner --config <evals.json> --skip-permissions`
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-**Runner:** `PYTHONPATH=~/.agents/skills/benchmark uv run python -m scripts.runner --config <evals.json> --skip-permissions --agent codex`
+**Runner:** `PYTHONPATH=~/.agents/skills/benchmark uv run python -m scripts.runner --config <evals.json> --skip-permissions --agent codex --grader-timeout 600`
 CODEX-END -->
 
 **Defaults worth knowing:**
@@ -76,3 +76,7 @@ CODEX-END -->
 - `--workers 4` (bump to `min(total_runs, 8)` for small eval sets so all runs land in one wave)
 - `--model` is read from the target skill's frontmatter for Claude (alias → ID); rules and model-less Claude skills fall back to `claude-sonnet-4-6`; Codex defaults to the active Codex model unless `--model` is passed
 - `--grader-model` defaults to the same model as `--model` so executor and grader stay matched
+<!-- CODEX-START
+- Codex child runs execute inside fresh non-git temp directories; the runner passes `--skip-git-repo-check` to every `codex exec` child automatically.
+- Codex grading can run longer than Claude-style stream grading because the grader reopens transcript and output files. Use `--grader-timeout 600` for file-writing evals or after any `grader-failed` timeout so you do not burn a full rerun on a missing `grading.json`.
+CODEX-END -->

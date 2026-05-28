@@ -58,8 +58,21 @@ If Step 2 is incomplete, you cannot propose fixes. Symptom fixes are failure. Re
 - **ALWAYS use `AskUserQuestion` tool** for clarifications — never list numbered questions in plain text
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-- **ALWAYS use plain-text numbered options** for clarifications — never refer to `AskUserQuestion` as a callable tool in Codex
+- **ALWAYS use plain-text numbered options** for clarifications — never refer to the unavailable Claude question tool as callable in Codex
 CODEX-END -->
 - **⛔ If `PILOT_PLAN_QUESTIONS_ENABLED` is `"false"` (from Step 0),** skip all `AskUserQuestion` calls (Steps 2.1, 2.5 escalation, 3 approach selection). Make reasonable default assumptions (including selecting the recommended fix approach) and document them in the plan. Continue autonomously.
+
+<!-- CODEX-START
+
+### Codex Bugfix Planning Speed Contract
+
+For Codex, bugfix quality means a traced root cause, a reproducing RED test plan, and a source-level fix strategy. It does not mean exhaustive graph traversal.
+
+- Reach the first complete bugfix plan before context reaches 35% unless the bug is not reproducible.
+- Use a bounded investigation: one reproduction attempt path, one CodeGraph orientation call, one Semble intent search, then targeted reads of the suspected files.
+- Run callers/callees/impact only after a likely root-cause function is known and the bug spans more than one component.
+- Ask at most one bundled clarification prompt before the approval prompt. If the missing signal blocks reproduction, ask; otherwise record a Medium-confidence root cause and a verification task.
+- Stop investigating once you can state `Root Cause: file:line — function() does X but should do Y`, name the RED test, and name the source file the fix must touch.
+CODEX-END -->
 
 > **NOTE: During `/spec`, use the structured workflow below — not CC's native plan mode.**

@@ -4,6 +4,7 @@
 
 **⛔ Run FIRST, before any other step.** Read the reviewer toggle env vars:
 
+<!-- CC-ONLY -->
 ```bash
 echo "REVIEWER=$PILOT_CHANGES_REVIEW_ENABLED CODEX_CHG=$PILOT_CODEX_CHANGES_REVIEW_ENABLED"
 ```
@@ -11,6 +12,14 @@ echo "REVIEWER=$PILOT_CHANGES_REVIEW_ENABLED CODEX_CHG=$PILOT_CODEX_CHANGES_REVI
 Codex reviewers are controlled entirely by Console Settings — the env vars are authoritative.
 
 Reference these values in Steps 1 (Launch Review), 3 (Collect Results — Codex collection).
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+```bash
+echo "REVIEWER=$PILOT_CHANGES_REVIEW_ENABLED"
+```
+
+Native Codex changes review is controlled by the regular reviewer toggle. Reference this value in Steps 1 and 3.
+CODEX-END -->
 
 ### 0.2 Process Overview
 

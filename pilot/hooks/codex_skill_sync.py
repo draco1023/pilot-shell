@@ -40,6 +40,8 @@ _SUPPORTED_SKILLS = frozenset(
     }
 )
 
+_SUPPORTED_REVIEW_AGENTS = frozenset({"changes-review", "spec-review"})
+
 _PILOT_SKILL_NAMES = frozenset(
     {
         "spec",
@@ -66,6 +68,16 @@ _SKILL_INVOCATION_RE = re.compile(
     r"(" + "|".join(re.escape(s) for s in sorted(_PILOT_SKILL_NAMES, key=len, reverse=True)) + r")"
     r"(?![a-zA-Z0-9_/])"
 )
+
+
+def _get_codex_config_dir() -> Path:
+    env_dir = os.environ.get("CODEX_HOME")
+    if env_dir:
+        path = Path(env_dir)
+        if not path.is_absolute():
+            raise ValueError(f"CODEX_HOME must be an absolute path, got: {env_dir}")
+        return path
+    return Path.home() / ".codex"
 
 _CC_ONLY_RE = re.compile(r"<!-- CC-ONLY -->\n?.*?<!-- /CC-ONLY -->\n?", re.DOTALL)
 _CODEX_BLOCK_RE = re.compile(r"<!-- CODEX-START\n(.*?)CODEX-END -->(?:\n?)", re.DOTALL)
@@ -197,6 +209,85 @@ def _build_codex_skill(skill_dir: Path) -> str | None:
     return f"---\nname: {name}\ndescription: {desc}\n---\n\n{adapted}"
 
 
+def _build_codex_review_agent(agent_file: Path) -> str | None:
+    """Build a Codex custom-agent TOML file from a Pilot review-agent markdown file."""
+    if not agent_file.is_file():
+        return None
+    try:
+        content = agent_file.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    metadata, body = _extract_agent_metadata(content)
+    name = metadata.get("name") or agent_file.stem
+    description = metadata.get("description") or f"Pilot {name} review agent."
+    instructions = _adapt_review_agent_instructions(body)
+    return (
+        "# pilot-shell managed Codex review agent\n"
+        f"name = {_toml_string(name)}\n"
+        f"description = {_toml_string(description)}\n"
+        f"developer_instructions = {_toml_string(instructions)}\n"
+    )
+
+
+def _extract_agent_metadata(content: str) -> tuple[dict[str, str], str]:
+    if not content.startswith("---\n"):
+        return {}, content
+    end = content.find("\n---", 3)
+    if end == -1:
+        return {}, content
+    metadata: dict[str, str] = {}
+    for line in content[4:end].splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        metadata[key.strip()] = value.strip().strip('"')
+    return metadata, content[end + 4 :].lstrip("\n")
+
+
+def _adapt_review_agent_instructions(body: str) -> str:
+    adapted = body
+    adapted = adapted.replace(" (excluding the final Write)", "")
+    adapted = adapted.replace(" → Write output (1)", " → final JSON response")
+    adapted = re.sub(
+        r"\*\*⛔ MANDATORY: Write output\.\*\*.*?(?=\n\n)",
+        (
+            "**⛔ MANDATORY: Return output.** Your final response MUST be the JSON object. "
+            "At the tool-call budget, stop exploring and return what you have. "
+            "No final JSON means the parent workflow cannot continue."
+        ),
+        adapted,
+        flags=re.DOTALL,
+    )
+    adapted = adapted.replace("### 4. Write Output", "### 4. Return Output")
+    adapted = adapted.replace("### 5. Write Output", "### 5. Return Output")
+    adapted = adapted.replace("**Write JSON to `output_path` as your FINAL action.**", "**Return JSON as your final response.**")
+    adapted = adapted.replace("Write JSON to `output_path` as your FINAL action.", "Return JSON as your final response.")
+    adapted = adapted.replace("The orchestrator provides:", "The parent prompt provides:")
+    adapted = adapted.replace(", `output_path`", "")
+    adapted = adapted.replace("`output_path`, ", "")
+    adapted = adapted.replace("`output_path`", "the parent prompt")
+    adapted = adapted.replace("write what you have", "return what you have")
+    adapted = adapted.replace("No file = orchestrator stalls.", "No final JSON = parent workflow cannot continue.")
+    adapted = re.sub(r"\n{3,}", "\n\n", adapted).strip()
+    return (
+        "Pilot-managed Codex review agent. Return ONLY valid JSON as the final response. "
+        "Do not write files, do not wrap JSON in markdown, and do not include commentary outside the JSON object.\n\n"
+        + adapted
+    )
+
+
+def _toml_string(value: str) -> str:
+    return json.dumps(value)
+
+
+def _is_pilot_managed_codex_review_agent(agent_file: Path) -> bool:
+    try:
+        content = agent_file.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return "pilot-shell managed Codex review agent" in content or "Pilot-managed Codex review agent" in content
+
+
 def _remove_codex_skills() -> int:
     agents_dir = Path.home() / ".agents" / "skills"
     removed = 0
@@ -204,6 +295,17 @@ def _remove_codex_skills() -> int:
         skill_md = agents_dir / skill_name / "SKILL.md"
         if skill_md.is_file():
             skill_md.unlink()
+            removed += 1
+    return removed
+
+
+def _remove_codex_review_agents() -> int:
+    agents_dir = _get_codex_config_dir() / "agents"
+    removed = 0
+    for agent_name in _SUPPORTED_REVIEW_AGENTS:
+        agent_file = agents_dir / f"{agent_name}.toml"
+        if agent_file.is_file() and _is_pilot_managed_codex_review_agent(agent_file):
+            agent_file.unlink()
             removed += 1
     return removed
 
@@ -238,6 +340,35 @@ def _sync_codex_skills() -> tuple[int, int]:
     return built, failed
 
 
+def _sync_codex_review_agents() -> tuple[int, int]:
+    source_dir = Path.home() / ".claude" / "agents"
+    dest_dir = _get_codex_config_dir() / "agents"
+    built = 0
+    failed = 0
+
+    if not source_dir.is_dir():
+        return 0, 0
+
+    for agent_name in _SUPPORTED_REVIEW_AGENTS:
+        source = source_dir / f"{agent_name}.md"
+        if not source.is_file():
+            continue
+        try:
+            codex_content = _build_codex_review_agent(source)
+            if codex_content is None:
+                failed += 1
+                continue
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            tmp = dest_dir / f"{agent_name}.toml.tmp"
+            tmp.write_text(codex_content, encoding="utf-8")
+            os.replace(str(tmp), str(dest_dir / f"{agent_name}.toml"))
+            built += 1
+        except Exception:
+            failed += 1
+
+    return built, failed
+
+
 _ENV_MARKER_START = "# --- pilot-shell managed env vars ---"
 _ENV_MARKER_END = "# --- end pilot-shell managed env vars ---"
 
@@ -245,7 +376,7 @@ _ENV_MARKER_END = "# --- end pilot-shell managed env vars ---"
 def _sync_codex_env_vars() -> int:
     """Read Console settings and inject PILOT_* env vars into Codex config."""
     config_path = Path.home() / ".pilot" / "config.json"
-    codex_config = Path.home() / ".codex" / "config.toml"
+    codex_config = _get_codex_config_dir() / "config.toml"
 
     if not codex_config.is_file():
         return 0
@@ -299,7 +430,13 @@ def _sync_codex_env_vars() -> int:
 
 
 def main() -> None:
-    codex_bin = Path.home() / ".codex" / "bin" / "codex"
+    try:
+        codex_config_dir = _get_codex_config_dir()
+    except ValueError as e:
+        print(json.dumps({"continue": True, "systemMessage": f"Skipping Codex sync: {e}"}))
+        return
+
+    codex_bin = codex_config_dir / "bin" / "codex"
     codex_on_path = any((Path(p) / "codex").is_file() for p in os.environ.get("PATH", "").split(os.pathsep) if p)
     if not codex_bin.is_file() and not codex_on_path:
         print(json.dumps({"continue": True}))
@@ -309,16 +446,21 @@ def main() -> None:
 
     if valid:
         built, failed = _sync_codex_skills()
+        built_agents, failed_agents = _sync_codex_review_agents()
         env_synced = _sync_codex_env_vars()
         msg = f"Codex skills synced: {built} built"
         if failed:
             msg += f", {failed} failed"
+        if built_agents or failed_agents:
+            msg += f", review agents: {built_agents} built"
+        if failed_agents:
+            msg += f", {failed_agents} failed"
         if env_synced:
             msg += f", {env_synced} env vars"
         print(json.dumps({"continue": True, "systemMessage": msg}))
     else:
-        removed = _remove_codex_skills()
-        msg = f"License invalid — removed {removed} Codex skill(s)" if removed else ""
+        removed = _remove_codex_skills() + _remove_codex_review_agents()
+        msg = f"License invalid — removed {removed} Codex managed asset(s)" if removed else ""
         print(json.dumps({"continue": True, "systemMessage": msg} if msg else {"continue": True}))
 
 

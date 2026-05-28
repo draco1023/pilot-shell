@@ -251,6 +251,7 @@ apm.yml
 .codegraph
 .vercel
 .codex
+.review
 .mypy_cache
 .mcp.json
 demo

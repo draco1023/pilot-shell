@@ -109,10 +109,13 @@ class FinalizeStep(BaseStep):
             ]
         )
 
-        workflows: list[tuple[str, str]] = [
+        core_workflows: list[tuple[str, str]] = [
+            ("/prd · $prd", "Brainstorm ideas into PRDs with optional research before /spec"),
             ("/spec · $spec", "Plan, implement & verify features end-to-end with TDD"),
             ("/fix · $fix", "Investigate, RED test, fix, audit — bugfix workflow"),
-            ("/prd · $prd", "Brainstorm ideas into PRDs with optional research before /spec"),
+        ]
+
+        additional_workflows: list[tuple[str, str]] = [
             ("/setup-rules · $setup-rules", "Create modular and concise rules for your project codebase"),
             ("/create-skill · $create-skill", "Create well-structured reusable skills for your workflows"),
             ("/benchmark · $benchmark", "Quantitative before/after evals for rules, skills, and workflows"),
@@ -121,7 +124,8 @@ class FinalizeStep(BaseStep):
         ui.next_steps(
             [
                 ("Getting Started", getting_started),
-                ("Workflows (Claude Code + Codex)", workflows),
+                ("Core Workflows (Claude Code + Codex)", core_workflows),
+                ("Additional Workflows (Claude Code + Codex)", additional_workflows),
             ]
         )
 

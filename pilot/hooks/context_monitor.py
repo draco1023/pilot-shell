@@ -287,9 +287,6 @@ def run_context_monitor() -> int:
             )
         return 0
 
-    save_cache(total_tokens, session_id)
-    return 0
-
 
 if __name__ == "__main__":
     sys.exit(run_context_monitor())

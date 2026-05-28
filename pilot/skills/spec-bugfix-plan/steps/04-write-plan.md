@@ -69,24 +69,62 @@ Type: Bugfix
 ### Task 1: Write Reproducing Test (RED)
 
 **Objective:** Encode the Behavior Contract as a failing test BEFORE writing any fix code.
-**Files:** [test files to create/modify]
-**Entry point:** [public function or endpoint the test exercises — not internal helpers]
-**DoD:** Test exists, named `test_<function>_<bug>_<expected>`, runs, fails with an error matching the documented `Currently (bug)` behavior. In worktree mode: committed as its own commit.
-**Verify:** `[command that runs ONLY this test — must FAIL]`
+
+**Files:**
+
+- Test: `[test file to create/modify]`
+
+**Key Decisions / Notes:**
+
+- Entry point: [public function or endpoint the test exercises — not internal helpers]
+
+**Definition of Done:**
+
+- [ ] Test exists and is named `test_<function>_<bug>_<expected>`.
+- [ ] Test fails with an error matching the documented `Currently (bug)` behavior.
+- [ ] In worktree mode, the RED test is committed as its own commit.
+- [ ] Verify: `[command that runs ONLY this test — must FAIL]`
 
 ### Task 2: Implement Fix at Root Cause
 
 **Objective:** Minimal change at `Root Cause: file:line` that makes the reproducing test pass without breaking `Anti-regression`.
-**Files:** [files to modify — must include the root cause file]
-**Strategy:** [how the fix satisfies the Behavior Contract — fix at source, not at symptom]
-**DoD:** Reproducing test PASSES. Full test suite PASSES (anti-regression gate for the fix). Diff touches the root-cause file. No try/except wrappers hiding the bad value; no callsite patches around the symptom.
-**Verify:** `[command that runs the reproducing test — must PASS]`
+
+**Files:**
+
+- Modify: `[root-cause file — must include Root Cause file]`
+- Test: `[test file from Task 1]`
+
+**Key Decisions / Notes:**
+
+- Strategy: [how the fix satisfies the Behavior Contract — fix at source, not at symptom]
+
+**Definition of Done:**
+
+- [ ] Reproducing test passes.
+- [ ] Diff touches the root-cause file.
+- [ ] No try/except wrappers hide the bad value; no callsite patches work around the symptom.
+- [ ] Verify: `[command that runs the reproducing test — must PASS]`
 
 ### Task 3: Quality Gate
 
 **Objective:** Lint + type check + build clean, with the full suite re-run to catch regressions introduced by any auto-fixes applied in this task.
-**DoD:** Lint clean, type check clean, build green (if applicable), full suite green. Performance audit passed (no expensive uncached work on hot paths in the diff).
-**Verify:** `[lint] && [type check] && [build if applicable] && [full suite command]`
+
+**Files:**
+
+- No production files expected; update this plan's progress and status.
+
+**Key Decisions / Notes:**
+
+- The suite runs here after lint/type/build because those commands can auto-modify imports, types, or formatting.
+
+**Definition of Done:**
+
+- [ ] Lint is clean.
+- [ ] Type check is clean.
+- [ ] Build is green if the project has a build step.
+- [ ] Full suite is green.
+- [ ] Performance audit passed: no expensive uncached work on hot paths in the diff.
+- [ ] Verify: `[lint] && [type check] && [build if applicable] && [full suite command]`
 
 **Why the suite runs again here:** lint/type checkers and formatters may auto-modify code (imports, type annotations, whitespace). A checkbox marked green should mean "suite green AFTER this task's code touches." The verify phase then runs it once more as the authoritative signal — that small redundancy is quality insurance, not waste.
 ```
@@ -98,3 +136,7 @@ Type: Bugfix
 **Include `## Verification Scenario` only for UI-facing bugs** (from the Verification Scenario guidance in Step 3). Omit entirely for backend/non-UI bugs.
 
 **The `## Behavior Contract` section is MANDATORY for every bugfix plan** — it is the source of truth for what the reproducing test encodes and what verification audits.
+
+<!-- CODEX-START
+Before asking for approval, verify every `### Task N:` under `## Tasks` contains the exact task-card labels `**Objective:**`, `**Files:**`, `**Key Decisions / Notes:**`, and `**Definition of Done:**`. Plain labels such as `Files:`, `DoD:`, or `Verify:` do not render as clickable task-card fields.
+CODEX-END -->

@@ -11,3 +11,7 @@ Based on the chosen approach:
 - "Yes, scope looks right — proceed to PRD"
 - "No, I want to adjust scope" — let me specify what to add/remove
 - "Let's discuss further" — I have questions about the scope
+
+<!-- CODEX-START
+Codex override: combine scope confirmation with the approach decision when possible. If the scope follows directly from prior answers, write the PRD and mark the scope assumptions clearly instead of asking another confirmation prompt.
+CODEX-END -->

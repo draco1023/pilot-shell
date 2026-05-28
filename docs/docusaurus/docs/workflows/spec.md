@@ -8,14 +8,20 @@ description: Plan, implement, and verify complex features with full automation �
 
 Plan, implement, and verify complex features with full automation using Spec-Driven Development.
 
-**Replaces Claude Code's built-in plan mode (Shift+Tab).** Best for new features, refactoring, architectural changes — work where a plan and a design discussion add value before code. The structured workflow prevents scope creep and ensures every task is tested and verified before being marked complete.
+Best for new features, refactoring, and architectural changes — work where a plan and discussion add value before writing code. On Claude Code, `/spec` replaces the built-in plan mode (Shift+Tab). The structured workflow prevents scope creep and ensures every task is tested and verified before being marked complete.
 
 For bugfixes, use [`/fix`](/docs/workflows/fix). For vague ideas, use [`/prd`](/docs/workflows/prd) first to produce a PRD, then hand off to `/spec`.
 
 ```bash
-$ pilot
+# Claude Code
+claude
 > /spec "Add user authentication with OAuth and JWT tokens"
 > /spec "Migrate the REST API to GraphQL"
+
+# Codex CLI
+codex
+> $spec "Add user authentication with OAuth and JWT tokens"
+> $spec "Migrate the REST API to GraphQL"
 ```
 
 ## Workflow
@@ -48,7 +54,7 @@ For a bugfix workflow without a plan file, use [`/fix`](/docs/workflows/fix). Wh
 - Explores codebase with semantic search, asks clarifying questions
 - Writes detailed spec with scope, tasks, and definition of done
 - For UI/user-facing features: writes structured **E2E test scenarios** (TS-001, TS-002…) with step-by-step actions and expected results — these become the verification contract for the Verify phase
-- Spec-review sub-agent validates completeness (optional, enabled by default)
+- Spec-review agent validates completeness in Claude Code or Codex (optional, enabled by default)
 - Waits for your approval — edit the plan directly, or **annotate it visually** in the Console's Specifications tab (select any text, write a note — annotations save automatically). The agent reads your annotations at the approval checkpoint, revises the plan, and re-asks for approval
 
 ### Implement Phase
@@ -61,9 +67,9 @@ For a bugfix workflow without a plan file, use [`/fix`](/docs/workflows/fix). Wh
 ### Verify Phase
 
 - Full test suite + type checking + lint + build verification
-- Features: unified review sub-agent (optional, enabled by default)
+- Features: changes-review agent in Claude Code or Codex (optional, enabled by default)
 - Bugfixes: regression test + full suite — no sub-agents needed
-- For UI features: executes the plan's **E2E test scenarios** step-by-step via browser automation (Claude Code Chrome → Chrome DevTools MCP → playwright-cli → agent-browser) — tracks pass/fail per scenario, auto-fixes failures (up to 2 attempts), escalates persistent failures to known issues; results written back to the plan file
+- For UI features: executes the plan's **E2E test scenarios** step-by-step via browser automation — tracks pass/fail per scenario, auto-fixes failures (up to 2 attempts), escalates persistent failures to known issues; results written back to the plan file. Claude Code prefers its Chrome extension; Codex uses the Chrome DevTools MCP. Both fall back to playwright-cli / agent-browser.
 - Auto-fixes findings, loops back until all checks pass
 - After automated checks pass, prompts you to **review code changes** in the Console's Changes tab — each file shows a **T{N}** badge linking it to the spec task that changed it, and you can click **Spec** to group files by task for focused review. Enable Review mode to add inline annotations on any diff line (they save automatically), and the agent addresses them before marking the spec as verified
 
@@ -88,7 +94,7 @@ When all three are disabled, `/spec` runs end-to-end without any user interactio
 | **Spec Review** | On      | Validates the plan before implementation — checks alignment and flags risky assumptions       |
 | **Changes Review** | On   | Reviews code after implementation — compliance, security, test coverage, and goal achievement |
 
-Both reviewers run in a separate context window and don't consume the main session's context budget. Optional **Codex adversarial reviewers** (off by default) provide an independent second opinion using OpenAI Codex.
+Both reviewers run outside the main session context: Claude Code uses sub-agents, and Codex uses custom agents installed under `~/.codex/agents/`. Optional **Codex Companion Reviewers** (off by default) provide a Claude Code plugin second opinion using OpenAI Codex.
 
 **Codex runs at most once per `/spec` invocation.** Plan iterations (annotation feedback, verify re-runs, fixing prior findings) reuse the result of the first Codex review instead of re-launching — a sentinel file in the session directory enforces this. The bugfix planning phase no longer runs Codex at all; adversarial review is most valuable on real code, not on a plan.
 

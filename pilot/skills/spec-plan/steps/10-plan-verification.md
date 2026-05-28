@@ -225,7 +225,51 @@ rm -f "$PROMPT_FILE"
 **If Codex was NOT launched**, proceed after all Claude reviewer must_fix/should_fix resolved.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-**Skip automated plan review agents.** They are not available in Codex CLI. Proceed to Step 11 (annotation check) after completing the no-placeholders self-check above.
+**⛔ If `PILOT_SPEC_REVIEW_ENABLED` is `"false"` (from Step 0),** skip native Codex plan review and proceed to the task-card format check below.
 
-Self-review the plan for obvious issues before requesting approval: missing edge cases, unclear DoD criteria, placeholder text, and unresolved ambiguities.
+**When enabled:** launch the managed Codex custom agent and wait for its final JSON response before requesting approval.
+
+1. Spawn the review agent:
+
+```python
+review = multi_agent_v1.spawn_agent(
+    agent_type="spec-review",
+    message="""
+    Plan file: <plan-path>
+    User request: <original task description>
+    Clarifications: <any Q&A>
+
+    Review for alignment with requirements and adversarial risks.
+    Return ONLY valid JSON matching the spec-review schema.
+    Include the plan file path in the `plan_file` field.
+    """,
+)
+```
+
+2. Wait for the result:
+
+```python
+result = multi_agent_v1.wait_agent(targets=[review.agent_id], timeout_ms=600000)
+```
+
+3. Parse the agent's final message as JSON. If parsing fails, treat the raw final message as one `suggestion` finding and continue; do not launch a second reviewer.
+
+4. Validate `plan_file` matches the current plan. If it does not, discard the stale result and self-review instead of applying mismatched findings.
+
+5. Severity mapping:
+   - `must_fix` → fix immediately
+   - `should_fix` → fix immediately
+   - `suggestion` → implement if quick
+
+Fix every `must_fix` and `should_fix` inline, then re-run the no-placeholders and task-card checks before approval.
+
+Before Step 11, run this task-card format check on the plan:
+
+```bash
+grep -nE '^### Task [0-9]+:|^\*\*(Objective|Files|Key Decisions / Notes|Definition of Done):\*\*' "<plan_path>"
+```
+
+Every `### Task N:` block under `## Implementation Tasks` must contain all four bold labels: `**Objective:**`, `**Files:**`, `**Key Decisions / Notes:**`, and `**Definition of Done:**`. Fix any plain labels such as `Files:`, `Key Decisions:`, `Definition of Done:`, or `Verification:` before asking for approval.
+
+Self-review the plan for obvious issues before requesting approval: missing edge cases, unclear DoD criteria, placeholder text, wrong task-card label format, and unresolved ambiguities.
 CODEX-END -->

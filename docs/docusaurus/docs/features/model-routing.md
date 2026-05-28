@@ -6,6 +6,10 @@ description: Plan with Opus, implement with Sonnet — without juggling config f
 
 # Model Routing
 
+:::warning Claude Code only
+Model switching uses Claude Code's `/model` command and is not available in Codex CLI. On Codex, set the model via `codex --model <name>` or in `~/.codex/config.toml`.
+:::
+
 There's one switch: Claude Code's `/model`. Whatever you set there is what every Pilot workflow uses. No per-skill table, no Pilot-side override.
 
 The interesting question is *when* to switch. Opus reasons better; Sonnet is faster and cheaper. The cost-saving move is to plan on Opus, then drop to Sonnet for the mechanical work that follows.

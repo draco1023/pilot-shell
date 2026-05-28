@@ -6,6 +6,10 @@ description: Control Pilot Shell sessions from your phone, tablet, or any browse
 
 # [Remote Control](https://youtu.be/Ko7_tC1fMMM?si=kWDzYiQvxlkZTrRK)
 
+:::warning Claude Code only
+Remote Control and Channels require Claude Code. They are not available with Codex CLI.
+:::
+
 Control Pilot Shell sessions from your phone, tablet, or any browser.
 
 Start a `/spec` task at your desk, then monitor and steer it from the couch. Your full local environment stays available — filesystem, MCP servers, hooks, rules, and project configuration. Nothing moves to the cloud.
@@ -23,13 +27,13 @@ You also need a **Pro, Max, Team, or Enterprise** Claude subscription. API keys 
 
 ## Setup
 
-### 1. Start Pilot Shell
+### 1. Start Claude Code
 
 ```bash
-pilot
+claude
 ```
 
-Loads all hooks, rules, MCP servers, and project configuration.
+Pilot Shell loads automatically with all hooks, rules, and MCP servers.
 
 ### 2. Activate Remote Control
 
@@ -59,7 +63,7 @@ The setup above assumes you start sessions on your computer first. To start new 
 
 1. Install [Termius](https://termius.com/) on your phone (not your computer)
 2. SSH into your computer
-3. Run `claude` in any project directory
+3. Run `claude` or `codex` in any project directory
 
 ## Keeping your computer reachable
 
@@ -76,9 +80,9 @@ For the Claude App or browser to stay connected, and for SSH to work when you're
 [Channels](https://code.claude.com/docs/en/channels) push messages from external platforms directly into your running Pilot session. Claude reads the message, acts on it with your full local environment, and replies through the same platform.
 
 ```bash
-pilot --channels plugin:telegram@claude-plugins-official
-pilot --channels plugin:discord@claude-plugins-official
-pilot --channels plugin:imessage@claude-plugins-official
+claude --channels plugin:telegram@claude-plugins-official
+claude --channels plugin:discord@claude-plugins-official
+claude --channels plugin:imessage@claude-plugins-official
 ```
 
 Channels require [Bun](https://bun.sh/) and a one-time bot setup (Telegram/Discord) or macOS (iMessage). Each channel maintains a sender allowlist — only paired users can push messages.

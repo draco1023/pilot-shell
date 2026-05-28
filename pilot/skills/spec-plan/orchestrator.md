@@ -32,4 +32,22 @@ CODEX-END -->
 - **ONLY stopping point is plan approval** — everything else is automatic. Never ask "Should I fix these?"
 - **Re-read plan after user edits** — before asking for approval again
 - **Plan file is source of truth** — survives across auto-compaction cycles
+<!-- CC-ONLY -->
 - **Quality over speed** — never rush due to context pressure
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+- **Bounded quality** — do enough verification to make the plan actionable, then draft it.
+CODEX-END -->
+
+<!-- CODEX-START
+
+### Codex Planning Speed Contract
+
+For Codex, quality means enough verified context to write an implementable plan, not exhaustive research. This block overrides broader "always" and "mandatory" exploration language in this skill and in the rules when they conflict.
+
+- Reach a first complete plan draft before context reaches 35%.
+- Use a bounded scan: one CodeGraph orientation call and one Semble intent search at most before asking or choosing. If either result is irrelevant, pivot immediately to direct file reads.
+- Ask at most one clarification/design batch before approval. If you can make a reversible assumption, document it under "Assumptions" or "Autonomous Decisions" and continue.
+- Stop exploration once you can name the files, commands, tests, and user-visible checks for each task. Leave implementation-time details to task DoD.
+- Do not wait for automated reviewer agents during Codex planning. Step 10 is self-review only until Codex-native review agents are available.
+CODEX-END -->

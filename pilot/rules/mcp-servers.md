@@ -28,6 +28,10 @@ CODEX-END -->
 
 **Structural code search.** First action on any task. Replaces Grep/Glob for symbol/call/impact queries. Complements Semble (intent search — see `cli-tools.md`).
 
+<!-- CODEX-START
+For `$spec` and `$prd` planning in Codex, CodeGraph is an orientation tool, not a mandate to exhaust the graph. If the first CodeGraph result is irrelevant, pivot to Semble or direct file reads immediately. Do not chain context, search, explore, callers, and impact unless the next step needs that evidence.
+CODEX-END -->
+
 | Tool | Purpose |
 |------|---------|
 | `codegraph_context(task=...)` | **START HERE** — entry points + related symbols |

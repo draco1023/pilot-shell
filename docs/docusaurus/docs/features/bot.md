@@ -1,10 +1,14 @@
 ---
 sidebar_position: 2
 title: Pilot Bot
-description: Persistent Pilot Bot agent — scheduled tasks, background jobs, heartbeat monitoring, and 24/7 automation running on Sonnet for cost-effective Claude operations.
+description: Persistent Claude Code automation agent — scheduled tasks, background jobs, heartbeat monitoring, and 24/7 operation running on Sonnet.
 ---
 
 # Pilot Bot
+
+:::warning Claude Code only
+Pilot Bot requires Claude Code. It is not available with Codex CLI.
+:::
 
 Persistent automation agent — scheduled tasks, background jobs, heartbeat monitoring, 24/7 operation. Always runs on Sonnet for cost-effective automation.
 

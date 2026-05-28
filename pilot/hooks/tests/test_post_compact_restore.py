@@ -50,6 +50,41 @@ class TestPostCompactRestoreHook:
     @patch("post_compact_restore.read_hook_stdin")
     @patch("post_compact_restore.get_session_plan_path")
     @patch("os.environ", {"PILOT_SESSION_ID": "test123"})
+    def test_outputs_valid_session_start_json(self, mock_plan_path, mock_stdin, capsys):
+        """Should emit valid SessionStart JSON for Codex hooks."""
+        from post_compact_restore import run_post_compact_restore
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            plan_json = Path(tmpdir) / "active_plan.json"
+            plan_json.write_text(
+                json.dumps(
+                    {
+                        "status": "PENDING",
+                        "plan_path": "docs/plans/2026-02-16-test.md",
+                    }
+                )
+            )
+            mock_plan_path.return_value = plan_json
+            mock_stdin.return_value = {"session_id": "test123"}
+
+            result = run_post_compact_restore()
+
+            assert result == 0
+            captured = capsys.readouterr()
+            payload = json.loads(captured.out)
+            assert payload == {
+                "hookSpecificOutput": {
+                    "hookEventName": "SessionStart",
+                    "additionalContext": (
+                        "[Pilot Context Restored After Compaction]\n"
+                        "Active Plan: docs/plans/2026-02-16-test.md (Status: PENDING)"
+                    ),
+                }
+            }
+
+    @patch("post_compact_restore.read_hook_stdin")
+    @patch("post_compact_restore.get_session_plan_path")
+    @patch("os.environ", {"PILOT_SESSION_ID": "test123"})
     def test_handles_no_active_plan(self, mock_plan_path, mock_stdin, capsys):
         """Should handle case where no active plan exists."""
         from post_compact_restore import run_post_compact_restore

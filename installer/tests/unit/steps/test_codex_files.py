@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import tomllib
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -15,6 +16,7 @@ from installer.steps.codex_files import (
     _TomlStructureError,
     _ensure_section_keys,
     _validate_toml_structure,
+    build_codex_review_agent_toml,
 )
 
 
@@ -35,6 +37,26 @@ class TestCodexFilesStepSkipsWhenNoCodex:
             return_value=False,
         ):
             step.run(ctx)
+
+    def test_run_warns_and_returns_when_codex_home_is_relative(self) -> None:
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = MagicMock()
+
+        with (
+            patch("installer.steps.codex_files._is_codex_installed", return_value=True),
+            patch(
+                "installer.steps.codex_files._get_codex_config_dir",
+                side_effect=ValueError("CODEX_HOME must be an absolute path, got: relative"),
+            ),
+            patch.object(step, "_install_codex_skills") as mock_install_skills,
+        ):
+            step.run(ctx)
+
+        ctx.ui.warning.assert_called_once_with(
+            "Skipping Codex file installation: CODEX_HOME must be an absolute path, got: relative"
+        )
+        mock_install_skills.assert_not_called()
 
 
 class TestCodexHooksInstallation:
@@ -84,9 +106,7 @@ class TestCodexHooksInstallation:
 
         data = json.loads((codex_dir / "hooks.json").read_text())
         context_commands = [
-            hook["command"]
-            for entry in data["hooks"]["SessionStart"]
-            for hook in entry.get("hooks", [])
+            hook["command"] for entry in data["hooks"]["SessionStart"] for hook in entry.get("hooks", [])
         ]
         assert any('worker-service.cjs" hook codex context' in command for command in context_commands)
 
@@ -122,9 +142,7 @@ class TestCodexHooksInstallation:
                 "PostToolUse": [
                     {
                         "matcher": "*",
-                        "hooks": [
-                            {"type": "command", "command": "my-custom-hook.sh"}
-                        ],
+                        "hooks": [{"type": "command", "command": "my-custom-hook.sh"}],
                     }
                 ]
             }
@@ -141,11 +159,7 @@ class TestCodexHooksInstallation:
             step._install_codex_hooks(ctx)
 
         data = json.loads((codex_dir / "hooks.json").read_text())
-        all_commands = [
-            hook["command"]
-            for entry in data["hooks"]["PostToolUse"]
-            for hook in entry.get("hooks", [])
-        ]
+        all_commands = [hook["command"] for entry in data["hooks"]["PostToolUse"] for hook in entry.get("hooks", [])]
         assert any("my-custom-hook.sh" in cmd for cmd in all_commands)
         assert any("observation" in cmd for cmd in all_commands)
 
@@ -231,6 +245,98 @@ class TestCodexSkillsInstallation:
         assert content.startswith("---\n")
         assert "name: fix" in content
 
+    def test_builds_codex_review_agent_toml_without_output_path_contract(self) -> None:
+        result = build_codex_review_agent_toml(Path("pilot/agents/spec-review.md"))
+        data = tomllib.loads(result)
+
+        assert data["name"] == "spec-review"
+        assert "requirements" in data["description"]
+        assert "developer_instructions" in data
+        instructions = data["developer_instructions"]
+        assert "Output ONLY valid JSON" in instructions
+        assert '"issues"' in instructions
+        assert "output_path" not in instructions
+        assert "MANDATORY: Write output" not in instructions
+        assert "Your LAST action MUST be `Write`" not in instructions
+
+    def test_installs_review_agents_to_codex_agents_dir(self, tmp_path: Path) -> None:
+        claude_agents_dir = tmp_path / ".claude" / "agents"
+        claude_agents_dir.mkdir(parents=True)
+        shutil.copyfile(Path("pilot/agents/spec-review.md"), claude_agents_dir / "spec-review.md")
+        shutil.copyfile(Path("pilot/agents/changes-review.md"), claude_agents_dir / "changes-review.md")
+        codex_agents_dir = tmp_path / ".codex" / "agents"
+        codex_agents_dir.mkdir(parents=True)
+        (codex_agents_dir / "user-agent.toml").write_text('name = "user-agent"\n')
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = None
+
+        with patch("installer.steps.codex_files.Path.home", return_value=tmp_path):
+            step._install_codex_agents(ctx)
+
+        spec_agent = codex_agents_dir / "spec-review.toml"
+        changes_agent = codex_agents_dir / "changes-review.toml"
+        assert spec_agent.exists()
+        assert changes_agent.exists()
+        assert (codex_agents_dir / "user-agent.toml").exists()
+        assert tomllib.loads(spec_agent.read_text())["name"] == "spec-review"
+        assert tomllib.loads(changes_agent.read_text())["name"] == "changes-review"
+
+    def test_preserves_user_created_same_name_codex_agent(self, tmp_path: Path) -> None:
+        claude_agents_dir = tmp_path / ".claude" / "agents"
+        claude_agents_dir.mkdir(parents=True)
+        shutil.copyfile(Path("pilot/agents/spec-review.md"), claude_agents_dir / "spec-review.md")
+        codex_agents_dir = tmp_path / ".codex" / "agents"
+        codex_agents_dir.mkdir(parents=True)
+        user_content = 'name = "spec-review"\ndescription = "user agent"\n'
+        (codex_agents_dir / "spec-review.toml").write_text(user_content)
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = MagicMock()
+
+        with patch("installer.steps.codex_files.Path.home", return_value=tmp_path):
+            step._install_codex_agents(ctx)
+
+        assert (codex_agents_dir / "spec-review.toml").read_text() == user_content
+        ctx.ui.warning.assert_called_once()
+
+    def test_removes_stale_bot_skills_from_agents_dir(self, tmp_path: Path) -> None:
+        agents_skills_dir = tmp_path / ".agents" / "skills"
+        pilot_skills_dir = tmp_path / ".claude" / "skills"
+
+        # Create a supported skill (fix) and stale bot-* skills
+        for name in ["fix", "bot-boot", "bot-channel-task", "bot-defaults"]:
+            skill_dir = pilot_skills_dir / name
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "manifest.json").write_text(
+                json.dumps({"version": 1, "orchestrator": "orchestrator.md", "steps": []})
+            )
+            (skill_dir / "orchestrator.md").write_text(
+                f"---\nname: {name}\ndescription: {name}\n---\n\n# {name}\n\nContent."
+            )
+
+        # Pre-populate stale bot-* skills in agents dir (from older installer)
+        for name in ["bot-boot", "bot-channel-task", "bot-defaults"]:
+            stale_dir = agents_skills_dir / name
+            stale_dir.mkdir(parents=True)
+            (stale_dir / "SKILL.md").write_text(f"# stale {name}")
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = None
+
+        with patch("installer.steps.codex_files.Path.home", return_value=tmp_path):
+            step._install_codex_skills(ctx)
+
+        # bot-* should be removed
+        assert not (agents_skills_dir / "bot-boot").exists()
+        assert not (agents_skills_dir / "bot-channel-task").exists()
+        assert not (agents_skills_dir / "bot-defaults").exists()
+        # fix should still be installed
+        assert (agents_skills_dir / "fix" / "SKILL.md").exists()
+
     def test_setup_rules_codex_skill_creates_project_agents_md(self) -> None:
         from installer.steps.codex_files import build_codex_skill_md
 
@@ -248,8 +354,7 @@ class TestCodexSkillsInstallation:
         assert ".agents/skills/{slug}-{name}/SKILL.md" in result
         assert "~/.agents/skills/{slug}-{name}/SKILL.md" in result
         assert (
-            "Skills in `.agents/skills/` (project) or `~/.agents/skills/` "
-            "(global) are available to Codex"
+            "Skills in `.agents/skills/` (project) or `~/.agents/skills/` (global) are available to Codex"
         ) in result
         assert (
             "Skills in `.claude/skills/` (project) or `~/.claude/skills/` "
@@ -365,6 +470,8 @@ class TestCodexRulesInstallation:
         content = (codex_dir / "AGENTS.md").read_text()
         assert "## Codex Compatibility" in content
         assert "update_plan" in content
+        assert "verify the generated artifacts directly" in content
+        assert "persist returned agent/job ids to a session file" in content
         preamble_end = "Skill invocation: use `$skill-name` (not `/skill-name`)."
         assert preamble_end in content
         rules_body = content.split(preamble_end, 1)[1]
@@ -562,12 +669,54 @@ class TestAdaptInvocationSyntax:
         result = build_codex_skill_md(Path("pilot/skills/spec"))
         assert "Codex has no callable phase-dispatch tool" in result
         assert "continue immediately with the `$spec-plan` skill instructions" in result
+        assert "sub-agents (spec-review, changes-review), and the Codex companion reviewer are not available" not in result
+        assert "Native `spec-review` and `changes-review` run as managed Codex custom agents" in result
+        assert "The current running session may not expose newly generated skills or agent types until the next install or SessionStart sync" in result
         assert "Skill(skill=" not in result
         assert "Skill('" not in result
 
+    def test_real_spec_plan_codex_uses_native_review_agent(self) -> None:
+        from installer.steps.codex_files import build_codex_skill_md
+
+        result = build_codex_skill_md(Path("pilot/skills/spec-plan"))
+        assert "review agents are not available in Codex CLI" not in result
+        assert "Skip automated plan review agents" not in result
+        assert "multi_agent_v1.spawn_agent" in result
+        assert "multi_agent_v1.wait_agent" in result
+        assert 'agent_type="spec-review"' in result
+        assert "PILOT_SPEC_REVIEW_ENABLED" in result
+        assert "PILOT_CODEX_SPEC_REVIEW_ENABLED" not in result
+
+    def test_real_spec_verify_codex_uses_native_review_agent(self) -> None:
+        from installer.steps.codex_files import build_codex_skill_md
+
+        result = build_codex_skill_md(Path("pilot/skills/spec-verify"))
+        assert "No reviewer agents in Codex" not in result
+        assert "Skip automated code review agents" not in result
+        assert "reviewer agents were launched (not available in Codex CLI)" not in result
+        assert "multi_agent_v1.spawn_agent" in result
+        assert "multi_agent_v1.wait_agent" in result
+        assert 'agent_type="changes-review"' in result
+        assert "changes-review-agent-id-" in result
+        assert "Do not silently skip review" in result
+        assert "PILOT_CHANGES_REVIEW_ENABLED" in result
+        assert "PILOT_CODEX_CHANGES_REVIEW_ENABLED" not in result
+
     @pytest.mark.parametrize(
         "skill_name",
-        ["spec", "spec-plan", "spec-bugfix-plan", "spec-implement", "spec-verify", "spec-bugfix-verify", "prd", "fix", "benchmark", "setup-rules", "create-skill"],
+        [
+            "spec",
+            "spec-plan",
+            "spec-bugfix-plan",
+            "spec-implement",
+            "spec-verify",
+            "spec-bugfix-verify",
+            "prd",
+            "fix",
+            "benchmark",
+            "setup-rules",
+            "create-skill",
+        ],
     )
     def test_real_codex_skills_do_not_expose_claude_tool_calls(self, skill_name: str) -> None:
         from installer.steps.codex_files import build_codex_skill_md
@@ -599,7 +748,10 @@ class TestAdaptInvocationSyntax:
             "plain-text numbered options tool",
         ):
             assert forbidden not in result
-        assert re.search(r"(^|[^A-Za-z0-9_`])/(spec|fix|prd|setup-rules|create-skill|benchmark)([^A-Za-z0-9_/]|$)", result) is None
+        assert (
+            re.search(r"(^|[^A-Za-z0-9_`])/(spec|fix|prd|setup-rules|create-skill|benchmark)([^A-Za-z0-9_/]|$)", result)
+            is None
+        )
 
     def test_multiline_cc_only_block(self) -> None:
         from installer.steps.codex_files import _adapt_invocation_syntax
@@ -766,13 +918,7 @@ class TestDeprecatedKeyRemoval:
         codex_dir = tmp_path / ".codex"
         codex_dir.mkdir(parents=True)
         config = codex_dir / "config.toml"
-        config.write_text(
-            'approval_policy = "never"\n'
-            "bypass_hook_trust = true\n"
-            "\n"
-            "[features]\n"
-            "hooks = true\n"
-        )
+        config.write_text('approval_policy = "never"\nbypass_hook_trust = true\n\n[features]\nhooks = true\n')
 
         step = CodexFilesStep()
         ctx = MagicMock()
@@ -789,7 +935,7 @@ class TestDeprecatedKeyRemoval:
         assert "undo = true" in result
         assert "mentions_v2 = true" in result
         assert "tool_search = true" in result
-        assert "apps = true" in result
+        assert "apps = false" in result
 
 
 class TestMcpMarkerReplacement:

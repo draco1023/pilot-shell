@@ -15,7 +15,7 @@ $ open http://localhost:41777
 ```
 
 :::tip Custom port
-The default port `41777` is configurable. Open the **Settings** tab and edit the **Console → Worker Port** field, then click **Save Port** (or edit `CLAUDE_PILOT_WORKER_PORT` in `~/.pilot/memory/settings.json` directly). Restart Pilot for the change to take effect — the launcher, status line, hooks (session_end, pre_compact, dashboard notifications), MCP server, and installer all read the same setting and will follow it.
+The default port `41777` is configurable. Open the **Settings** tab and edit the **Console → Worker Port** field, then click **Save Port** (or edit `CLAUDE_PILOT_WORKER_PORT` in `~/.pilot/memory/settings.json` directly). Restart your `claude` or `codex` session for the change to take effect.
 :::
 
 ## Views
@@ -25,15 +25,15 @@ Each view that supports project filtering has an inline **Project Filter** dropd
 | View | Description |
 |------|-------------|
 | **Dashboard** | Global command center — 8 clickable stat cards (Projects, Sessions, Active, Memories, Extensions, Requirements, Specifications, Changes), 4 recent-item cards with "Show all" links, active specs as pills in the top bar, notification bell in the top right. |
-| **Sessions** | Browse past sessions with search. Copy a session ID and run `/resume <session-id>` to jump back in — all context, files, and conversation history restored. |
+| **Sessions** | Browse past sessions with search. Copy a session ID and run `/resume <session-id>` in Claude Code to jump back in (Claude Code only). |
 | **Memories** | Observations (decisions, discoveries, bugfixes) with type filters and search. Each memory links back to the session it came from. |
 | **Requirements** | PRD documents with view/annotate modes. Selected opens as a tab, others live in a Previous dropdown. |
 | **Specifications** | Spec plans with task progress, phase tracking (PENDING/COMPLETE/VERIFIED), and iteration history. Hosts Plan Annotation and Spec Sharing (below). |
 | **Extensions** | All extensions — local, plugin, remote — with team sharing via git (push, pull, diff), color-coded categories, and scope filtering. |
 | **Changes** | Git diff viewer with staged/unstaged files, branch info, worktree context. Hosts Code Review and Spec Task Correlation (below). |
 | **Usage** | Daily token costs, model routing breakdown (Opus vs Sonnet), and usage trends. |
-| **Help** | Embedded pilot-shell.com documentation — full technical reference without leaving the Console. |
 | **Settings** | Spec workflow toggles (branch isolation, ask questions, plan approval, Model Switching), reviewer toggles. See [Settings](#settings) below. |
+| **Documentation** | Embedded pilot-shell.com documentation — full technical reference without leaving the Console. |
 
 ## Plan Annotation
 
@@ -94,36 +94,36 @@ The **+** button and text selection both work on the normal review page and on s
 
 ## Notifications
 
-The Console sends real-time alerts via Server-Sent Events when Claude needs your input or a significant phase completes — no need to watch the terminal.
+The Console sends real-time alerts via Server-Sent Events when your agent needs input or a significant phase completes — no need to watch the terminal.
 
 - Plan requires your approval — review and respond
 - Spec phase completed — implementation done, verification starting
-- Clarification needed — Claude is waiting for design decisions
+- Clarification needed — the agent is waiting for design decisions
 - Session ended — completion summary with observation count
 
 ## Settings
 
-The Settings tab (`localhost:41777/#/settings`, or your custom port) is a single scrollable page with two stacked sections: **Spec Workflow** and **Console**. Toggle preferences save to `~/.pilot/config.json`. The **Console → Worker Port** field saves to `~/.pilot/memory/settings.json` and lets you move the Console off `41777` if it conflicts with another service. Both changes take effect after restarting Pilot.
+The Settings tab (`localhost:41777/#/settings`, or your custom port) is a single scrollable page with two stacked sections: **Spec Workflow** and **Console**. Toggle preferences save to `~/.pilot/config.json`. The **Console → Worker Port** field saves to `~/.pilot/memory/settings.json` and lets you move the Console off `41777` if it conflicts with another service. Both changes take effect after restarting your session.
 
-:::info Model selection lives in Claude Code
-Pilot doesn't manage model preferences — pick your model with `/model sonnet[1m]`, `/model opus[1m]`, or an explicit Anthropic ID like `/model claude-opus-4-6`. See [Model Routing](./model-routing.md) for the recommended flow.
+:::info Model selection lives in the agent
+Pilot doesn't manage model preferences. Set the model with Claude Code's `/model` command or Codex's `codex --model <name>` / `~/.codex/config.toml`. See [Model Routing](./model-routing.md).
 :::
 
 ### Spec Workflow → Review Agents
 
-Two Claude sub-agents run in separate context windows during `/spec`. Toggle each on or off; the sub-agent model is hard-coded to Sonnet because sub-agents do not support 1M context.
+Two review agents run during `/spec` on Claude Code and Codex. Toggle each on or off; Claude Code runs them as Claude sub-agents, and Codex runs them as managed custom agents installed under `~/.codex/agents/`.
 
 | Agent | Default | Role |
 |-------|---------|------|
 | **Spec Review** | On | Validates plans before implementation. Checks alignment with requirements, flags risky assumptions. |
 | **Changes Review** | On | Reviews code after implementation. Checks compliance, security, test coverage, goal achievement. |
 
-**Codex adversarial reviewers (optional)** — OpenAI Codex agents that provide an independent second opinion.
+**Codex Companion Reviewers (optional, Claude Code only)** — OpenAI Codex plugin reviewers that provide an independent second opinion while you are working inside Claude Code.
 
 | Agent | Default | Role |
 |-------|---------|------|
-| **Codex Spec Review** | Off | Adversarial plan review — second opinion before implementation. |
-| **Codex Changes Review** | Off | Adversarial code review — second opinion after implementation. |
+| **Codex Companion Spec Review** | Off | Plugin plan review — second opinion before implementation. |
+| **Codex Companion Changes Review** | Off | Plugin code review — second opinion after implementation. |
 
 ### Spec Workflow → Automation
 
@@ -134,12 +134,12 @@ Four toggles control user interaction points during `/spec`. Disable all four fo
 | **Branch Isolation** | On | Asks how to isolate `/spec` changes (new branch or worktree) | Always works on the current branch |
 | **Ask Questions** | On | Asks clarifying questions during planning | Planning makes autonomous default choices |
 | **Plan Approval** | On | Requires your approval before implementation starts | Implementation begins automatically after planning |
-| **Model Switching** | On | Pauses after plan approval. Option A: run `/model sonnet[1m]`, type any prompt — resumes with planning context in the new model (Claude Code will confirm; carries extra cost). Option B: run `/clear` then `/spec <plan path>` — fresh session, lower cost. | Plan → implement → verify runs continuously on whichever model is active |
+| **Model Switching** *(Claude Code only)* | On | Pauses after plan approval. Option A: run `/model sonnet[1m]`, type any prompt — resumes with planning context in the new model. Option B: run `/clear` then `/spec <plan path>` — fresh session, lower cost. | Plan → implement → verify runs continuously on whichever model is active |
 
 With all four off, `/spec add user authentication` plans, implements, and verifies the feature end-to-end without checkpoints on whichever model is currently active.
 
 :::warning Token usage in autonomous mode
-No checkpoints means Claude executes the entire workflow without asking. Make sure your prompt is specific enough to avoid misinterpretation. You can always interrupt with Escape.
+No checkpoints means your agent executes the entire workflow without asking. Make sure your prompt is specific enough to avoid misinterpretation. You can always interrupt with Escape.
 :::
 
 ### Config file
@@ -165,4 +165,4 @@ All settings are stored in `~/.pilot/config.json`:
 }
 ```
 
-You can edit `~/.pilot/config.json` directly — the Settings UI is a convenience wrapper. Changes require a Claude Code restart.
+You can edit `~/.pilot/config.json` directly — the Settings UI is a convenience wrapper. Changes take effect after restarting your session.

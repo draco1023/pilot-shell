@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: Extensions
-description: Manage all Claude Code extensions — skills, rules, commands, and agents — from a unified interface with team sharing and plugin visibility
+description: Manage skills, rules, commands, and agents for both Claude Code and Codex — from a unified interface with team sharing and plugin visibility.
 ---
 
 # Extensions
 
-Extensions are the things that customize Claude Code behavior. Pilot Shell provides a unified view of all extensions across multiple scopes: **global** (your personal `~/.claude/` directory), **project** (the `.claude/` directory in each project), **plugin** (installed Claude Code plugins), and **remote** (a connected team git repository).
+Extensions customize how your AI agent behaves. Pilot Shell provides a unified Console view for both **Claude Code** and **Codex CLI** extensions, across multiple scopes: **global**, **project**, **plugin** (Claude Code plugins), and **remote** (connected team git repository). Use the **Agent toggle** (All / Claude Code / Codex) to filter by agent.
 
 ## Extension Categories
 
@@ -66,7 +66,7 @@ Codex rules use Starlark (`.rules`) format for sandbox permission control. They 
 
 ### Codex Agents (Subagents)
 
-Custom Codex agents are TOML files defining specialized subagents with model selection, instructions, and optional MCP server configuration. They exist at both global (`~/.codex/agents/`) and project (`.codex/agents/`) scope. See [Codex Subagents](https://developers.openai.com/codex/subagents) for the format specification.
+Custom Codex agents are TOML files defining specialized subagents with model selection, instructions, and optional MCP server configuration. They exist at both global (`~/.codex/agents/`) and project (`.codex/agents/`) scope. Pilot installs `spec-review` and `changes-review` as managed global Codex agents when Codex CLI is detected. See [Codex Subagents](https://developers.openai.com/codex/subagents) for the format specification.
 
 ### Limitations
 
@@ -75,7 +75,11 @@ Custom Codex agents are TOML files defining specialized subagents with model sel
 
 ## Team Sharing (Team and Enterprise)
 
-Share extensions with your team through a connected git repository. This feature is available on the Team and Enterprise plans.
+:::note Claude Code extensions only
+Team sharing (push/pull/diff) currently targets Claude Code extensions in `~/.claude/`. Codex extensions are not yet synced through team remotes — share them via the `customization` feature or commit `.codex/` rules and agents directly with your project.
+:::
+
+Share extensions with your team through a connected git repository. Available on the Team and Enterprise plans.
 
 ### How It Works
 
@@ -168,12 +172,12 @@ Clicking "→ Global" on a project extension physically moves the file from `.cl
 
 ## Creating Extensions
 
-Create extensions manually or via Claude Code commands:
+Create extensions manually or via workflows:
 
-- **Rules:** `/setup-rules` — explores your codebase and generates project-specific rules
-- **Skills:** `/create-skill` — builds a reusable skill interactively from any topic
-- **Commands:** Create `.claude/commands/<name>.md` manually
-- **Agents:** Create `.claude/agents/<name>.md` manually
+- **Rules:** `/setup-rules` (Claude Code) or `$setup-rules` (Codex) — explores your codebase and generates project-specific rules
+- **Skills:** `/create-skill` or `$create-skill` — builds a reusable skill interactively from any topic
+- **Commands:** Claude Code only — create `.claude/commands/<name>.md` manually
+- **Agents:** Create `.claude/agents/<name>.md` (Claude Code) or `~/.codex/agents/<name>.toml` (Codex) manually
 
 ## File Locations Reference
 

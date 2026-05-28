@@ -79,7 +79,7 @@ const hooksPipeline = [
   },
   {
     trigger: "Stop",
-    description: "When Claude tries to finish",
+    description: "When the agent tries to finish",
     hooks: [
       "spec_stop_guard.py blocks incomplete /spec verification",
       "Session summaries save observations asynchronously",
@@ -238,8 +238,8 @@ const DeepDiveSection = () => {
                 Hooks Pipeline
               </h3>
               <p className="text-sm text-muted-foreground">
-                18 hook registrations across 7 lifecycle events — fire
-                automatically at every stage
+                Quality enforcement across lifecycle events — fires
+                automatically on both Claude Code and Codex
               </p>
             </div>
           </div>
@@ -319,7 +319,7 @@ const DeepDiveSection = () => {
             </div>
             <div>
               <h3 className="text-2xl font-bold text-foreground">
-                Model Switching
+                Model Switching <span className="text-xs font-normal text-muted-foreground">(Claude Code only)</span>
               </h3>
               <p className="text-sm text-muted-foreground">
                 Opus for planning, Sonnet for implementation — the cost-saving
@@ -477,7 +477,7 @@ const DeepDiveSection = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-foreground">
-                    Language Servers
+                    Language Servers <span className="text-xs font-normal text-muted-foreground">(Claude Code only)</span>
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     Real-time diagnostics and go-to-definition
@@ -520,7 +520,7 @@ const DeepDiveSection = () => {
                 </div>
                 <p className="text-xs text-muted-foreground mt-3 pl-1">
                   Pilot Shell works with all programming languages. Add more
-                  language servers via Claude Code's MCP plugin system.
+                  language servers via Claude Code's LSP plugin marketplace.
                 </p>
               </div>
             </div>

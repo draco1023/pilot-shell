@@ -79,9 +79,12 @@ const InstallSection = () => {
               <div className="text-sm">
                 <p className="text-muted-foreground text-xs">
                   <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                    pilot
+                    claude
                   </code>{" "}
-                  launch{" → "}
+                  or{" "}
+                  <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                    codex
+                  </code>{" → "}
                   <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                     /setup-rules
                   </code>{" "}

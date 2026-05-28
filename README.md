@@ -39,21 +39,21 @@ curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.
 
 ## Why Pilot Shell
 
-**Claude Code writes code fast** — but without structure, it skips tests, loses context, and produces inconsistent results. Other frameworks add complexity (dozens of agents, thousands of lines of config) without meaningfully better output.
+**Claude Code and Codex CLI write code fast** — but without structure, they skip tests, lose context, and produce inconsistent results. Other frameworks add complexity (dozens of agents, thousands of lines of config) without meaningfully better output.
 
 **Pilot Shell is different.** Every component solves a real problem with an engineered solution:
 
+- **`/prd`** — brainstorm ideas into clear requirements through with optional deep research
 - **`/spec`** — plans, implements, and verifies features end-to-end with TDD
 - **`/fix`** — bugfix workflow with TDD; bails out when complexity exceeds the standard fix lane
-- **`/prd`** — brainstorm ideas into clear requirements through with optional deep research
 - **Spec collaboration** — share specs with teammates, annotations flow back grouped by author
 - **Quality hooks** — enforce linting, formatting, type checking, and tests as quality gates
 - **Context engineering** — preserves decisions and knowledge across sessions
 - **Code intelligence** — semantic search (Semble) + code knowledge graph (CodeGraph)
 - **Token optimization** — 60–90% cost reduction via RTK compression and Semble code search
+- **Pilot Bot** — persistent automation agent with scheduled tasks and background jobs
 - **Extensions** — reusable rules, skills, and MCP servers with team sharing and customization
 - **Console** — local web dashboard with real-time notifications and session management
-- **Pilot Bot** — persistent automation agent with scheduled tasks and background jobs
 
 ---
 
@@ -61,16 +61,12 @@ curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.
 
 ### Prerequisites
 
-**At least one AI agent:** Pilot Shell supports **Claude Code** (Anthropic, primary — full feature coverage) and **[Codex CLI](https://developers.openai.com/codex/cli)** (OpenAI — all workflows, fewer platform features). Install at least one before running the Pilot installer — it auto-detects and configures both.
+**At least one AI agent:** Pilot Shell supports **Claude Code** (primary — full feature coverage) and **Codex CLI** (all workflows, fewer platform features). Install at least one before running the Pilot installer:
 
 - **Claude Code:** Install via the [native installer](https://code.claude.com/docs/en/quickstart). If you have the `npm` or `brew` version, uninstall it first. Requires a Claude subscription — [Max 5x or 20x](https://claude.com/pricing) for solo, [Team Premium](https://claude.com/pricing) for teams, [Enterprise](https://claude.com/pricing) for organizations.
-- **Codex CLI:** Install via `npm i -g @openai/codex`. Requires an [OpenAI API key](https://platform.openai.com/api-keys).
+- **Codex CLI:** Install via the [native installer](https://developers.openai.com/codex/cli). If you have the `npm` or `brew` version, uninstall it first. Requires an OpenAI subscription — [Plus or Pro](https://developers.openai.com/codex/pricing) for solo, [Business or Enterprise](https://developers.openai.com/codex/pricing) for teams.
 
 **Terminal (Recommended):** [cmux](https://cmux.com) works great with Pilot Shell — its vertical tab layout lets you run multiple sessions side by side. Any modern terminal works: [Ghostty](https://ghostty.org/), [iTerm2](https://iterm2.com/), or the built-in macOS/Linux terminal.
-
-**Claude Chrome (Recommended):** Install the [Claude Code Chrome extension](https://code.claude.com/docs/en/chrome) for browser automation and E2E testing. Pilot automatically detects it and uses it as the preferred tool. When the extension isn't available, Pilot falls back to [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) (direct CDP access, Lighthouse, performance tracing), then [playwright-cli](https://github.com/microsoft/playwright-cli) (persistent sessions, tracing) or [agent-browser](https://agent-browser.dev/) (lightweight, fast startup).
-
-**Codex Companion Plugin (Included):** The [Codex companion plugin](https://github.com/openai/codex-plugin-cc) is installed automatically with Pilot. It provides adversarial code review powered by OpenAI — an independent second opinion during Claude Code's `/spec` planning and verification. Run `/codex:setup` once to authenticate, then enable reviewers in Console Settings → Reviewers.
 
 ### Installation
 
@@ -106,23 +102,24 @@ curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/uninstal
 <details>
 <summary><b>Reset & Refresh</b></summary>
 
-Over time, Claude Code's accumulated session logs and Pilot Shell's caches can slow things down. A periodic reset gives you a clean baseline:
+Over time, accumulated session logs and Pilot Shell's caches can slow things down. A periodic reset gives you a clean baseline:
 
 ```bash
-# 1. Inside Claude Code, log out
+# 1. If using Claude Code, log out first
 /logout
 
 # 2. Back up your current config (just in case)
 mv ~/.claude.json ~/.claude.json.bak
 mv ~/.claude       ~/.claude.bak
+mv ~/.codex        ~/.codex.bak
 mv ~/.pilot        ~/.pilot.bak
 
 # 3. Reinstall Pilot Shell from the official installer
 curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.sh | bash
 
-# 4. Start Pilot, sign in to Claude, and re-activate your license
-pilot
+# 4. Re-activate your license, then start your agent
 pilot activate <your-license-key>
+claude   # or: codex
 ```
 
 Once Pilot Shell is running smoothly again, you can delete the `.bak` copies. Forgot your license key? Recover it in the [Pilot members area](https://polar.sh/max-ritter/portal).
@@ -140,53 +137,75 @@ For tighter isolation when working with untrusted code, combine the dev containe
 <details>
 <summary><b>What the installer does</b></summary>
 
-7-step installer with progress tracking, rollback on failure, and idempotent re-runs:
+8-step installer with progress tracking, rollback on failure, and idempotent re-runs:
 
 1. **Prerequisites** — Checks/installs Homebrew, Node.js, Python 3.12+, uv, git, jq
-2. **Claude files** — Installs into `~/.claude/` (native layout) — rules, commands, hooks, MCP servers, agents
-3. **Config files** — Creates `.nvmrc` and project config
-4. **Dependencies** — Installs Semble, RTK, CodeGraph, [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp), [playwright-cli](https://github.com/microsoft/playwright-cli), [agent-browser](https://agent-browser.dev/), language servers
-5. **Shell integration** — Auto-configures bash, fish, and zsh with `pilot` alias
-6. **VS Code extensions** — Installs recommended extensions for your stack
-7. **Finalize** — Success message with next steps
+2. **Claude files** — Sets up `~/.claude/` — rules, commands, hooks, MCP servers, agents
+3. **Codex files** — Sets up `~/.codex/` — hooks, skills, rules, MCP config, and managed review agents (if Codex CLI is detected)
+4. **Config files** — Creates `.nvmrc` and project config
+5. **Dependencies** — Installs Semble, RTK, CodeGraph, [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp), [playwright-cli](https://github.com/microsoft/playwright-cli), [agent-browser](https://agent-browser.dev/), language servers
+6. **Shell integration** — Auto-configures bash, fish, and zsh with the `pilot` admin alias
+7. **VS Code extensions** — Installs recommended extensions for your stack
+8. **Finalize** — Success message with next steps
 
 </details>
+
+### First Steps
+
+Run these commands once in each new project after installing Pilot Shell:
+
+```bash
+# Claude Code         # Codex CLI
+claude                codex
+> /setup-rules        > $setup-rules
+```
+
+`/setup-rules` reads your codebase, discovers your conventions, and generates project-specific rules and MCP server docs — this is how Pilot learns your project. Run it once to start, then again after major architectural changes.
+
+Once your rules are in place, use `/create-skill` to capture any repeatable workflow as a reusable skill, and `/benchmark` to measure whether your rules and skills are actually improving outputs. See [Additional Workflows](#additional-workflows) for full details on all three.
 
 ---
 
-### Codex CLI Support
 
-Pilot Shell also works with [OpenAI Codex CLI](https://developers.openai.com/codex/cli). **Install Codex CLI separately first** — the Pilot installer auto-detects it and adds all workflows and MCP servers. **For the full feature set, use Claude Code.**
+<h2 id="features">Core Workflows</h2>
 
-<details>
-<summary><b>What works on Codex</b></summary>
+Three commands cover the full development cycle — from vague idea to shipped feature. Quality hooks and TDD enforcement run automatically on every task.
 
-- **All skills:** `$spec`, `$fix`, `$prd`, `$setup-rules`, `$create-skill`, `$benchmark`. Use `$` instead of `/`. Skills are auto-adapted for Codex — reviewer sub-agents and model switching are stripped, questions use plain text instead of `AskUserQuestion`.
-- **Console views:** Dashboard, Requirements, Specifications, Extensions, Changes, Usage, Sessions, and Settings all work with Codex sessions.
-- **Quality hooks:** file checker, context monitor, token saver (RTK), spec stop guard — all registered in `~/.codex/hooks.json`.
-- **MCP servers:** context7, CodeGraph, Semble, web-search, grep-mcp, web-fetch — all configured in `~/.codex/config.toml`.
-- **Rules:** testing, development practices, verification — delivered via `~/.codex/AGENTS.md`, adapted for Codex tool differences.
-- **Skill sync:** Skills rebuild automatically on every session start with license verification. Invalid license → skills are removed.
-- **Updates:** `pilot update` checks Pilot Shell + Codex CLI.
+### /prd — Brainstorm Ideas Into Product Requirements Documents
 
-</details>
+[`/prd`](https://pilot-shell.com/docs/workflows/prd) is the brainstorming surface for ideas that aren't specs yet — vague problem statements and fuzzy shapes. It pitches directions, pressure-tests them with you, and converges on a PRD you can hand to `/spec`. PRDs are saved to `docs/prd/` and visible in the Console's **Requirements** tab.
+
+```bash
+# Claude Code                                                  # Codex CLI
+claude                                                          codex
+> /prd "Add real-time notifications for team updates"           > $prd "Add real-time notifications for team updates"
+```
 
 <details>
-<summary><b>What requires Claude Code</b></summary>
+<summary><b>How <code>/prd</code> works</b></summary>
 
-Status line, Pilot Bot, review sub-agents (spec-review, changes-review), Codex companion reviews (launched from CC), model switching, tool redirect hook, and bot skills (`/bot-boot`, `/bot-channel-task`, `/bot-defaults`, `/bot-heartbeat`, `/bot-jobs`). See the [full comparison](https://pilot-shell.com/docs/getting-started/codex-cli).
+**When to use `/prd` over `/spec`:** `/prd` is for **what** and **why**; `/spec` is for **how**. Reach for `/prd` first when you only have a problem statement, want to riff across multiple directions, or need scope boundaries defined before someone starts building.
+
+**Flow:** two modes, picked automatically from how fuzzy the idea is:
+
+1. **Ideate** — free-form prose, the agent pitches 3-5 directions, you react (only runs when the idea is vague)
+2. **Clarify → Converge → Write** — structured multiple-choice questions once the shape is known, then the PRD is written
+
+**Research tiers** (picked at the start):
+
+| Tier | Behavior |
+|------|----------|
+| **Quick** | Skip research |
+| **Standard** | Web search for competitors, prior art, best practices |
+| **Deep** | Parallel research agents for comprehensive findings |
+
+The final PRD covers problem statement, core user flows, scope boundaries, and technical context — then offers to hand off directly to `/spec` for implementation.
 
 </details>
-
----
-
-<h2 id="features">How It Works</h2>
-
-Just chat — no plan, no approval gate. [Quick mode](https://pilot-shell.com/docs/workflows/quick-mode) is the default: quality hooks and TDD enforcement still apply, best for small tasks and exploration. For anything that needs a plan, use `/spec` — not Claude Code's built-in plan mode.
 
 ### /spec — Spec-Driven Development
 
-**[`/spec`](https://pilot-shell.com/docs/workflows/spec) replaces Claude Code's built-in plan mode** (Shift+Tab) for new features, refactoring, and architectural work. It provides a complete planning workflow with TDD, verification, and code review. **[Collaborative spec review](https://pilot-shell.com/docs/features/spec-collaboration) shifts review left** — share a single link, teammates annotate inline, feedback flows back into the Console grouped by author.
+[`/spec`](https://pilot-shell.com/docs/workflows/spec) is for new features, refactoring, and architectural work. It provides a complete planning workflow with TDD, verification, and code review (on Claude Code, it replaces the built-in plan mode at Shift+Tab). **[Collaborative spec review](https://pilot-shell.com/docs/features/spec-collaboration) shifts review left** — share a single link, teammates annotate inline, feedback flows back into the Console grouped by author.
 
 ```bash
 # Claude Code                                        # Codex CLI
@@ -200,32 +219,16 @@ Discuss  →  Plan  →  Approve  →  Implement (TDD)  →  Verify  →  Done
                                                         └── Loop──┘
 ```
 
-<img src="docs/img/specifications.png" alt="Pilot Shell Console — Specifications" width="700">
-
 <details>
 <summary><b>How <code>/spec</code> works</b></summary>
 
 `/spec` auto-detects whether the request is a feature or a bugfix and routes to the right workflow. The three phases below apply to both — the verify step differs slightly (features get E2E scenarios; bugfixes get a Behavior Contract audit, see the `/fix` section below).
 
-**Plan:** Explores codebase with semantic search → asks clarifying questions → writes detailed spec with scope, tasks, and definition of done → for UI features, writes **E2E test scenarios** (step-by-step, browser-executable) that become the verification contract → **spec-review sub-agent** validates completeness → waits for your approval. Optional **Codex adversarial review** provides an independent second opinion when enabled.
+**Plan:** Explores codebase with semantic search → asks clarifying questions → writes detailed spec with scope, tasks, and definition of done → for UI features, writes **E2E test scenarios** (step-by-step, browser-executable) that become the verification contract → **spec-review sub-agent** validates completeness in Claude Code or Codex → waits for your approval. Optional **Codex Companion Reviewers** provide a Claude Code plugin second opinion when enabled.
 
 **Implement:** Creates an isolated git worktree → implements each task with strict TDD (RED → GREEN → REFACTOR) → quality hooks auto-lint, format, and type-check every edit → full test suite after each task.
 
-**Verify:** Full test suite + actual program execution → **unified review sub-agent** (compliance + quality + goal) → for UI features, executes each E2E scenario step-by-step via browser automation (pass/fail tracked, results written to plan) → auto-fixes findings → squash merges to main on success.
-
-</details>
-
-<details>
-<summary><b>Collaborative spec review — catch flaws in the spec, not the PR</b></summary>
-
-Send a single persistent share link to your teammates. They open it in any browser at `pilot-shell.com/s/<id>` — no Pilot Shell install required — and annotate the spec inline. Submitted feedback flows back into your Console automatically (60-second poll), surfaces in the bell as `"<author> left N annotations on <spec>"`, and lands in the annotation panel grouped by teammate.
-
-- **One link, many reviewers.** Click "Share with Teammates" once. The button is permanently replaced by a copyable link. Forward it to anyone.
-- **Zero handoff.** Teammates click Submit on pilot-shell.com — no copy-URL-back step, no manual import.
-- **Author-grouped feedback in the Console.** Keep what's useful, delete what isn't. Annotations land in `.annotations/<spec>.json` so the agent reads them at the next review checkpoint.
-- **Shift left.** Wrong approach, missed edge case, unclear scope, weak architecture — spot it before code is written, where a one-sentence annotation is the entire fix. Not just bugs: anything you'd flag in PR review costs less to flag here.
-
-Links expire after 7 days. No accounts, no encryption — the unguessable URL is the access token.
+**Verify:** Full test suite + actual program execution → **changes-review sub-agent** in Claude Code or Codex (compliance + quality + goal) → for UI features, executes each E2E scenario step-by-step via browser automation (pass/fail tracked, results written to plan) → auto-fixes findings → squash merges to main on success.
 
 </details>
 
@@ -253,67 +256,31 @@ For local bugs. Single file, obvious-once-traced root cause. No plan file, no ap
 - **Investigate:** Reproduce the bug → trace to root cause at `file:line` with `codegraph_context` (structure) + `semble search` (intent, cross-language) + targeted reads → state confidence (High/Medium required to proceed). For UI / async / race bugs, add temporary `SPEC-DEBUG:`-marked logs at component boundaries before tracing.
 - **RED:** Write the failing test via an existing public entry point → run, must fail with the documented symptom.
 - **Fix:** Minimal change at the root cause. Symptom patches are forbidden. Reproducing test must pass, then the targeted test module. Diff sanity check (root-cause file in diff, no unplanned files, < 20 lines, symptom-patching grep) catches issues with the fix itself.
-- **Verify End-to-End:** The primary correctness signal. Run the actual program with the original input (Claude Code Chrome → Chrome DevTools MCP → playwright-cli → agent-browser for UI; CLI / API / REPL / job trigger for non-UI) and capture concrete evidence. A passing unit test alone is never accepted as proof.
+- **Verify End-to-End:** The primary correctness signal. Run the actual program with the original input (browser automation for UI — Claude Code uses its Chrome extension; Codex uses Chrome DevTools MCP; both fall back to playwright-cli / agent-browser. CLI / API / REPL / job trigger for non-UI) and capture concrete evidence. A passing unit test alone is never accepted as proof.
 - **Quality Gate:** Lint + types + build + full anti-regression suite, once.
-- **Bail-out:** If investigation reveals the bug is multi-component, architectural, needs defense-in-depth at multiple layers, or two fix attempts have failed, `/fix` stops cleanly and tells you to re-invoke with `/spec`. It does not silently switch lanes.
+
+**When to use `/spec` for bugs instead:** bugs that span 3+ files, need a written plan and approval, warrant a Behavior Contract (`Given / When / Currently / Expected`), or have failed two fix attempts. `/spec` adds a revert-test proof in verify, a cap at 3 iterations, and a code review gate — use it when the complexity makes that structure worthwhile.
 
 </details>
 
-<details>
-<summary><b>How <code>/spec</code> handles bugs</b></summary>
+---
 
-When you type `/spec "<bug description>"`, the full bugfix workflow runs — for bugs that warrant a written plan, approval, code review, and the full verify ceremony.
+## Additional Workflows
 
-- **Behavior Contract:** every plan pins down `Given / When / Currently / Expected / Anti-regression` — the invariant the fix must produce and the behavior it must not break
-- **Three uniform tasks** (always, regardless of bug size): Write Reproducing Test (RED) → Implement Fix at Root Cause → Quality Gate
-- **Verify audit:** always-on `cp`+`trap` revert-test (proves the reproducing test would genuinely fail without the fix — rules out retroactive rubber-stamp tests) + root-cause-at-source audit (flags symptom patches and caller-side workarounds) + original-symptom re-check — no sub-agents, tests carry the proof
-- **Iteration cap at 3:** after three failed verify cycles, the workflow stops and asks if the bug is architectural rather than letting you loop forever
-
-</details>
-
-### /prd — Brainstorm Ideas Into Product Requirements Documents
-
-[`/prd`](https://pilot-shell.com/docs/workflows/prd) is the brainstorming surface for ideas that aren't specs yet — vague problem statements and fuzzy shapes. It pitches directions, pressure-tests them with you, and converges on a PRD you can hand to `/spec`. PRDs are saved to `docs/prd/` and visible in the Console's **Requirements** tab.
-
-```bash
-# Claude Code                                                  # Codex CLI
-claude                                                          codex
-> /prd "Add real-time notifications for team updates"           > $prd "Add real-time notifications for team updates"
-```
-
-<details>
-<summary><b>What /prd Does</b></summary>
-
-**When to use `/prd` over `/spec`:** `/prd` is for **what** and **why**; `/spec` is for **how**. Reach for `/prd` first when you only have a problem statement, want to riff across multiple directions, or need scope boundaries defined before someone starts building.
-
-**Flow:** two modes, picked automatically from how fuzzy the idea is:
-
-1. **Ideate** — free-form prose, Claude pitches 3-5 directions, you react (only runs when the idea is vague)
-2. **Clarify → Converge → Write** — structured multiple-choice questions once the shape is known, then the PRD is written
-
-**Research tiers** (picked at the start):
-
-| Tier | Behavior |
-|------|----------|
-| **Quick** | Skip research |
-| **Standard** | Web search for competitors, prior art, best practices |
-| **Deep** | Parallel research agents for comprehensive findings |
-
-The final PRD covers problem statement, core user flows, scope boundaries, and technical context — then offers to hand off directly to `/spec` for implementation.
-
-</details>
+Run after installing Pilot Shell to configure your environment, then on demand as your project evolves.
 
 ### /setup-rules — Generate Modular Rules
 
 [`/setup-rules`](https://pilot-shell.com/docs/workflows/setup-rules) explores your codebase, discovers conventions, generates modular rules and documents MCP servers. Run once initially, then anytime your project changes significantly.
 
 ```bash
-claude
-> /setup-rules
+# Claude Code         # Codex CLI
+claude                codex
+> /setup-rules        > $setup-rules
 ```
 
 <details>
-<summary><b>What /setup-rules Does</b></summary>
+<summary><b>How <code>/setup-rules</code> works</b></summary>
 
 12 phases that read your codebase and produce comprehensive AI context:
 
@@ -339,19 +306,20 @@ claude
 [`/create-skill`](https://pilot-shell.com/docs/workflows/create-skill) builds a reusable skill from any topic — explores the codebase and creates it interactively with you. If no topic is given, evaluates the current session for extractable knowledge.
 
 ```bash
-claude
-> /create-skill "Automate the review and triaging of our PR Bot comments"
+# Claude Code                                              # Codex CLI
+claude                                                      codex
+> /create-skill "Automate PR Bot comment review"           > $create-skill "Automate PR Bot comment review"
 ```
 
 <details>
-<summary><b>What /create-skill Does</b></summary>
+<summary><b>How <code>/create-skill</code> works</b></summary>
 
 6 phases that turn domain knowledge into a reusable skill:
 
 1. **Reference** — load use case categories, complexity spectrum, file structure template, description formula, security restrictions
 2. **Understand** — explore the codebase for relevant patterns, ask clarifying questions, or evaluate the current session for extractable knowledge
 3. **Check existing** — search project and global skills to avoid duplicates
-4. **Create** — write to `.claude/skills/` (project) or `~/.claude/skills/` (global), apply portability and determinism checklists
+4. **Create** — write to the active agent's skills directory (`.claude/skills/` or `~/.claude/skills/` for Claude Code; `~/.agents/skills/` for Codex), apply portability and determinism checklists
 5. **Quality gates** — structure checklist (SKILL.md naming, frontmatter fields), content checklist (error handling, examples, exclusions), triggering test (should/shouldn't trigger), iteration signals
 6. **Test & iterate** — run test prompts with sub-agents, evaluate results, optimize description triggering
 
@@ -363,7 +331,7 @@ claude
 | **Workflow Automation**       | Multi-step processes with validation gates and iterative refinement        |
 | **MCP Enhancement**           | Workflow guidance on top of MCP tool access, multi-MCP coordination        |
 
-**Skill structure:** Each skill is a folder with a `SKILL.md` file (case-sensitive), optional `scripts/`, `references/`, and `assets/` directories. The YAML frontmatter description determines when Claude loads the skill — it must include what the skill does, when to use it, and specific trigger phrases. Progressive disclosure keeps context lean: frontmatter loads always (~100 tokens), SKILL.md loads on activation, linked files load on demand.
+**Skill structure:** Each skill is a folder with a `SKILL.md` file (case-sensitive), optional `scripts/`, `references/`, and `assets/` directories. The YAML frontmatter description determines when the agent loads the skill — it must include what the skill does, when to use it, and specific trigger phrases. Progressive disclosure keeps context lean: frontmatter loads always (~100 tokens), SKILL.md loads on activation, linked files load on demand.
 
 </details>
 
@@ -372,13 +340,14 @@ claude
 [`/benchmark`](https://pilot-shell.com/docs/workflows/benchmark) runs your prompts with and without the target, grades outputs against falsifiable assertions, and shows a structured report you can absorb in 30 seconds — labeled verdict, quadrant breakdown, and only the divergent assertions in the drill-down. Finishes with a concrete improvement plan so you know exactly what to change next.
 
 ```bash
-claude
-> /benchmark pilot/skills/create-skill
-> /benchmark pilot/rules/testing.md
+# Claude Code                              # Codex CLI
+claude                                      codex
+> /benchmark pilot/skills/create-skill     > $benchmark pilot/skills/create-skill
+> /benchmark pilot/rules/testing.md        > $benchmark pilot/rules/testing.md
 ```
 
 <details>
-<summary><b>What /benchmark Does</b></summary>
+<summary><b>How <code>/benchmark</code> works</b></summary>
 
 Six phases turn a rule or skill into a before/after comparison with an actionable plan:
 
@@ -396,412 +365,63 @@ Six phases turn a rule or skill into a before/after comparison with an actionabl
 
 6. **Improvement plan** — ≤ 5 ranked proposals in a uniform format (`[TARGET]` or `[EVALS]` tag, location, current quote, replacement, "Lever" line). You pick: apply target edits, iterate on evals, both, or save the plan and stop. Re-runs land in a fresh `runs/<ts>/` so iteration deltas stay legible.
 
-**Isolation:** each run gets its own sandbox directory; a globally-installed copy of the target in `~/.claude/` is auto-hidden for the duration and restored afterward (with on-disk recovery manifest covering SIGKILL / power loss / segfault). Conditional-loading frontmatter (`path:` / `paths:`) is stripped from the copy installed into the `with` sandbox so the target loads unconditionally for every prompt — without that, rules scoped to e.g. `paths: ["**/*.py"]` would stay dormant in both configs and the delta would collapse to 0.00. The source file is never modified.
+**Isolation:** each run gets its own sandbox directory; a globally-installed copy of the target in `~/.claude/` (or `~/.codex/` / `~/.agents/`) is auto-hidden for the duration and restored afterward (with on-disk recovery manifest covering SIGKILL / power loss / segfault). Conditional-loading frontmatter (`path:` / `paths:`) is stripped from the copy installed into the `with` sandbox so the target loads unconditionally for every prompt — without that, rules scoped to e.g. `paths: ["**/*.py"]` would stay dormant in both configs and the delta would collapse to 0.00. The source file is never modified.
 
 **Key flags:** `--runs N` (default 1), `--configs with,without`, `--workers N`, `--model`, `--no-isolate-global`, `--restore-hidden`.
 
 </details>
 
-### Status Line
+## Pilot Shell Console
 
-Pilot shell ships with its own advanced status line with real-time session metrics and spec progress:
+Local web dashboard at `localhost:41777` with real-time notifications and 10 views.
 
-<img src="docs/img/statusline.png" alt="Pilot Shell Status Line" width="700">
+<img src="docs/img/console/dashboard.webp" alt="Console — Dashboard" width="700">
 
-<details>
-<summary><b>All fields explained</b></summary>
+### Dashboard
 
-**Line 1 — Session Metrics** (separated by `|`):
+Global command center with 8 clickable stat cards and 4 recent cards (Specifications, Requirements, Sessions, Memories). Active specs shown as pills in the top bar; notification bell in the top right.
 
-| Widget            | Description                                                                     |
-| ----------------- | ------------------------------------------------------------------------------- |
-| **Model**         | Active model in short form (`Opus 4.7 [1M]`, `Sonnet 4.6`)                      |
-| **Context**       | Effective context usage with progress bar and buffer indicator. Green < 80%, Yellow 80–95%, Red 95%+ |
-| **Lines changed** | `+added -removed` in session (hidden when `rate_limits` is available)           |
-| **Git**           | Branch with staged (`+N`) / unstaged (`~N`) counts (hidden when `rate_limits` is available) |
-| **5h / 7d usage** | Rate-limit percentage with pacing arrow and reset countdown (`5h: 42% ⇡ 2h`). ⇡ red = over pace, ⇣ green = under pace. Read cross-platform from Claude Code's `rate_limits` stdin field (Pro/Max subscriptions on Claude Code 2.1.80+). Replaces lines+git when present. |
-| **Cost**          | Session cost in USD. Green < $1, Yellow $1–5, Red $5+. Hidden when `rate_limits` is available — on Pro/Max the subscription covers API usage, so the dollar figure is noise. |
-| **Savings**       | Token savings percentage from RTK proxy (`Savings: N%`). Always shown when RTK has data. |
+### Sessions
 
-**Line 2 — Mode:**
+Browse past sessions with search for both Claude Code and Codex. For Claude Code, copy the session ID and use `/resume <session-id>` to directly jump back into any session.
 
-- **Quick Mode:** `Quick Mode`
-- **Spec Mode:** Plan name, type (`feature`/`bugfix`), phase (`plan`/`implement`/`verify`), progress bar, task count, and iteration count
+### Memories
 
-**Line 3 — Version & Session Info:**
+Browsable observations — decisions, discoveries, bugfixes — with type filters and search. Each memory shows its session — click to navigate directly to it.
 
-`Pilot <version> (<tier>) · CC <version> (<subscription>) · sessions <N> · memories <N>`
+### Requirements
 
-Pilot tier: Solo, Team, or Trial with time remaining. Claude subscription (Pro/Max/Team/Enterprise) detected via `claude auth status` and cached for 24 hours.
+Product requirement documents (PRDs) generated by `/prd`, with view and annotate modes. Access all previous documents and share them with your team for direct feedback and annotations.
 
-</details>
+### Specifications
 
-### Pilot Shell Console
-
-A local web dashboard with different views and real-time notifications when Claude needs your input:
-
-<img src="docs/img/dashboard.png" alt="Pilot Shell Console — Dashboard" width="700">
-
-<details>
-<summary><b>All views</b></summary>
-
-Each view with project-specific data has an inline **Project Filter** dropdown — switch projects without leaving the page. Dashboard stats tiles are clickable — navigate directly to the relevant view.
-
-| View              | What it shows                                                                                                                                |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Dashboard**     | Global command center — 8 clickable stat cards, 4 recent cards (Specifications, Requirements, Sessions, Memories) with "Show all" links. Active specs as pills in the top bar, notification bell in top right. |
-| **Sessions**      | Browse past sessions with search. Copy the session ID and use `/resume <session-id>` in Claude Code to jump back into any session.           |
-| **Memories**      | Browsable observations — decisions, discoveries, bugfixes — with type filters and search. Each memory shows its session — click to navigate. |
-| **Requirements**  | PRD documents with view/annotate modes. Selected shown as a tab, others in a Previous dropdown.                                             |
-| **Specifications** | All spec plans with task progress, phase tracking, and iteration history. **Annotate mode** lets you mark up plans visually before approving — select text or click **+** on any block to write a note. **Share with Teammate** generates a compressed share link; **Receive Feedback** imports their annotations with accept/reject controls |
-| **Extensions**    | All extensions — local, plugin, and remote — with team sharing via git, diff view, push/pull, and color-coded categories.                    |
-| **Changes**       | Git diff viewer with staged/unstaged files, branch info, and worktree context. **Review mode** adds inline annotations on diff lines — the agent reads them directly before marking a spec as verified |
-| **Usage**         | Daily token costs, model routing breakdown, and usage trends                                                                                 |
-| **Help**          | Documentation, guides, and quick-start resources                                                                                             |
-| **Settings**      | One scrollable page (Spec Workflow / Console). Spec workflow toggles (branch isolation, ask questions, plan approval, **Model Switching**), reviewer toggles (spec review, changes review, optional Codex). Each toggle shows agent support — **Claude Code + Codex** (green) or **Claude Code only** (amber). Active model is set via `/model` — no model dropdowns here. |
-
-</details>
-
-<details>
-<summary><b>Visual plan annotation</b></summary>
-
-When a spec plan is pending approval, the Specifications tab defaults to **Annotate mode**. Two ways to annotate:
-
-- **Select text** — highlight any passage and write a note via the floating toolbar
-- **Click +** — hover over any block to add a note without selecting text
-
-Annotations save automatically. The agent reads them at the next checkpoint, revises the plan accordingly, and asks for approval again. This turns plan review into a conversation — you mark what needs changing, the agent addresses it, you review again.
-
-</details>
-
-<details>
-<summary><b>Spec sharing</b></summary>
-
-Share specs and requirements with teammates for async review — no cloud service required:
-
-1. **Share** — Click **Share with Teammate** to generate a compressed link. The entire spec and annotations are encoded into the URL fragment, so no data is transmitted to any server.
-2. **Review** — Your colleague opens the link in their Console (or on pilot-shell.com), sees your annotations, and adds their own feedback.
-3. **Import** — Click **Receive Feedback** to import their annotations. Each annotation has per-item **accept/reject** controls — accepted annotations merge into your plan, rejected ones are removed from both the sidebar and inline markers.
-
-Everything works locally. The link is self-contained — the recipient doesn't need access to your machine, repository, or any shared service.
-
-</details>
-
-<details>
-<summary><b>Code review</b></summary>
-
-After a spec completes all automated checks, the agent prompts you to review the changes in the **Changes** tab:
-
-1. **Enable Review mode** — toggle it in the Changes tab header
-2. **Annotate diffs** — click **+** on any diff line to add an inline note. Annotations save automatically.
-3. **Agent addresses feedback** — the agent reads every annotation and resolves them before marking the spec as verified
-
-This gives you a final quality gate with direct, line-level feedback — the same workflow as a PR review, but before the code ever leaves your machine.
-
-</details>
+All spec plans generated by `/spec` with task progress, phase tracking, and iteration history. Annotate mode lets you mark up plans visually before approving, share with teammates via a single link.
 
 ### Extensions
 
-Rules, commands, skills, and agents — all plain markdown files in `.claude/` (project) or `~/.claude/` (global). The Console Extensions page lets you browse, edit, compare, and share everything from one place:
+Browse, edit, compare, and share your rules, commands, skills, and agents. Connect a git remote to push/pull extensions across your team, with optional APM-compatible export format.
 
-<img src="docs/img/extensions.png" alt="Pilot Shell Console — Extensions" width="700">
+### Changes
 
-<details>
-<summary><b>Extension categories</b></summary>
+Git diff viewer with staged/unstaged files, branch info, and worktree context. Review mode adds inline annotations on diff lines — the agent reads them directly before marking a spec as verified.
 
-| Extension    | Location            | When it loads                               |
-| ------------ | ------------------- | ------------------------------------------- |
-| **Skills**   | `.claude/skills/`   | Automatically when relevant                 |
-| **Rules**    | `.claude/rules/`    | Every session, or by file type              |
-| **Commands** | `.claude/commands/` | On demand via `/command-name`               |
-| **Agents**   | `.claude/agents/`   | Spawned as sub-agents for specialized tasks |
+### Usage
 
-Use `/setup-rules` to auto-generate rules from your codebase. Use `/create-skill` to capture workflows as reusable skills.
+Daily token costs, model routing breakdown, and usage trends across sessions for both Claude Code and Codex sessions. Correlates costs to commits and show savings via CLI proxy integration.
 
-</details>
+### Settings
 
-<details>
-<summary><b>Scopes: Global, Project, Plugin</b></summary>
+Configure spec workflow toggles, reviewer settings, and Console preferences. Toggle labels show which review agents run on Claude Code + Codex, and which Codex Companion Reviewers require the Claude Code Codex plugin.
 
-**Project** extensions live in `.claude/` — commit them so teammates get them on `git clone`. **Global** extensions live in `~/.claude/` — personal and available across all projects. Move extensions between scopes with one click.
+### Documentation
 
-**Plugin** extensions come from installed Claude Code plugins (`claude plugin install <name>`). They appear as read-only items — visible but not editable.
-
-</details>
-
-<details>
-<summary><b>Team sharing & APM (Team tier)</b></summary>
-
-Connect a git repository to share extensions across your team:
-
-- **Push** local extensions to the team remote
-- **Pull** remote extensions to your machine (global or project scope)
-- **Compare** local vs remote with a built-in side-by-side diff view
-- **Conflict detection** — when local and remote differ, choose which version to keep
-
-**APM format** — check one box and your remote becomes an [APM package](https://microsoft.github.io/apm/introduction/key-concepts/), directly installable via `apm install owner/repo` by anyone using Copilot, Cursor, OpenCode, or Claude. Extensions are automatically converted to APM conventions on push:
-
-| Pilot Shell | APM Remote |
-| --- | --- |
-| `rules/my-rule.md` | `instructions/my-rule.instructions.md` |
-| `commands/my-cmd.md` | `prompts/my-cmd.prompt.md` |
-| `skills/my-skill/SKILL.md` | `skills/my-skill/SKILL.md` |
-| `agents/my-agent.md` | `agents/my-agent.agent.md` |
-
-APM-compatible frontmatter is injected automatically. An `apm.yml` manifest is generated. Toggling APM on/off migrates existing extensions in a single commit.
-
-</details>
-
-### Customization
-
-Customize everything Pilot auto-installs — tweak the built-in `/spec` workflow, modify existing rules, register additional hooks, add agents, and adjust the auto-applied `settings.json`, `claude.json`, and `.mcp.json`. Source can be a **git repo** (team-wide) or a **local directory** (personal, no git needed). Team and Enterprise plans.
-
-```bash
-pilot customize install <git-url-or-path>    # Install and apply
-pilot customize update                       # Pull latest (git) or re-read (local)
-pilot customize status                       # Active source + drift warnings
-pilot customize remove                       # Restore Pilot defaults
-```
-
-<details>
-<summary><b>What you can customize</b></summary>
-
-| Target | How |
-|--------|-----|
-| **Skills** (built-in workflows like `/spec`, `/prd`) | Overlay ops in `customization.json`: `insert_after`, `insert_before`, `replace`, `disable` — or ship an entirely new skill folder |
-| **Rules** | New rules are additive; same filename as a core rule overrides it |
-| **Hooks** | Scripts copy to `~/.claude/hooks/`; ship `hooks.json` to register them alongside Pilot's built-ins |
-| **Agents** | Drop `.md` files to add review/helper agents into `~/.claude/agents/` |
-| **MCP servers** | Top-level `.mcp.json` deep-merges into `~/.claude.json` `mcpServers` (adds team servers alongside Pilot's; pack values win on conflict) |
-| **Claude settings** | Top-level `settings.json` and `claude.json` deep-merge into the user's files — model prefs, permissions, env vars, etc. User state (oauth, projects) is preserved |
-
-Replaced skill fragments stay pinned to upstream by hash. `pilot customize status` surfaces drift when Pilot upgrades a replaced step; `pilot customize diff <skill>/<step-id>` shows what changed so you can port improvements. See the [Customization guide](https://pilot-shell.com/docs/features/customization) for the full schema.
-
-</details>
-
-<details>
-<summary><b>Repository / folder structure</b></summary>
-
-The layout is the same whether you publish it as a git repo or keep it as a local folder. Directory names map 1:1 to `~/.claude/`:
-
-```
-my-customization/
-├── customization.json          # Required: metadata + optional skill overlays
-├── settings.json               # Optional: deep-merges into ~/.claude/settings.json
-├── claude.json                 # Optional: deep-merges into ~/.claude.json
-├── .mcp.json                   # Optional: deep-merges into ~/.claude.json `mcpServers`
-├── skills/                     # → ~/.claude/skills/
-│   ├── spec-plan/steps/
-│   │   └── security-review.md  # New step injected into spec-plan
-│   └── team-deploy/            # Brand-new skill
-│       ├── manifest.json
-│       ├── orchestrator.md
-│       └── steps/01-stage.md
-├── rules/                      # → ~/.claude/rules/
-│   ├── team-standards.md       # Additive
-│   └── testing.md              # Overrides core
-├── hooks/                      # → ~/.claude/hooks/
-│   ├── team-lint-check.sh
-│   └── hooks.json              # Registers team-lint-check.sh alongside Pilot's hooks
-└── agents/                     # → ~/.claude/agents/
-    └── team-reviewer.md
-```
-
-Only ship the files and directories you need. A repo with just `rules/` is a valid customization; so is one with just `.mcp.json`.
-
-</details>
-
-### Pilot Bot
-
-Run Claude Code as a persistent 24/7 automation agent with scheduled tasks, background jobs and heartbeat monitoring:
-
-```bash
-pilot bot    # Launch automation session (auto-initializes on first run)
-```
-
-Pilot Bot defines scheduled jobs, automates recurring tasks, and monitor system health around the clock. If the [Telegram Channels plugin](https://github.com/anthropics/claude-plugins-official/tree/main/external_plugins/telegram) is installed, the bot auto-detects it and enables bidirectional messaging. Similar to OpenClaw, but without the added complexity and costs.
-
-<details>
-<summary><b>Bot skills</b></summary>
-
-| Skill | Purpose |
-|-------|---------|
-| `bot-boot` | Boot sequence — health check, job registration, heartbeat setup |
-| `bot-heartbeat` | Periodic health checks, notifies only when issues are detected |
-| `bot-jobs` | Manage scheduled jobs — add, remove, pause, resume, edit, list |
-| `bot-channel-task` | Channel task flow — acknowledge, execute, report (when Telegram is available) |
-| `bot-defaults` | Standard bot behaviors (dedup, reporting, error handling) |
-
-</details>
-
-### Claude CLI Flag Passthrough
-
-All Claude Code CLI flags work directly with `pilot` — current and future. Pilot forwards any flag it doesn't recognize to the Claude CLI automatically.
-
-```bash
-pilot --channels plugin:telegram@claude-plugins-official
-pilot --model opus --verbose
-pilot --resume
-```
-
-### Headless Mode
-
-Run Pilot non-interactively with `-p` for CI/CD pipelines, scripts, and automated workflows. All Claude Code CLI flags work — `--output-format`, `--allowedTools`, `--channels`, `--continue`, `--bare`, etc.
-
-```bash
-pilot -p "Run tests and fix failures" --allowedTools "Bash,Read,Edit"
-pilot -p "Summarize this project" --output-format json
-pilot --channels plugin:telegram@official -p "Check messages"
-```
+Documentation, guides, and quick-start resources to explain the concepts in detail.
 
 ---
 
-## Demo
-
-A full-stack project — created from **scratch with a single prompt**, then extended with **3 features built in parallel** using `/spec` and Git worktrees. Every line of code tested and verified by Pilot, zero manual code edits. **[Check out the Demo Project here →](https://github.com/maxritter/pilot-shell-demo)**
-
----
-
-## Under the Hood
+## Documentation
 
 For full details on every component, see the **[Documentation](https://pilot-shell.com/docs/)**.
-
-| Component | What it does |
-| --- | --- |
-| [**Pilot Console**](https://pilot-shell.com/docs/features/console) | Local web dashboard at `localhost:41777` — 10 views (Dashboard, Sessions, Memories, Requirements, Specifications, Extensions, Changes, Usage, Help, Settings). Port is configurable in Console Settings (`CLAUDE_PILOT_WORKER_PORT`). SQLite-backed, nothing leaves your machine |
-| [**Pilot Bot**](https://pilot-shell.com/docs/features/bot) | Persistent 24/7 automation agent with scheduled jobs, background tasks, heartbeat monitoring, and optional Telegram integration for bidirectional messaging |
-| [**Status Line**](https://pilot-shell.com/docs/features/statusline) | Real-time session dashboard below every response — model, context usage, git status, cost, spec progress, and savings metrics across 3 lines |
-| [**Model Switching**](https://pilot-shell.com/docs/features/model-routing) | `/model` is the only switch. Recommended flow: Opus for planning (the `spec-mode-guard` hook hard-blocks `/spec` on non-Opus), then `/model sonnet[1m]` for implementation. Two resume paths: Option A — switch model and type any prompt (fast, carries planning context); Option B — `/clear` then `/spec <plan path>` (fresh session, lower cost). The opt-out **Model Switching** toggle handles the pause. |
-| [**Rules & Standards**](https://pilot-shell.com/docs/features/rules) | 10 built-in rules for workflow, testing, verification, debugging, code review, documentation sync, tooling, and MCP routing + 5 coding standards activated by file type (Python, TypeScript, Go, Frontend, Backend) |
-| [**Context Optimization**](https://pilot-shell.com/docs/features/context-optimization) | Lean context strategies — RTK output compression, Semble chunk-only code search, conditional rule loading, progressive skill disclosure, lazy MCP tool loading. Compaction resilience for 200K windows |
-| [**Remote Control**](https://pilot-shell.com/docs/features/remote-control) | Control Pilot sessions from your phone, tablet, or any browser — send prompts, monitor progress, and receive notifications remotely |
-| [**Hooks Pipeline**](https://pilot-shell.com/docs/features/hooks) | 19 hook registrations across 7 events — license verification, CodeGraph initialization, quality checks on every file edit (ruff, ESLint, go vet), TDD enforcement, token optimization via RTK (60–90% savings), session continuity, memory capture, and session lifecycle management |
-| [**Extensions**](https://pilot-shell.com/docs/features/extensions) | Unified view of skills, rules, commands, and agents across global, project, plugin, and remote scopes. Team sharing via git with push, pull, diff, and APM-compatible export |
-| [**Customization**](https://pilot-shell.com/docs/features/customization) | Customize what Pilot auto-installs — tweak built-in skills (spec, prd, etc.), modify rules, register additional hooks, add agents, and adjust auto-applied MCP / Claude settings. Source is a git repo (team-wide) or local directory (personal). Skill overlays (`insert_after` / `insert_before` / `replace` / `disable`) modify core workflows without full-file forks; fragments stay pinned to upstream by hash with drift detection. Team and Enterprise plans |
-| [**Pilot CLI**](https://pilot-shell.com/docs/features/cli) | Admin CLI for license management, updates, worktrees, and diagnostics. Pilot Shell loads automatically when you run `claude` or `codex` — no need to launch through `pilot` |
-| [**MCP Servers**](https://pilot-shell.com/docs/features/mcp-servers) | 7 preconfigured MCP servers for library docs, persistent memory, web search, GitHub code search, web page fetching, code knowledge graphs, and hybrid code search (Semble), plus the Chrome DevTools MCP plugin for browser automation |
-| [**Language Servers**](https://pilot-shell.com/docs/features/language-servers) | Real-time diagnostics for Python (basedpyright), TypeScript (vtsls), Go (gopls). Auto-installed, auto-configured |
-| [**Open Source Tools**](https://pilot-shell.com/docs/features/open-source-tools) | 20+ open-source tools installed alongside Pilot — Semble (hybrid code search), CodeGraph (code intelligence), RTK (token optimization), language servers, and system prerequisites |
-
----
-
-## What Users Say
-
-> "Spec-driven development in Pilot Shell is incredible. I'm so impressed that I have to resist the urge to fix every issue all at once."
-
-> "Instead of just letting Claude Code run on its own, you've managed to make it work in a much more organized, consistent, and reliable way within a workflow, which I think is fantastic. What you've built is truly impressive."
-
-> "I have fallen in love with Pilot and just can't stand the idea of having to go back to native Claude."
-
----
-
-## License
-
-See [LICENSE](LICENSE).
-
----
-
-## FAQ
-
-<details>
-<summary><b>Does Pilot Shell send my code or data to external services?</b></summary>
-
-**No code, files, prompts, project data, or personal information ever leaves your machine through Pilot Shell.** All development tools — code search (Semble), code intelligence (CodeGraph), persistent memory (Console), session state, and quality hooks — run entirely locally. No OS info, no version strings, no analytics, no telemetry, no heartbeats. Pilot Shell works fully offline between periodic license checks. If you enable the optional [Codex companion plugin](https://github.com/openai/codex-plugin-cc), adversarial reviews are sent to OpenAI's API — this is opt-in and disabled by default. Codex CLI itself routes prompts to OpenAI as part of normal operation.
-
-</details>
-
-<details>
-<summary><b>What do I need to use Pilot Shell?</b></summary>
-
-Pilot Shell enhances your AI coding agent — it doesn't replace it. You need at least one: **Claude Code** (Anthropic) requires an active Claude subscription — [Max 5x or 20x](https://claude.com/pricing) for solo developers, [Team Premium](https://claude.com/pricing) for teams, or [Enterprise](https://claude.com/pricing) for organizations. **[Codex CLI](https://developers.openai.com/codex/cli)** (OpenAI) requires an OpenAI API key. You can use either agent or both — the installer auto-detects and configures whichever is installed. Both share the same rules, skills, hooks, MCP servers, and Console. All non-bot skills work on both agents: `/spec`, `/fix`, `/prd`, `/benchmark`, `/setup-rules`, `/create-skill`. A small set of features (bot skills, review sub-agents, model switching, status line) require Claude Code. See the [Codex CLI docs](https://pilot-shell.com/docs/getting-started/codex-cli) for the detailed comparison.
-
-</details>
-
-<details>
-<summary><b>Does Pilot Shell work with existing projects?</b></summary>
-
-Yes — that's the primary use case. Pilot Shell doesn't scaffold or restructure your code. You install it, run `/setup-rules`, and it explores your codebase to discover your tech stack, conventions, and patterns. From there, every session has full context about your project. The more complex and established your codebase, the more value Pilot Shell adds — quality hooks catch regressions, persistent memory preserves decisions across sessions, and `/spec` plans features against your real architecture.
-
-</details>
-
-<details>
-<summary><b>Does Pilot Shell work with any programming language?</b></summary>
-
-Pilot Shell's quality hooks (auto-formatting, linting, type checking) currently support Python, TypeScript/JavaScript, and Go out of the box. TDD enforcement, spec-driven development, persistent memory, context optimization, and all rules and standards work with any language. You can add custom hooks for additional languages.
-
-</details>
-
-<details>
-<summary><b>Can I use Pilot Shell on multiple projects?</b></summary>
-
-Yes. Pilot Shell installs once globally and works across all your projects — you don't need to reinstall per project. All tools, rules, commands, and hooks live in `~/.pilot/` and `~/.claude/`, available everywhere. Just `cd` into any project and run `claude` or `codex`. Each project can optionally have its own `.claude/` rules, custom skills, and MCP servers for project-specific behavior. Run `/setup-rules` in each project to generate project-specific documentation and standards.
-
-</details>
-
-<details>
-<summary><b>Why does Pilot Shell use bypass permissions mode?</b></summary>
-
-Pilot Shell sets Claude Code to `bypassPermissions` mode by default so the `/spec` workflow can run autonomously — planning, implementing, and verifying without pausing for permission prompts at every tool call. This is what enables the end-to-end spec-driven development experience.
-
-**In Quick Mode (regular chat), you have full control.** Press `Shift+Tab` at any time to cycle through [Claude Code's permission modes](https://pilot-shell.com/docs/features/permission-modes):
-
-| Mode             | Behavior                                              |
-| ---------------- | ----------------------------------------------------- |
-| **Plan**         | Claude proposes changes, you approve before execution |
-| **Accept Edits** | File edits auto-approved, other actions still prompt  |
-| **Normal**       | Fine-grained permission prompts for each tool call    |
-
-You can also set a persistent default in `~/.claude/settings.json` by changing the `defaultMode` field to `acceptEdits`, `default`, `plan`, or `dontAsk`. Pilot Shell preserves your choice across updates — the installer merges permissions additively and never overwrites user customizations.
-
-</details>
-
-<details>
-<summary><b>Can I add my own rules, commands, skills, and agents?</b></summary>
-
-Yes. Create your own in your project's `.claude/` folder — rules, commands, skills, and agents are all plain markdown files. Your project-level assets load alongside Pilot Shell's built-in defaults and take precedence when they overlap. `/setup-rules` auto-discovers your codebase patterns and generates project-specific rules. `/create-skill` builds reusable skills from any topic interactively. View and manage all extensions on the Console Extensions page.
-
-For monorepos, organize rules in nested subdirectories by product and team (e.g. `.claude/rules/my-product/team-x/`). Team-level rules must use `paths` frontmatter so they only load when working on relevant files. `/setup-rules` validates this structure, enforces path-scoping, and generates a `README.md` to document the organization.
-
-</details>
-
-<details>
-<summary><b>Can I customize Pilot's built-in workflows and defaults?</b></summary>
-
-Yes — the **Customization** feature (available on the Team plan) lets you modify what Pilot Shell auto-installs, not just add alongside it. Tweak the built-in `/spec` workflow (insert a security-review step, replace the planning template, disable a step you don't need), adjust existing rules, register additional hooks, add review agents, change which MCP servers get configured, and override the auto-applied `settings.json` and `claude.json`. Source is either a **git repo** for your team or a **local directory** for personal use — no git needed for a one-off tweak. Skill overlays stay pinned to Pilot's upstream by hash, so when Pilot ships an improvement to a step you replaced, `pilot customize status` flags the drift and `pilot customize diff` shows you what changed. See the [Customization guide](https://pilot-shell.com/docs/features/customization) for the full schema.
-
-</details>
-
-<details>
-<summary><b>Can I use Pilot Shell inside a Dev Container?</b></summary>
-
-Yes. Copy the `.devcontainer` folder from this repository into your project, adapt it to your needs (base image, extensions, dependencies), and install Pilot Shell inside the container. Everything works the same — hooks, rules, MCP servers, persistent memory, and the Console dashboard all run inside the container. This is a great option for teams that want a consistent, reproducible development environment.
-
-For tighter isolation when working with untrusted code, layer Claude Code's [`/sandbox`](https://code.claude.com/docs/en/sandboxing) on top — the Dockerfile pre-installs `bubblewrap`, `socat`, `iptables`, and `ipset` so it works out of the box. See Anthropic's [development containers](https://code.claude.com/docs/en/devcontainer) and [sandboxing](https://code.claude.com/docs/en/sandboxing) docs for the hardening patterns.
-
-</details>
-
-<details>
-<summary><b>Pilot feels slower after a few weeks — what should I do?</b></summary>
-
-Claude Code's session logs and Pilot's caches grow over time and can degrade performance. A periodic reset every few weeks restores a clean baseline:
-
-1. Run `/logout` inside Claude Code.
-2. Back up `~/.claude.json`, `~/.claude/`, and `~/.pilot/` (`mv` them to `.bak` copies).
-3. Reinstall Pilot Shell with the official installer (`curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.sh | bash`).
-4. Run `pilot`, sign in to Claude again, and re-activate with `pilot activate <your-license-key>`.
-
-Once Pilot is running smoothly, delete the `.bak` copies. Forgot your license key? Recover it in the [Pilot members area](https://polar.sh/max-ritter/portal). Full step-by-step is in the [Reset & Refresh](#install) section above.
-
-</details>
-
-<details>
-<summary><b>What's the difference between <code>pilot</code> and <code>pilot bot</code>?</b></summary>
-
-**`pilot`** is for interactive development — you chat with Claude, use `/spec` for planned work or quick mode for ad-hoc tasks, and drive every session yourself. It's your daily coding tool.
-
-**`pilot bot`** is for unattended automation — it launches Claude Code as a persistent background agent that runs 24/7. You define scheduled jobs (health checks, deployments, monitoring) and the bot executes them on a cron schedule with heartbeat monitoring. If the [Telegram plugin](https://github.com/anthropics/claude-plugins-official/tree/main/external_plugins/telegram) is installed, you can send tasks to the bot from your phone and receive results back. Think of `pilot` as your IDE and `pilot bot` as your ops assistant.
-
-</details>
 
 ---
 
@@ -814,6 +434,12 @@ See the full changelog at [pilot.openchangelog.com](https://pilot.openchangelog.
 ## Contributing
 
 Found a bug or missing a feature? [Open an issue](https://github.com/maxritter/pilot-shell/issues) on GitHub.
+
+---
+
+## License
+
+See [LICENSE](LICENSE).
 
 ---
 

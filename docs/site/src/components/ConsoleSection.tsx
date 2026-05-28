@@ -20,7 +20,7 @@ const consoleSlides: ConsoleSlide[] = [
     label: "Sessions",
     name: "sessions",
     alt: "Sessions view — browse, search, and resume past sessions",
-    desc: "Browse and search past sessions. Copy the Claude Code session ID and use /resume to jump back into any session instantly.",
+    desc: "Browse and search past sessions for both Claude Code and Codex. In Claude Code, copy a session ID and use /resume to jump back in.",
   },
   {
     label: "Memories",
@@ -62,12 +62,12 @@ const consoleSlides: ConsoleSlide[] = [
     label: "Settings",
     name: "settings",
     alt: "Settings view — spec workflow and console port",
-    desc: "Spec workflow toggles (branch isolation, ask questions, plan approval, Model Switching) and reviewer configuration. Active model is set via `/model` — no model dropdowns here.",
+    desc: "Spec workflow toggles, review agents for Claude Code + Codex, and Codex Companion Reviewers configuration. Set the model via Claude Code's /model or Codex's --model flag — no model dropdowns here.",
   },
   {
-    label: "Help",
-    name: "help",
-    alt: "Help view — embedded documentation and quick-start guides",
+    label: "Documentation",
+    name: "documentation",
+    alt: "Documentation view — embedded documentation and quick-start guides",
     desc: "Embedded documentation from pilot-shell.com — full technical reference without leaving the Console.",
   },
 ];

@@ -8,7 +8,12 @@ description: Pre-configured MCP servers — context7 for library docs, mem-searc
 
 External context always available to every session.
 
-Seven MCP servers are pre-configured in `.mcp.json` and lazy-loaded via `ToolSearch` to keep context lean. Pilot also installs the `chrome-devtools-mcp` Claude plugin alongside them. Add your own MCP entries in `.mcp.json`, then run `/setup-rules` to generate documentation.
+Seven MCP servers are pre-configured and lazy-loaded to keep context lean.
+
+- **Claude Code:** configured in `~/.claude.json` (merged from `.mcp.json` during install). Add custom servers in `.mcp.json`.
+- **Codex:** configured in `~/.codex/config.toml` under `[mcp_servers.*]`.
+
+Run `/setup-rules` (or `$setup-rules`) to generate documentation for your custom MCP servers. Pilot also installs the `chrome-devtools-mcp` plugin for browser automation.
 
 ## chrome-devtools-mcp plugin
 
@@ -38,7 +43,7 @@ performance_start_trace(autoStop=true, reload=true)
 | `list_network_requests` | Inspect all network traffic with headers and bodies |
 | `list_console_messages` | Read console output filtered by type (error, warn, log) |
 
-**4-tier browser priority:** Claude Code Chrome → Chrome DevTools MCP → playwright-cli → agent-browser. See the `browser-automation.md` rule for detection and fallback logic.
+**4-tier browser priority (Claude Code):** Claude Code Chrome extension → Chrome DevTools MCP → playwright-cli → agent-browser. On Codex, the Chrome extension is not available — Chrome DevTools MCP is the preferred tool.
 
 ## context7
 
@@ -138,9 +143,9 @@ CodeGraph and Semble are **co-primary** — each excels at different query types
 | "Find code similar to a specific location" | **Semble** — `find_related` discovers parallel implementations |
 
 :::info Tool selection
-Rules specify the combined workflow — `codegraph_context` first for structural orientation, then Semble for intent-based discovery (concept search, cross-language connections, mutation sites). context7 for library API lookups, grep-mcp for production code examples, web-search for current information. The `tool_redirect.py` hook blocks the built-in WebSearch/WebFetch and the Explore agent, redirecting to these alternatives.
+`codegraph_context` first for structural orientation, then Semble for intent-based discovery. context7 for library API lookups, grep-mcp for production code examples, web-search for current information.
 
-curl/wget and WebFetch are blocked entirely — use the dedicated web-fetch and web-search MCP servers instead.
+On Claude Code, the `tool_redirect.py` hook blocks the built-in WebSearch/WebFetch and redirects to these MCP alternatives automatically.
 :::
 
 ## Semble

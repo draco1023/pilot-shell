@@ -50,5 +50,7 @@ For a bugfix workflow without a plan file, users invoke `/fix` directly — that
 > **Note:** Every phase runs on the model the user has currently selected via Claude Code's `/model` command. The `spec-mode-guard` hook blocks `/spec` invocations when the active model is not Opus (planning's reasoning hop benefits most from Opus). With the **Model Switching** toggle ON (default), the planner stops after approval so you can run `/model <sonnet|sonnet[1m]|opus|opus[1m]>` and then type any prompt (e.g. `continue`) to resume — the `spec_handoff_resume` hook routes the next prompt directly to `spec-implement`, with no `/clear` and no `/spec <plan-path>` re-invocation. With it OFF, plan → implement → verify run continuously on whichever model is active. Sub-agents (`spec-review`, `changes-review`, `web-search-agent`) are hard-coded to Sonnet because sub-agents do not support 1M context.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-> **Note:** In Codex CLI, model switching, sub-agents (spec-review, changes-review), and the Codex companion reviewer are not available. Plan → implement → verify run continuously. Reviewer steps are skipped automatically.
+> **Note:** In Codex CLI, model switching and Codex Companion Reviewers are not available. Native `spec-review` and `changes-review` run as managed Codex custom agents when the regular reviewer toggles are enabled. Plan → implement → verify run continuously on the active Codex model.
+>
+> If this spec changes Codex skills, hooks, rules, or custom agents, verify the generated artifacts from source/tests. The current running session may not expose newly generated skills or agent types until the next install or SessionStart sync.
 CODEX-END -->

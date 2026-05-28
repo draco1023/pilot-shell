@@ -9,9 +9,10 @@ description: Measure the real impact of rules and skills with quantitative befor
 Measure whether your rules and skills actually improve outputs — with numbers, not vibes.
 
 ```bash
-pilot
-> /benchmark pilot/skills/create-skill
-> /benchmark pilot/rules/testing.md
+# Claude Code                              # Codex CLI
+claude                                      codex
+> /benchmark pilot/skills/create-skill     > $benchmark pilot/skills/create-skill
+> /benchmark pilot/rules/testing.md        > $benchmark pilot/rules/testing.md
 ```
 
 ## When to use
@@ -22,12 +23,12 @@ pilot
 
 ## How it works
 
-`/benchmark` runs your prompts twice — **with** and **without** the target — grades both against falsifiable assertions, and shows the results inline.
+`/benchmark` runs your prompts twice — **with** and **without** the target — grades both against falsifiable assertions, and shows the results inline. Works with both Claude Code and Codex (Codex uses `codex exec` headless mode under the hood; pass `--agent codex` to benchmark against Codex).
 
 | Type | `with` | `without` |
 |------|--------|-----------|
-| `skill` | Skill installed | Empty `.claude/` |
-| `rule` | Rule loaded | Empty `.claude/` |
+| `skill` | Skill installed in the active agent's directory | Empty agent directory |
+| `rule` | Rule loaded by the active agent | No rule loaded |
 
 ## Writing good assertions
 
@@ -142,7 +143,7 @@ Then `/benchmark` asks which path to take:
 
 ## Gotcha: global contamination
 
-A globally-installed copy of your target in `~/.claude/` would leak into the `without` config. The runner moves it aside for the run and restores it automatically.
+A globally-installed copy of your target in `~/.claude/` (or `~/.codex/` / `~/.agents/`) would leak into the `without` config. The runner moves it aside for the run and restores it automatically.
 
 Pass `--no-isolate-global` to measure "target + your day-to-day setup" instead.
 

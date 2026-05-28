@@ -18,6 +18,35 @@ If you find yourself writing the same fact in two places, delete one — the lon
 **Required sections:** Summary · Approach · Progress Tracking · Implementation Tasks.
 **Conditional sections** (include only when applicable, omit entirely otherwise): Out of Scope · Context for Implementer · Runtime Environment · Feature Inventory · Assumptions · Risks and Mitigations · Goal Verification · E2E Test Scenarios · Open Questions · Deferred Ideas.
 
+<!-- CODEX-START
+### Codex Console Task-Card Contract
+
+The Console and pilot-shell.com share renderer only creates clickable task cards with collapsible fields when task bodies use the exact Step 7 labels below. This is a hard output contract for Codex plans.
+
+Every task under `## Implementation Tasks` MUST use this exact shape:
+
+```markdown
+### Task N: Short imperative title
+
+**Objective:** One short prose paragraph.
+
+**Files:**
+
+- Modify: `path/to/file`
+
+**Key Decisions / Notes:**
+
+- Decision or implementation note.
+
+**Definition of Done:**
+
+- [ ] Verifiable criterion.
+- [ ] Verify: `command`
+```
+
+Do not write plain labels like `Files:`, `Key Decisions:`, `Definition of Done:`, or a separate `Verification:` block. Those do not render as the task-card fields.
+CODEX-END -->
+
 ```markdown
 # [Feature Name] Implementation Plan
 
@@ -91,7 +120,7 @@ Type: Feature
 
 ## Implementation Tasks
 
-[Tasks from Step 7 — full per-task bodies.]
+[Tasks from Step 7 — full per-task bodies. Each task must include the exact bold labels `**Objective:**`, `**Files:**`, `**Key Decisions / Notes:**`, and `**Definition of Done:**`.]
 
 ## Open Questions (only if any remain unresolved at approval time)
 

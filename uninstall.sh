@@ -10,6 +10,28 @@ HOOKS_BASELINE_FILE="$CLAUDE_DIR/.pilot-hooks-baseline.json"
 MCP_BASELINE_FILE="$CLAUDE_DIR/.pilot-mcp-baseline.json"
 LSP_MANIFEST_FILE="$PILOT_DIR/.pilot-lsp-plugins.json"
 
+CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
+AGENTS_SKILLS_DIR="$HOME/.agents/skills"
+
+CODEX_PILOT_SKILLS=(
+	"spec"
+	"spec-plan"
+	"spec-bugfix-plan"
+	"spec-implement"
+	"spec-verify"
+	"spec-bugfix-verify"
+	"fix"
+	"prd"
+	"benchmark"
+	"setup-rules"
+	"create-skill"
+	"bot-boot"
+	"bot-channel-task"
+	"bot-defaults"
+	"bot-heartbeat"
+	"bot-jobs"
+)
+
 LSP_MARKETPLACE="claude-code-lsps"
 
 EXTRA_PLUGIN_IDS=(
@@ -32,6 +54,24 @@ OLD_CLAUDE_PILOT_MARKER="# Claude Pilot"
 OLD_CCP_MARKER="# Claude CodePro alias"
 
 removed_items=()
+
+has_codex_pilot_content() {
+	if [ -f "$CODEX_DIR/hooks.json" ] && grep -q '/.pilot/' "$CODEX_DIR/hooks.json" 2>/dev/null; then
+		return 0
+	fi
+	if [ -f "$CODEX_DIR/config.toml" ] && grep -q 'pilot-shell managed MCP servers' "$CODEX_DIR/config.toml" 2>/dev/null; then
+		return 0
+	fi
+	if [ -f "$CODEX_DIR/AGENTS.md" ] && grep -q 'PILOT:START' "$CODEX_DIR/AGENTS.md" 2>/dev/null; then
+		return 0
+	fi
+	for skill in "${CODEX_PILOT_SKILLS[@]}"; do
+		if [ -d "$AGENTS_SKILLS_DIR/$skill" ]; then
+			return 0
+		fi
+	done
+	return 1
+}
 
 get_pilot_version() {
 	local pilot_path="$PILOT_DIR/bin/pilot"
@@ -151,6 +191,17 @@ confirm_uninstall() {
 		local shell_list
 		shell_list=$(echo "$affected_shells" | tr '\n' ', ' | sed 's/,$//')
 		echo "    • Remove 'pilot' and 'ccp' aliases from ${shell_list}"
+	fi
+
+	if has_codex_pilot_content; then
+		echo "    • Clean Pilot-managed entries from ~/.codex/ (hooks.json, config.toml, AGENTS.md)"
+		local codex_skills_count=0
+		for skill in "${CODEX_PILOT_SKILLS[@]}"; do
+			[ -d "$AGENTS_SKILLS_DIR/$skill" ] && codex_skills_count=$((codex_skills_count + 1))
+		done
+		if [ "$codex_skills_count" -gt 0 ]; then
+			echo "    • Remove ${codex_skills_count} Pilot-managed Codex skill(s) from ~/.agents/skills/"
+		fi
 	fi
 
 	echo ""
@@ -577,6 +628,171 @@ remove_pilot_dir() {
 	fi
 }
 
+remove_codex_files() {
+	if ! has_codex_pilot_content; then
+		return
+	fi
+
+	# Remove Pilot-managed hook entries from ~/.codex/hooks.json.
+	# Entries are identified by the presence of /.pilot/ in any hook command string,
+	# mirroring _is_pilot_managed_entry in installer/steps/codex_files.py.
+	local hooks_file="$CODEX_DIR/hooks.json"
+	if [ -f "$hooks_file" ] && command -v python3 >/dev/null 2>&1 && grep -q '/.pilot/' "$hooks_file" 2>/dev/null; then
+		PILOT_CODEX_HOOKS="$hooks_file" python3 -c '
+import json, os, sys
+
+hooks_path = os.environ["PILOT_CODEX_HOOKS"]
+try:
+    with open(hooks_path) as f:
+        data = json.load(f)
+except Exception:
+    sys.exit(0)
+
+if not isinstance(data, dict):
+    sys.exit(0)
+
+hooks = data.get("hooks")
+if not isinstance(hooks, dict):
+    sys.exit(0)
+
+removed = 0
+for event in list(hooks.keys()):
+    if not isinstance(hooks[event], list):
+        continue
+    filtered = []
+    for entry in hooks[event]:
+        is_pilot = any(
+            "/.pilot/" in str(h.get("command", ""))
+            for h in entry.get("hooks", [])
+            if isinstance(h, dict)
+        )
+        if is_pilot:
+            removed += 1
+        else:
+            filtered.append(entry)
+    if filtered:
+        hooks[event] = filtered
+    else:
+        del hooks[event]
+
+if not hooks:
+    del data["hooks"]
+
+with open(hooks_path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+
+if removed > 0:
+    print(f"    [OK] Removed {removed} Pilot hook(s) from ~/.codex/hooks.json")
+' 2>&1
+	fi
+
+	# Remove Pilot managed MCP server block from ~/.codex/config.toml.
+	# The block is delimited by "# --- pilot-shell managed MCP servers ---" markers.
+	local config_file="$CODEX_DIR/config.toml"
+	if [ -f "$config_file" ] && command -v python3 >/dev/null 2>&1 && grep -q 'pilot-shell managed MCP servers' "$config_file" 2>/dev/null; then
+		PILOT_CODEX_CONFIG="$config_file" python3 -c '
+import os, sys
+
+config_path = os.environ["PILOT_CODEX_CONFIG"]
+marker_start = "# --- pilot-shell managed MCP servers ---"
+marker_end = "# --- end pilot-shell managed MCP servers ---"
+
+try:
+    with open(config_path) as f:
+        content = f.read()
+except Exception:
+    sys.exit(0)
+
+if marker_start not in content:
+    sys.exit(0)
+
+start_idx = content.index(marker_start)
+end_idx = content.index(marker_end) + len(marker_end) if marker_end in content else len(content)
+
+before = content[:start_idx].rstrip("\n")
+after = content[end_idx:].lstrip("\n")
+
+if before and after.strip():
+    result = before + "\n\n" + after
+elif before:
+    result = before + "\n"
+else:
+    result = after
+
+with open(config_path, "w") as f:
+    f.write(result)
+
+print("    [OK] Removed Pilot managed MCP block from ~/.codex/config.toml")
+' 2>&1
+	fi
+
+	# Remove <!-- PILOT:START --> ... <!-- PILOT:END --> block from ~/.codex/AGENTS.md.
+	local agents_file="$CODEX_DIR/AGENTS.md"
+	if [ -f "$agents_file" ] && command -v python3 >/dev/null 2>&1 && grep -q 'PILOT:START' "$agents_file" 2>/dev/null; then
+		PILOT_CODEX_AGENTS="$agents_file" python3 -c '
+import os, sys
+
+agents_path = os.environ["PILOT_CODEX_AGENTS"]
+marker_start = "<!-- PILOT:START -->"
+marker_end = "<!-- PILOT:END -->"
+
+try:
+    with open(agents_path) as f:
+        content = f.read()
+except Exception:
+    sys.exit(0)
+
+if marker_start not in content or marker_end not in content:
+    sys.exit(0)
+
+start_idx = content.index(marker_start)
+end_idx = content.index(marker_end) + len(marker_end)
+
+before = content[:start_idx].rstrip("\n")
+after = content[end_idx:].lstrip("\n")
+
+if before and after.strip():
+    result = before + "\n\n" + after
+elif before:
+    result = before + "\n"
+else:
+    result = after
+
+if not result.strip():
+    os.remove(agents_path)
+    print("    [OK] Removed ~/.codex/AGENTS.md (no user content remained)")
+else:
+    with open(agents_path, "w") as f:
+        f.write(result)
+    print("    [OK] Removed Pilot managed block from ~/.codex/AGENTS.md (user content preserved)")
+' 2>&1
+	fi
+
+	# Remove Pilot-installed SKILL.md files from ~/.agents/skills/.
+	# The installer creates only SKILL.md inside each skill directory; user-added
+	# files within the same directory are left intact. The directory itself is
+	# removed only if it becomes empty after SKILL.md is deleted.
+	local removed_skills=0
+	for skill in "${CODEX_PILOT_SKILLS[@]}"; do
+		local skill_dir="$AGENTS_SKILLS_DIR/$skill"
+		local skill_file="$skill_dir/SKILL.md"
+		if [ -f "$skill_file" ]; then
+			rm -f "$skill_file"
+			removed_skills=$((removed_skills + 1))
+			if [ -d "$skill_dir" ] && [ -z "$(ls -A "$skill_dir" 2>/dev/null)" ]; then
+				rmdir "$skill_dir" 2>/dev/null || true
+			fi
+		fi
+	done
+	if [ "$removed_skills" -gt 0 ]; then
+		echo "    [OK] Removed ${removed_skills} Pilot skill(s) from ~/.agents/skills/"
+		removed_items+=("${removed_skills} Codex skill(s) from ~/.agents/skills/")
+	fi
+
+	removed_items+=("Codex integration (~/.codex/)")
+}
+
 print_summary() {
 	echo ""
 	echo "======================================================================"
@@ -593,6 +809,14 @@ print_summary() {
 	fi
 
 	echo ""
+	if [ -f "$CODEX_DIR/config.toml" ]; then
+		echo "  Note: ~/.codex/config.toml may still contain settings that Pilot added"
+		echo "  (approval_policy, sandbox_mode, model config, [features], [tui], etc.)."
+		echo "  These are standard Codex settings and were intentionally left intact."
+		echo "  Edit ~/.codex/config.toml manually if you want to revert them."
+		echo ""
+	fi
+
 	echo "  To fully clean up third-party tools installed by Pilot:"
 	echo "    - Claude Code:    npm uninstall -g @anthropic-ai/claude-code"
 	echo "    - Semble:         uv tool uninstall semble"
@@ -635,7 +859,7 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-if ! [ -d "$PILOT_DIR" ] && ! [ -d "$PILOT_PLUGIN_DIR" ] && ! [ -f "$MANIFEST_FILE" ] && ! [ -f "$HOOKS_BASELINE_FILE" ] && ! [ -f "$MCP_BASELINE_FILE" ] && ! [ -f "$LSP_MANIFEST_FILE" ]; then
+if ! [ -d "$PILOT_DIR" ] && ! [ -d "$PILOT_PLUGIN_DIR" ] && ! [ -f "$MANIFEST_FILE" ] && ! [ -f "$HOOKS_BASELINE_FILE" ] && ! [ -f "$MCP_BASELINE_FILE" ] && ! [ -f "$LSP_MANIFEST_FILE" ] && ! has_codex_pilot_content; then
 	echo ""
 	echo "======================================================================"
 	echo "  Pilot Shell Uninstaller"
@@ -670,5 +894,6 @@ uninstall_extra_plugins
 remove_pilot_baselines
 remove_pilot_plugin
 remove_pilot_dir
+remove_codex_files
 
 print_summary

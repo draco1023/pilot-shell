@@ -9,9 +9,17 @@ After understanding the problem:
 3. **Present approaches as context**, then use `AskUserQuestion` for selection
 4. **Get the user's choice** before proceeding
 
+<!-- CODEX-START
+Codex override: when one approach is clearly best and reversible, select it, state the trade-off, and proceed to scope confirmation. Ask a plain-text selection question only when the wrong approach would materially change scope, user experience, data model, or implementation cost.
+CODEX-END -->
+
 Each approach should have:
 - A short name
 - How it works (2-3 sentences)
 - Trade-offs framed as "X at the cost of Y"
 
 **Selection:** After presenting approaches in text, use `AskUserQuestion` with each approach as an option. Mark your recommended approach clearly. The user selects — don't proceed without a choice.
+
+<!-- CODEX-START
+Selection questions count toward the two-prompt Codex PRD cap. Do not ask separately for approach and scope when one combined prompt can confirm both.
+CODEX-END -->

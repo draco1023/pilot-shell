@@ -63,14 +63,24 @@ class CodexFilesStep(BaseStep):
         if ctx.ui:
             ctx.ui.status("Installing Codex CLI integration...")
 
-        self._install_codex_hooks(ctx)
-        self._install_codex_skills(ctx)
+        try:
+            self._install_codex_hooks(ctx)
+            self._install_codex_skills(ctx)
+            self._install_codex_agents(ctx)
+        except ValueError as e:
+            if ctx.ui:
+                ctx.ui.warning(f"Skipping Codex file installation: {e}")
+            return
         try:
             self._install_codex_config(ctx)
             self._install_codex_mcp(ctx)
         except _TomlStructureError as e:
             if ctx.ui:
                 ctx.ui.warning(f"Skipping Codex TOML config due to structure error: {e}")
+        except ValueError as e:
+            if ctx.ui:
+                ctx.ui.warning(f"Skipping Codex file installation: {e}")
+            return
         self._install_codex_rules(ctx)
 
         if ctx.ui:
@@ -311,7 +321,7 @@ class CodexFilesStep(BaseStep):
                 changed = True
 
         required_features = {
-            "apps": "true",
+            "apps": "false",
             "hooks": "true",
             "memories": "true",
             "mentions_v2": "true",
@@ -369,17 +379,28 @@ class CodexFilesStep(BaseStep):
         }
     )
 
+    _CODEX_STALE_SKILLS = frozenset({"bot-boot", "bot-channel-task", "bot-defaults", "bot-heartbeat", "bot-jobs"})
+    _CODEX_MANAGED_REVIEW_AGENTS = frozenset({"changes-review", "spec-review"})
+
     def _install_codex_skills(self, ctx: InstallContext) -> None:
         """Install supported Pilot Shell skills to ~/.agents/skills/ for Codex.
 
         All non-bot skills are shipped to Codex. Bot skills (bot-boot, bot-channel-task,
         bot-defaults, bot-heartbeat, bot-jobs) depend on Claude Code cron/remote-control.
+        Stale bot-* skills from older installs are cleaned up.
         """
         claude_skills_dir = Path.home() / ".claude" / "skills"
         agents_skills_dir = Path.home() / ".agents" / "skills"
 
         if not claude_skills_dir.is_dir():
             return
+
+        # Clean up stale bot-* skills from older installs
+        if agents_skills_dir.is_dir():
+            for name in self._CODEX_STALE_SKILLS:
+                stale = agents_skills_dir / name
+                if stale.is_dir():
+                    shutil.rmtree(stale, ignore_errors=True)
 
         decomposed = [
             p
@@ -398,6 +419,45 @@ class CodexFilesStep(BaseStep):
             dest_dir = agents_skills_dir / skill_dir.name
             dest_dir.mkdir(parents=True, exist_ok=True)
             _atomic_write(dest_dir / "SKILL.md", codex_content)
+
+    def _find_codex_review_agents_source(self, ctx: InstallContext) -> Path | None:
+        """Locate the source markdown agents used to build Codex custom agents."""
+        if getattr(ctx, "local_mode", False) is True and getattr(ctx, "local_repo_dir", None):
+            candidate = ctx.local_repo_dir / "pilot" / "agents"
+            if candidate.is_dir():
+                return candidate
+
+        candidate = Path.home() / ".claude" / "agents"
+        if candidate.is_dir():
+            return candidate
+
+        return None
+
+    def _install_codex_agents(self, ctx: InstallContext) -> None:
+        """Install Pilot-managed review agents as Codex custom-agent TOML files."""
+        source_dir = self._find_codex_review_agents_source(ctx)
+        if source_dir is None:
+            return
+
+        codex_agents_dir = _get_codex_config_dir() / "agents"
+        codex_agents_dir.mkdir(parents=True, exist_ok=True)
+
+        for agent_name in sorted(self._CODEX_MANAGED_REVIEW_AGENTS):
+            source = source_dir / f"{agent_name}.md"
+            if not source.is_file():
+                continue
+            try:
+                codex_content = build_codex_review_agent_toml(source)
+            except Exception as e:
+                if ctx.ui:
+                    ctx.ui.warning(f"Failed to build Codex agent for {agent_name}: {e}")
+                continue
+            target = codex_agents_dir / f"{agent_name}.toml"
+            if target.exists() and not _is_pilot_managed_codex_review_agent(target):
+                if ctx.ui:
+                    ctx.ui.warning(f"Preserving user-created Codex agent: {target}")
+                continue
+            _atomic_write(target, codex_content)
 
 
 def _ensure_section_keys(
@@ -549,6 +609,85 @@ def build_codex_skill_md(skill_dir: Path) -> str:
 
     frontmatter = f"---\nname: {name}\ndescription: {description}\n---\n\n"
     return frontmatter + adapted
+
+
+def build_codex_review_agent_toml(agent_file: Path) -> str:
+    """Build a Codex custom-agent TOML file from a Pilot review-agent markdown file."""
+    content = agent_file.read_text(encoding="utf-8")
+    metadata, body = _extract_agent_metadata(content)
+    name = metadata.get("name") or agent_file.stem
+    description = metadata.get("description") or f"Pilot {name} review agent."
+    instructions = _adapt_review_agent_instructions_for_codex(body)
+    return (
+        "# pilot-shell managed Codex review agent\n"
+        f"name = {_toml_string(name)}\n"
+        f"description = {_toml_string(description)}\n"
+        f"developer_instructions = {_toml_string(instructions)}\n"
+    )
+
+
+def _extract_agent_metadata(content: str) -> tuple[dict[str, str], str]:
+    """Extract simple YAML frontmatter key/value pairs from a markdown agent."""
+    if not content.startswith("---\n"):
+        return {}, content
+
+    end = content.find("\n---", 3)
+    if end == -1:
+        return {}, content
+
+    metadata: dict[str, str] = {}
+    for line in content[4:end].splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        metadata[key.strip()] = value.strip().strip('"')
+    return metadata, content[end + 4 :].lstrip("\n")
+
+
+def _adapt_review_agent_instructions_for_codex(body: str) -> str:
+    """Convert Claude Code output-file review agents into Codex final-response agents."""
+    adapted = body
+    adapted = adapted.replace(" (excluding the final Write)", "")
+    adapted = adapted.replace(" → Write output (1)", " → final JSON response")
+    adapted = re.sub(
+        r"\*\*⛔ MANDATORY: Write output\.\*\*.*?(?=\n\n)",
+        (
+            "**⛔ MANDATORY: Return output.** Your final response MUST be the JSON object. "
+            "At the tool-call budget, stop exploring and return what you have. "
+            "No final JSON means the parent workflow cannot continue."
+        ),
+        adapted,
+        flags=re.DOTALL,
+    )
+    adapted = adapted.replace("### 4. Write Output", "### 4. Return Output")
+    adapted = adapted.replace("### 5. Write Output", "### 5. Return Output")
+    adapted = adapted.replace("**Write JSON to `output_path` as your FINAL action.**", "**Return JSON as your final response.**")
+    adapted = adapted.replace("Write JSON to `output_path` as your FINAL action.", "Return JSON as your final response.")
+    adapted = adapted.replace("The orchestrator provides:", "The parent prompt provides:")
+    adapted = adapted.replace(", `output_path`", "")
+    adapted = adapted.replace("`output_path`, ", "")
+    adapted = adapted.replace("`output_path`", "the parent prompt")
+    adapted = adapted.replace("write what you have", "return what you have")
+    adapted = adapted.replace("No file = orchestrator stalls.", "No final JSON = parent workflow cannot continue.")
+    adapted = re.sub(r"\n{3,}", "\n\n", adapted).strip()
+    return (
+        "Pilot-managed Codex review agent. Return ONLY valid JSON as the final response. "
+        "Do not write files, do not wrap JSON in markdown, and do not include commentary outside the JSON object.\n\n"
+        + adapted
+    )
+
+
+def _toml_string(value: str) -> str:
+    """Serialize a Python string as a TOML basic string."""
+    return json.dumps(value)
+
+
+def _is_pilot_managed_codex_review_agent(agent_file: Path) -> bool:
+    try:
+        content = agent_file.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return "pilot-shell managed Codex review agent" in content or "Pilot-managed Codex review agent" in content
 
 
 def _extract_skill_metadata(content: str) -> tuple[str, str]:

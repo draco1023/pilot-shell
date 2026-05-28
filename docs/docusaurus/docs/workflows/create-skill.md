@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: /create-skill
-description: Build reusable Claude Code skills from any topic — /create-skill explores the codebase, drafts the SKILL.md interactively, and ships a slash command.
+description: Build reusable skills for Claude Code and Codex from any topic — /create-skill explores the codebase and drafts the SKILL.md interactively.
 ---
 
 # /create-skill
@@ -11,10 +11,17 @@ Build a reusable skill from any topic.
 Provide a topic or workflow description, and `/create-skill` explores the codebase, gathers relevant patterns, and builds a well-structured skill interactively with you. If no topic is given, it evaluates the current session for extractable knowledge.
 
 ```bash
-$ pilot
+# Claude Code
+claude
 > /create-skill
 > /create-skill "Vue 3 test migration pattern"
 > /create-skill "How we set up MFE local development"
+
+# Codex CLI
+codex
+> $create-skill
+> $create-skill "Vue 3 test migration pattern"
+> $create-skill "How we set up MFE local development"
 ```
 
 ## What /create-skill Does
@@ -26,7 +33,7 @@ $ pilot
 | 0 | Load reference — use case categories, complexity spectrum, file structure, template, frontmatter fields, description formula, security restrictions |
 | 1 | Understand the topic — explore codebase for relevant patterns, or evaluate session for extractable knowledge |
 | 2 | Check existing skills — avoid duplicates, identify update opportunities |
-| 3 | Create skill — write to `.claude/skills/` (project) or `~/.claude/skills/` (global), apply portability and determinism checklists |
+| 3 | Create skill — write to the active agent's skills directory (`.claude/skills/` or `~/.claude/skills/` for Claude Code; `~/.agents/skills/` for Codex), apply portability and determinism checklists |
 | 4 | Quality gates — structure checklist, content checklist, triggering test, iteration signals |
 | 5 | Test & iterate — run test prompts with sub-agents, evaluate results, optimize description triggering |
 
@@ -68,5 +75,5 @@ your-skill-name/
 - You discovered an undocumented tool or API integration pattern
 
 :::info
-Skills are plain markdown files stored in `.claude/skills/`. They're loaded on-demand when relevant, created by `/create-skill`, and shareable across your team via the **Extensions page**.
+Skills are plain markdown files using the same `SKILL.md` format on both agents. They're loaded on-demand when relevant and shareable across your team via the **Extensions page**. Claude Code uses `.claude/skills/` and `~/.claude/skills/`; Codex uses `.agents/skills/` and `~/.agents/skills/`.
 :::

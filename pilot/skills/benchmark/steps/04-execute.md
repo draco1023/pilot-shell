@@ -26,7 +26,7 @@ Bash(
 ```bash
 PYTHONPATH=~/.agents/skills/benchmark uv run python -m scripts.runner \
   --config benchmarks/<target-name>/evals.json \
-  --skip-permissions --agent codex
+  --skip-permissions --agent codex --grader-timeout 600
 ```
 CODEX-END -->
 
@@ -37,6 +37,10 @@ That's it for arguments — defaults handle the rest. The runner reads the targe
 That's it for arguments — defaults handle the rest. With `--agent codex`, the runner installs skills in `.agents/skills/<name>/`, composes rules into root `AGENTS.md`, and omits `--model` unless you pass one explicitly so Codex uses its active default model.
 CODEX-END -->
 
+<!-- CODEX-START
+Codex runs happen in freshly-created temp directories, which are intentionally not git repositories. The runner adds `--skip-git-repo-check` to each child `codex exec` automatically; if you see `Not inside a trusted directory and --skip-git-repo-check was not specified`, update or fix the runner before rerunning the benchmark.
+CODEX-END -->
+
 **Why `uv run`:** every Python invocation in this project uses `uv run` — no system `python` or `python3`. It ensures the right interpreter and dependency set.
 
 <!-- CC-ONLY -->
@@ -44,6 +48,10 @@ CODEX-END -->
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 **Why `--skip-permissions`:** all benchmark runs need this flag because `codex exec` is spawned non-interactively. It configures full-access sandbox permissions for every executor and grader subprocess. Only use in a trusted environment — the grader reads arbitrary file paths passed by evals.json.
+CODEX-END -->
+
+<!-- CODEX-START
+**Why `--grader-timeout 600`:** Codex graders reopen transcripts and generated files from disk, and artifact-heavy evals can exceed the 300s default even when executor runs succeed. Prefer starting Codex comparisons with 600s so a single slow grader does not force a full rerun just to produce `grading.json`.
 CODEX-END -->
 
 ## Surface the plan header to the user immediately
@@ -119,6 +127,9 @@ CODEX-END -->
 | `--restore-hidden` | off | Exit after recovering any `.pilot-bench-hidden-*` files left by a crashed prior run (normally swept automatically on every startup). |
 | `--timeout <sec>` | `600` | Bump for slow models or large prompts. |
 | `--grader-timeout <sec>` | `300` | Bump if `grader-no-output` failures appear. |
+<!-- CODEX-START
+| `--grader-timeout 600` | override | Recommended for Codex file-writing evals; it prevents a successful executor run from becoming an unusable partial result because the grader timed out while reading artifacts. |
+CODEX-END -->
 | `--output <dir>` | `benchmarks/<target>/runs/<ts>/` | Override when you want a specific output path. |
 
 ## Failure handling
@@ -132,6 +143,8 @@ When you see `failed.json` referenced (or a `✗ failed:` line):
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 - `reason: codex-cli-not-found` — the `codex` CLI isn't on PATH. Install Codex CLI first.
+- `reason: codex-exec-failed` with `Not inside a trusted directory and --skip-git-repo-check was not specified` — the runner is missing the Codex temp-directory trust flag. Add `--skip-git-repo-check` to executor and grader `codex exec` commands, then rerun.
+- `reason: grader-failed` with `timed out after 300 seconds` — rerun with `--grader-timeout 600`; the executor output is usually usable, but the missing `grading.json` makes the aggregate incomplete.
 CODEX-END -->
 - `reason: grader-no-output` / `grader-invalid-json` — the grader subagent failed. Retry or bump `--grader-model` a tier.
 

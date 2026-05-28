@@ -1,59 +1,15 @@
 ---
 sidebar_position: 4
 title: Pilot CLI
-description: Command reference for the pilot binary at ~/.pilot/bin/pilot — session management, license activation, statusline, worktree control, and updates.
+description: Command reference for the pilot admin binary — license activation, updates, worktrees, bot mode, and customization.
 ---
 
 # Pilot CLI
 
-Command reference for the `pilot` binary at `~/.pilot/bin/pilot`.
+Admin command reference for the `pilot` binary at `~/.pilot/bin/pilot`.
 
-Pilot Shell loads automatically when you run `claude` or `codex` directly — no need to launch through `pilot`. The `pilot` CLI is for admin tasks: license management, updates, worktrees, and diagnostics. Most commands support `--json` for structured output.
-
-## Session & context
-
-| Command | Description |
-|---------|-------------|
-| `pilot` | Start Claude with Pilot enhancements, license check, and a one-line update banner when a newer release exists |
-| `pilot [claude-flags...]` | Start Claude with any Claude CLI flags passed through |
-| `pilot -p "prompt" [flags...]` | Headless mode — non-interactive for CI/CD, scripts |
-| `pilot run [flags...]` | Explicit alias for starting Claude |
-| `pilot agents` | Open Claude's agent view (`claude agents`) to manage multiple background sessions |
-| `ccp` | Alias for `pilot` |
-| `pilot update [--yes] [--json] [--skip-claude]` | Update both Claude Code and Pilot Shell. `pilot upgrade` is an alias — both verbs run the same flow. |
-| `pilot check-context --json` | Get current context usage percentage |
-| `pilot register-plan <path> <status>` | Associate a plan file with the current session |
-| `pilot sessions [--json]` | Show count of active Pilot sessions |
-| `pilot statusline` | Run the status line formatter (called by Claude Code) |
-| `pilot notify <type> <title> <message> [--plan-path PATH] [--json]` | Send a notification to the Console dashboard (type: `info`, `plan_approval`, `attention_needed`, `verification_complete`) |
-| `pilot skill-build <skill-dir> [--output <path>] [--dry-run] [--json]` | Build `SKILL.md` and `hashes.json` from a skill's manifest + fragments |
-| `pilot --version` | Show Pilot Shell version |
-
-:::info Update flow
-On launch, `pilot` checks both registries — GitHub releases for Pilot Shell and the npm registry for Claude Code (`@anthropic-ai/claude-code`) — and prints a one-line banner when either has a newer version. Startup never blocks on installation.
-
-Run `pilot update` (or its `pilot upgrade` alias — both verbs are interchangeable) when you're ready. The flow runs `claude update` first with a spinner, then downloads and installs the latest Pilot Shell. Pass `--skip-claude` to update only Pilot Shell, or `--yes` to skip the confirmation prompt.
-:::
-
-## Bot mode
-
-| Command | Description |
-|---------|-------------|
-| `pilot bot` | Launch Pilot Bot — persistent automation session with scheduled tasks, background jobs, and optional Telegram |
-
-## Worktree isolation
-
-| Command | Description |
-|---------|-------------|
-| `pilot worktree create --json <slug>` | Create isolated git worktree |
-| `pilot worktree detect --json <slug>` | Check if a worktree already exists |
-| `pilot worktree diff --json <slug>` | List changed files in the worktree |
-| `pilot worktree sync --json <slug>` | Squash merge worktree changes back to base branch |
-| `pilot worktree cleanup --json <slug>` | Remove worktree and branch (`--force` to skip checks, `--discard` to drop changes) |
-| `pilot worktree status --json` | Show active worktree info for current session |
-
-:::info Slug format
-The `<slug>` for worktree commands is the plan filename without the date prefix and `.md` extension. Example: `docs/plans/2026-02-22-add-auth.md` → `add-auth`.
+:::note Pilot does not launch your agent
+Pilot Shell loads automatically when you run `claude` or `codex` — there is no wrapper command. The `pilot` CLI is for admin tasks only: license management, updates, worktrees, bot mode, customization, and diagnostics. Most commands support `--json` for structured output.
 :::
 
 ## License & auth
@@ -67,57 +23,59 @@ The `<slug>` for worktree commands is the plan filename without the date prefix 
 | `pilot trial --check [--json]` | Check trial eligibility for this machine |
 | `pilot trial --start [--json]` | Start a trial (one-time per machine) |
 
+## Updates
+
+| Command | Description |
+|---------|-------------|
+| `pilot update [--yes] [--json]` | Update Pilot Shell. `pilot upgrade` is an alias. Pass `--yes` to skip the confirmation prompt. |
+| `pilot --version` | Show Pilot Shell version |
+
+Update Claude Code and Codex CLI through their own installers independently — `pilot update` only updates Pilot Shell itself.
+
+## Worktree isolation
+
+Used by the `/spec` workflow to keep work isolated until verification passes. All commands work with both Claude Code and Codex sessions.
+
+| Command | Description |
+|---------|-------------|
+| `pilot worktree create --json <slug>` | Create isolated git worktree |
+| `pilot worktree detect --json <slug>` | Check if a worktree already exists |
+| `pilot worktree diff --json <slug>` | List changed files in the worktree |
+| `pilot worktree sync --json <slug>` | Squash merge worktree changes back to base branch |
+| `pilot worktree cleanup --json <slug>` | Remove worktree and branch (`--force` to skip checks, `--discard` to drop changes) |
+| `pilot worktree status --json` | Show active worktree info for current session |
+
+:::info Slug format
+The `<slug>` is the plan filename without the date prefix and `.md` extension. Example: `docs/plans/2026-02-22-add-auth.md` → `add-auth`.
+:::
+
+## Bot mode *(Claude Code only)*
+
+| Command | Description |
+|---------|-------------|
+| `pilot bot` | Launch [Pilot Bot](/docs/features/bot) — persistent automation session with scheduled tasks, background jobs, and optional Telegram |
+
 ## Customization (Team / Enterprise)
 
 Compose custom steps into core workflow skills and ship team rules, hooks, and agents. Source is either a git URL (team-wide) or a local directory (personal). See [Customization](/docs/features/customization) for the full overlay schema.
 
 | Command | Description |
 |---------|-------------|
-| `pilot customize install <source> [--branch <b>] [--subfolder <p>] [--json]` | Install and apply. `<source>` = git URL or local directory path. `--branch` applies to git sources only. |
+| `pilot customize install <source> [--branch <b>] [--subfolder <p>] [--json]` | Install and apply. `<source>` = git URL or local directory path. |
 | `pilot customize update [--json]` | Re-apply — pulls git sources, reads local sources in place |
 | `pilot customize status [--json]` | Show active source, file counts, and drift warnings |
 | `pilot customize diff <skill>/<step-id> [--json]` | Unified diff between pinned replacement and current upstream |
 | `pilot customize remove [--json]` | Delete pack files and regenerate pristine `SKILL.md` |
 
-## Claude CLI flag passthrough
+## Internal commands
 
-Pilot forwards any unrecognized flags directly to the Claude CLI — all current and future Claude Code flags work out of the box, no Pilot update required.
+Called by hooks and the Console — you rarely need to run these directly.
 
-```bash
-# Any Claude CLI flag works directly
-pilot --channels plugin:telegram@claude-plugins-official
-pilot --model opus --verbose
-pilot --resume
-pilot --continue
-
-# 'run' is an explicit alias — same behavior
-pilot run --channels plugin:telegram@claude-plugins-official
-```
-
-Pilot only intercepts its own subcommands (`activate`, `status`, `worktree`, etc.) and flags (`--version`, `--skip-update-check`). Everything else passes through to `claude`.
-
-## Headless mode
-
-Run Pilot non-interactively with `-p` (or `--print`). Wraps `claude -p` with license validation and the Pilot plugin — use it in CI/CD pipelines, scripts, or automated workflows.
-
-```bash
-# Basic usage
-pilot -p "What does the auth module do?"
-
-# Structured JSON output
-pilot -p "Summarize this project" --output-format json
-
-# Auto-approve specific tools
-pilot -p "Run tests and fix failures" --allowedTools "Bash,Read,Edit"
-
-# With channels
-pilot --channels plugin:telegram@claude-plugins-official -p "Check messages"
-
-# Continue a previous conversation
-pilot -p "Now focus on the database queries" --continue
-
-# Minimal startup (skip hooks, plugins, MCP auto-discovery)
-pilot -p "Summarize this file" --bare --allowedTools "Read"
-```
-
-All [Claude Code CLI flags](https://code.claude.com/docs/en/cli-reference) work with `-p`, including `--output-format`, `--allowedTools`, `--continue`, `--resume`, `--channels`, `--append-system-prompt`, `--json-schema`, and `--bare`. Pilot-specific flags like `--skip-update-check` are stripped automatically.
+| Command | Description |
+|---------|-------------|
+| `pilot check-context --json` | Get current context usage percentage |
+| `pilot register-plan <path> <status>` | Associate a plan file with the current session |
+| `pilot sessions [--json]` | Show count of active Pilot sessions |
+| `pilot statusline` | Status line formatter *(Claude Code only — called by Claude Code's statusLine hook)* |
+| `pilot notify <type> <title> <message> [--plan-path PATH] [--json]` | Send a notification to the Console dashboard (type: `info`, `plan_approval`, `attention_needed`, `verification_complete`) |
+| `pilot skill-build <skill-dir> [--output <path>] [--dry-run] [--json]` | Build `SKILL.md` and `hashes.json` from a skill's manifest + fragments |

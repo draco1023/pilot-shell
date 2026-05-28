@@ -73,7 +73,7 @@ const WorkflowSteps = () => {
               </div>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed group-hover:text-foreground/80 transition-colors duration-200">
-              Back-and-forth brainstorming for vague ideas. Claude pitches directions, pressure-tests them, and converges on a PRD that hands off cleanly to /spec.
+              Back-and-forth brainstorming for vague ideas. The agent pitches directions, pressure-tests them, and converges on a PRD that hands off cleanly to /spec.
             </p>
             <div className="mt-3 flex items-center gap-1 text-xs text-primary/80 group-hover:text-primary transition-colors">
               <span>Learn more</span>

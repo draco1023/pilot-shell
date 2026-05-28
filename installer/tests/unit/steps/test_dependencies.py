@@ -875,8 +875,6 @@ class TestSymlinkToPilotBin:
         fake_bin.write_text("#!/bin/sh\n")
         fake_bin.chmod(0o755)
 
-        pilot_bin = tmp_path / "pilot_bin"
-
         with (
             patch("installer.steps.dependencies.shutil.which", return_value=str(fake_bin)),
             patch("installer.steps.dependencies.Path.home", return_value=tmp_path),
@@ -1555,14 +1553,18 @@ class TestInstallPbtTools:
         assert UV_TOOL_INSTALL_TIMEOUT in timeouts
         assert GLOBAL_NPM_INSTALL_TIMEOUT in timeouts
 
+    @patch("installer.steps.dependencies._run_bash_with_retry", return_value=True)
     @patch("installer.steps.dependencies.command_exists", return_value=True)
-    def test_install_pbt_tools_returns_true_when_all_present(self, _mock_cmd):
-        """install_pbt_tools returns True when all binaries already exist."""
+    def test_install_pbt_tools_upgrades_even_when_commands_exist(self, _mock_cmd, mock_run):
+        """install_pbt_tools always runs upgrades to honor the installer contract."""
         from installer.steps.dependencies import install_pbt_tools
 
         result = install_pbt_tools()
 
         assert result is True
+        calls = [str(c) for c in mock_run.call_args_list]
+        assert any("hypothesis" in c for c in calls)
+        assert any("fast-check" in c for c in calls)
 
     @patch("installer.steps.dependencies.subprocess.run")
     @patch("installer.steps.dependencies._run_bash_with_retry", return_value=False)
