@@ -18,7 +18,7 @@ Run from any directory — it installs globally to `~/.pilot/` and `~/.claude/` 
 
 ## What the Installer Does
 
-9 steps with progress tracking and rollback on failure. Steps 3 and 4 are agent-conditional — they skip cleanly when the matching agent CLI is not detected on your system. The installer **does not install Claude Code or Codex CLI itself**; you install at least one of them yourself per [Prerequisites](#prerequisites).
+9 steps with progress tracking and rollback on failure. Steps 3 and 4 are agent-conditional — they skip cleanly when the matching agent CLI is not detected on your system. The installer **does not install Claude Code or Codex CLI itself**; you install at least one of them yourself per [Prerequisites](./prerequisites).
 
 | Step | Title | Description |
 |------|-------|-------------|

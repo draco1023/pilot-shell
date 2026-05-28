@@ -44,6 +44,22 @@ class TestConsole:
             progress.advance(5)
             progress.advance(5)
 
+    def test_console_substep_preserves_rich_text_style(self):
+        """Console.substep should preserve Rich styling on the divider text."""
+        from rich.console import Console as RichConsole
+
+        from installer.ui import Console
+
+        console = Console()
+        rich_console = RichConsole(record=True, force_terminal=True, color_system="standard")
+        console._console = rich_console
+
+        console.substep("Codex CLI integration")
+
+        output = rich_console.export_text(styles=True)
+        assert "Codex CLI integration" in output
+        assert "\x1b[" in output
+
 
 class TestConsoleNonInteractive:
     """Test Console in non-interactive mode."""

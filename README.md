@@ -43,7 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/maxritter/pilot-shell/main/install.
 
 **Pilot Shell is different.** Every component solves a real problem with an engineered solution:
 
-- **`/prd`** — brainstorm ideas into clear requirements through with optional deep research
+- **`/prd`** — brainstorm ideas into clear requirements with optional deep research
 - **`/spec`** — plans, implements, and verifies features end-to-end with TDD
 - **`/fix`** — bugfix workflow with TDD; bails out when complexity exceeds the standard fix lane
 - **Spec collaboration** — share specs with teammates, annotations flow back grouped by author

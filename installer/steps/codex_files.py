@@ -122,7 +122,11 @@ class CodexFilesStep(BaseStep):
                 ui.warning(f"Skipping Codex file installation: {e}")
             return
 
-        report.record(self._install_codex_rules(ctx), _label_codex_rules)
+        try:
+            report.record(self._install_codex_rules(ctx), _label_codex_rules)
+        except ValueError as e:
+            if ui:
+                ui.warning(f"Skipping Codex file installation: {e}")
 
     def _install_codex_hooks(self, ctx: InstallContext) -> int:
         """Install hooks.json for Codex CLI. Returns # of hook events configured."""
@@ -475,11 +479,12 @@ class CodexFilesStep(BaseStep):
 
     def _find_codex_review_agents_source(self, ctx: InstallContext) -> Path | None:
         """Locate the source markdown agents used to build Codex custom agents."""
-        local_repo_dir = getattr(ctx, "local_repo_dir", None)
-        if getattr(ctx, "local_mode", False) is True and local_repo_dir is not None:
-            candidate = local_repo_dir / "pilot" / "agents"
-            if candidate.is_dir():
-                return candidate
+        if getattr(ctx, "local_mode", False) is True:
+            local_repo_dir = ctx.local_repo_dir
+            if local_repo_dir is not None:
+                candidate = local_repo_dir / "pilot" / "agents"
+                if candidate.is_dir():
+                    return candidate
 
         candidate = Path.home() / ".claude" / "agents"
         if candidate.is_dir():

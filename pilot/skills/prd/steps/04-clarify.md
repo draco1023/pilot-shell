@@ -1,12 +1,14 @@
 ## Step 4: Ask Clarifying Questions
 
+<!-- CC-ONLY -->
 **⛔ ALWAYS use the `AskUserQuestion` tool** — never list numbered questions in plain text. Each question gets its own entry with 2-4 predefined options users can select. This provides a structured form UI that is much easier to answer than freeform text.
+<!-- /CC-ONLY -->
 
 <!-- CC-ONLY -->
 **One question at a time, building on previous answers.** Each `AskUserQuestion` call focuses on a single decision point, and the next question must follow from what the user just said — not from a fixed checklist. If the user's answer exposes a new assumption or constraint, pivot there instead of marching through pre-planned topics.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-**Codex clarification cap:** ask one bundled plain-text prompt with at most 3 decision points. If the user's answer opens a major new unknown, ask one follow-up prompt; otherwise draft the PRD with documented assumptions.
+**Codex clarification cap:** ask one bundled plain-text numbered-options prompt with at most 3 decision points. If the user's answer opens a major new unknown, ask one follow-up prompt; otherwise draft the PRD with documented assumptions.
 CODEX-END -->
 
 **⛔ Skip obvious questions.** Do not ask anything already answered by the one-line idea, the codebase exploration in Step 1, or earlier answers in this conversation. The goal is to surface what the user hasn't thought about yet, not to collect a standard intake form.

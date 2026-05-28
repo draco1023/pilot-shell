@@ -306,4 +306,4 @@ class Console:
         self._console.print()
         sub_text = Text()
         sub_text.append(f"── {name} ──", style="bold cyan")
-        self._console.print(f"  {sub_text}")
+        self._console.print("  ", sub_text, sep="")

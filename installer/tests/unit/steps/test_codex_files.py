@@ -58,6 +58,35 @@ class TestCodexFilesStepSkipsWhenNoCodex:
         )
         mock_install_skills.assert_not_called()
 
+    def test_run_warns_and_returns_when_codex_home_is_relative_during_rules_install(self, tmp_path: Path) -> None:
+        rules_dir = tmp_path / ".claude" / "rules"
+        rules_dir.mkdir(parents=True)
+        (rules_dir / "test.md").write_text("# Test Rule\n")
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = MagicMock()
+        ctx.local_mode = False
+
+        codex_dir = tmp_path / ".codex"
+        with (
+            patch("installer.steps.codex_files.is_codex_installed", return_value=True),
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+            patch(
+                "installer.steps.codex_files._get_codex_config_dir",
+                side_effect=[
+                    codex_dir,
+                    codex_dir,
+                    ValueError("CODEX_HOME must be an absolute path, got: relative"),
+                ],
+            ),
+        ):
+            step.run(ctx)
+
+        ctx.ui.warning.assert_called_with(
+            "Skipping Codex file installation: CODEX_HOME must be an absolute path, got: relative"
+        )
+
 
 class TestCodexHooksInstallation:
     def test_installs_hooks_json_to_codex_dir(self, tmp_path: Path) -> None:

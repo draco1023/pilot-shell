@@ -33,7 +33,7 @@ codex
 | 0 | Load reference — use case categories, complexity spectrum, file structure, template, frontmatter fields, description formula, security restrictions |
 | 1 | Understand the topic — explore codebase for relevant patterns, or evaluate session for extractable knowledge |
 | 2 | Check existing skills — avoid duplicates, identify update opportunities |
-| 3 | Create skill — write to the active agent's skills directory (`.claude/skills/` or `~/.claude/skills/` for Claude Code; `~/.agents/skills/` for Codex), apply portability and determinism checklists |
+| 3 | Create skill — write to the active agent's skills directory (`.claude/skills/` or `~/.claude/skills/` for Claude Code; `.agents/skills/` or `~/.agents/skills/` for Codex), apply portability and determinism checklists |
 | 4 | Quality gates — structure checklist, content checklist, triggering test, iteration signals |
 | 5 | Test & iterate — run test prompts with sub-agents, evaluate results, optimize description triggering |
 

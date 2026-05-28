@@ -63,7 +63,7 @@ The setup above assumes you start sessions on your computer first. To start new 
 
 1. Install [Termius](https://termius.com/) on your phone (not your computer)
 2. SSH into your computer
-3. Run `claude` or `codex` in any project directory
+3. Run `claude` in any project directory
 
 ## Keeping your computer reachable
 
