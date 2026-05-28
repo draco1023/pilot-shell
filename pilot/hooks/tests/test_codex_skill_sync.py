@@ -155,6 +155,13 @@ class TestBuildCodexSkill:
         assert "PILOT_CHANGES_REVIEW_ENABLED" in result
         assert "PILOT_CODEX_CHANGES_REVIEW_ENABLED" not in result
 
+    def test_real_fix_codex_skill_uses_selective_codegraph_guidance(self) -> None:
+        result = _build_codex_skill(Path("pilot/skills/fix"))
+        assert result is not None
+        assert 'Start with `codegraph_context(task="<bug description>")`' not in result
+        assert "Use `codegraph_context` only when the bug is structural" in result
+        assert "For docs, rules, markdown, config, UI copy, or a named local file/function" in result
+
     @pytest.mark.parametrize(
         "skill_name",
         ["spec", "spec-plan", "spec-bugfix-plan", "spec-implement", "spec-verify", "spec-bugfix-verify", "prd", "fix", "benchmark", "setup-rules", "create-skill"],

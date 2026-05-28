@@ -11,12 +11,14 @@ from pathlib import Path
 from installer import __build__
 from installer.context import InstallContext
 from installer.errors import FatalInstallError, InstallationCancelled
+from installer.platform_utils import is_claude_installed, is_codex_installed
 from installer.steps.base import BaseStep
 from installer.steps.claude_files import ClaudeFilesStep
 from installer.steps.codex_files import CodexFilesStep
 from installer.steps.config_files import ConfigFilesStep
 from installer.steps.dependencies import DependenciesStep
 from installer.steps.finalize import FinalizeStep
+from installer.steps.pilot_files import PilotFilesStep
 from installer.steps.prerequisites import PrerequisitesStep
 from installer.steps.shell_config import ShellConfigStep
 from installer.steps.vscode_extensions import VSCodeExtensionsStep
@@ -24,9 +26,17 @@ from installer.ui import Console
 
 
 def get_all_steps() -> list[BaseStep]:
-    """Get all installation steps in order."""
+    """Get all installation steps in order.
+
+    PilotFilesStep installs the agent-neutral runtime + skill sources first,
+    then ClaudeFilesStep and CodexFilesStep install their agent-specific
+    files (each skipping cleanly when their target agent is absent). The
+    ``codex@openai-codex`` Claude marketplace plugin is installed separately
+    inside DependenciesStep alongside other Claude-side plugins.
+    """
     return [
         PrerequisitesStep(),
+        PilotFilesStep(),
         ClaudeFilesStep(),
         CodexFilesStep(),
         ConfigFilesStep(),
@@ -319,9 +329,33 @@ def _handle_license_flow(
     return None
 
 
+def _check_agent_prerequisites(console: Console) -> bool:
+    """Verify at least one supported AI agent (Claude Code or Codex CLI) is installed.
+
+    Per README prerequisites, users install Claude Code and/or Codex CLI themselves;
+    the installer detects them and never installs them. Returns True when at least
+    one is present, False (after printing actionable instructions) otherwise.
+    """
+    if is_claude_installed() or is_codex_installed():
+        return True
+
+    console.error("No supported AI agent detected on this system.")
+    console.print()
+    console.print("  Pilot Shell requires Claude Code and/or Codex CLI. Install at least one:")
+    console.print("    • Claude Code: https://code.claude.com/docs/en/quickstart")
+    console.print("    • Codex CLI:   https://developers.openai.com/codex/cli")
+    console.print()
+    console.print("  Then re-run the installer.")
+    console.print()
+    return False
+
+
 def cmd_install(args: argparse.Namespace) -> int:
     """Install Pilot Shell."""
     console = Console(non_interactive=args.non_interactive, quiet=args.quiet)
+
+    if not _check_agent_prerequisites(console):
+        return 1
 
     effective_local_repo_dir = args.local_repo_dir if args.local_repo_dir else (Path.cwd() if args.local else None)
     skip_prompts = args.non_interactive

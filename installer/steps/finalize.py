@@ -104,7 +104,7 @@ class FinalizeStep(BaseStep):
         getting_started.extend(
             [
                 ("Start a session", "Run 'claude' or 'codex' directly — Pilot Shell loads automatically"),
-                ("Check for updates", "Run 'pilot update' to update Pilot Shell, Claude Code and Codex"),
+                ("Check for updates", "Run 'pilot update' to update Pilot Shell"),
                 ("Pilot Shell Console", f"Open the local web UI at http://{get_console_display()}"),
             ]
         )

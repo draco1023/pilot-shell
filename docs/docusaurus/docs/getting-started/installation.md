@@ -18,18 +18,19 @@ Run from any directory — it installs globally to `~/.pilot/` and `~/.claude/` 
 
 ## What the Installer Does
 
-8 steps with progress tracking and rollback on failure:
+9 steps with progress tracking and rollback on failure. Steps 3 and 4 are agent-conditional — they skip cleanly when the matching agent CLI is not detected on your system. The installer **does not install Claude Code or Codex CLI itself**; you install at least one of them yourself per [Prerequisites](#prerequisites).
 
 | Step | Title | Description |
 |------|-------|-------------|
-| 1 | Prerequisites | Checks/installs Homebrew, Node.js, Python 3.12+, uv, git, jq |
-| 2 | Claude files | Sets up `~/.claude/` plugin — rules, commands, hooks, MCP servers |
-| 3 | Codex files | Sets up `~/.codex/` assets — hooks, skills, rules, MCP config, and managed review agents for Codex CLI |
-| 4 | Config files | Creates `.nvmrc` and project config |
-| 5 | Dependencies | Installs Semble, RTK, CodeGraph, Chrome DevTools MCP, playwright-cli, agent-browser, language servers |
-| 6 | Shell integration | Auto-configures bash, fish, and zsh with the `pilot` alias. Add `# pilot-shell:managed-elsewhere` to a config file to opt out (for framework-managed shells) |
-| 7 | VS Code extensions | Installs recommended extensions for your language stack |
-| 8 | Finalize | Success message with next steps |
+| 1 | Prerequisites | Checks/installs Homebrew, Node.js, Python 3.12+, uv, git, jq. Verifies at least one supported agent (Claude Code or Codex CLI) is on the system; aborts with a clear error otherwise. |
+| 2 | Pilot files | Installs agent-neutral Pilot Shell-managed assets: hooks to `~/.pilot/hooks/`, Console scripts/UI to `~/.pilot/`, raw rule sources to `~/.pilot/rules/` (read by Codex's adapter), and the canonical skill source to `~/.claude/skills/` (used by both agents — Claude reads it natively, Codex adapts it). Always runs. |
+| 3 | Claude files | Installs Claude-specific assets to `~/.claude/`: rules, sub-agents, and `settings.json` (three-way merged); plus Claude post-install merges (hooks into settings, `~/.claude.json` MCP block, model config). **Skipped when Claude Code CLI is not detected.** |
+| 4 | Codex files | Installs Codex-specific assets: adapted skills to `~/.agents/skills/`, review agents to `~/.codex/agents/`, `~/.codex/AGENTS.md`, `~/.codex/config.toml`, `~/.codex/hooks.json`. Per-category counts mirror the Claude section. **Skipped when Codex CLI is not detected.** |
+| 5 | Config files | Creates `.nvmrc` and project config |
+| 6 | Dependencies | Installs Semble, RTK, CodeGraph, Chrome DevTools MCP, playwright-cli, agent-browser, language servers, plus the `codex@openai-codex` Claude marketplace plugin. Claude-side plugins (Codex companion plugin, Chrome DevTools MCP plugin, LSP plugins) are skipped on Codex-only systems. |
+| 7 | Shell integration | Auto-configures bash, fish, and zsh with the `pilot` alias. Add `# pilot-shell:managed-elsewhere` to a config file to opt out (for framework-managed shells) |
+| 8 | VS Code extensions | Installs recommended extensions for your language stack |
+| 9 | Finalize | Success message with next steps |
 
 ## Browser Automation
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+from argparse import Namespace
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -290,3 +291,82 @@ class TestLicenseFlowTrialFallback:
 
         mock_prompt.assert_not_called()
         assert result is None
+
+
+class TestAgentPrerequisiteGate:
+    """cmd_install must verify at least one supported AI agent is installed.
+
+    README prerequisites (README.md:62-67) require the user to install Claude Code
+    and/or Codex CLI before running the installer. The installer detects them; it
+    does not install them.
+    """
+
+    @staticmethod
+    def _install_args() -> "Namespace":
+        return Namespace(
+            non_interactive=True,
+            quiet=True,
+            skip_env=False,
+            local=False,
+            local_repo_dir=None,
+            local_system=False,
+            target_version=None,
+            restart_ccp=False,
+        )
+
+    @patch("installer.cli.run_installation")
+    @patch("installer.cli._get_license_info", return_value=None)
+    @patch("installer.cli.is_codex_installed", return_value=False)
+    @patch("installer.cli.is_claude_installed", return_value=False)
+    def test_cmd_install_aborts_when_no_agent_detected(
+        self,
+        _mock_claude,
+        _mock_codex,
+        _mock_license,
+        mock_run_install,
+    ):
+        """cmd_install exits non-zero without running installation when neither agent is on PATH."""
+        from installer.cli import cmd_install
+
+        rc = cmd_install(self._install_args())
+
+        assert rc != 0
+        mock_run_install.assert_not_called()
+
+    @patch("installer.cli.run_installation")
+    @patch("installer.cli._get_license_info", return_value=None)
+    @patch("installer.cli.is_codex_installed", return_value=True)
+    @patch("installer.cli.is_claude_installed", return_value=False)
+    def test_cmd_install_proceeds_when_only_codex_detected(
+        self,
+        _mock_claude,
+        _mock_codex,
+        _mock_license,
+        mock_run_install,
+    ):
+        """Codex-only installs are first-class: installation proceeds when only Codex is on PATH."""
+        from installer.cli import cmd_install
+
+        rc = cmd_install(self._install_args())
+
+        assert rc == 0
+        mock_run_install.assert_called_once()
+
+    @patch("installer.cli.run_installation")
+    @patch("installer.cli._get_license_info", return_value=None)
+    @patch("installer.cli.is_codex_installed", return_value=False)
+    @patch("installer.cli.is_claude_installed", return_value=True)
+    def test_cmd_install_proceeds_when_only_claude_detected(
+        self,
+        _mock_claude,
+        _mock_codex,
+        _mock_license,
+        mock_run_install,
+    ):
+        """Claude-only installs continue to work after the agent gate is added."""
+        from installer.cli import cmd_install
+
+        rc = cmd_install(self._install_args())
+
+        assert rc == 0
+        mock_run_install.assert_called_once()

@@ -86,19 +86,6 @@ entries:
 
   # ---- curl-pipe installers (Task 3) ----
 
-  - id: claude-code-installer
-    name: claude.ai/install.sh
-    source_type: curl
-    source_url: https://claude.ai/install.sh
-    version: "vendor-managed-2026-05-27"
-    sha256: "b315b46925a9bfb9422f2503dd5aa649f680832f4c076b22d87c39d578c3d830"
-    # Anthropic-managed endpoint with no version stability guarantee. Soft-pin
-    # behavior: hash mismatch logs a warning + new hash for the maintainer to
-    # re-pin, but proceeds. Maintainer re-pins promptly when warning fires.
-    soft_pin: true
-    soft_pin_reason: "vendor-managed endpoint; Anthropic redeploys script at any time"
-    last_audited: "2026-05-27"
-
   - id: uv-installer
     name: astral.sh/uv/install.sh (0.11.16)
     source_type: curl
@@ -117,9 +104,8 @@ entries:
     version: "live-2026-05-27"
     sha256: "bab8acfb046aac8c72407bdcce903957665d655d7acaa3e11c7c4616beae68dd"
     # Bun does not expose immutable per-version install URLs (version is
-    # selected via shell arg, not URL path); soft_pin mirrors the
-    # claude-code-installer approach. Hash mismatch logs a re-pin warning
-    # instead of failing — same drift class as GH #147.
+    # selected via shell arg, not URL path); soft_pin. Hash mismatch logs a
+    # re-pin warning instead of failing — same drift class as GH #147.
     soft_pin: true
     soft_pin_reason: "vendor-managed endpoint; bun.sh rewrites install script on every release with no per-version URL"
     last_audited: "2026-05-27"

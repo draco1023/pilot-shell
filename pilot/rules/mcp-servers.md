@@ -26,12 +26,18 @@ CODEX-END -->
 
 ### CodeGraph — Code Knowledge Graph (PRIMARY)
 
+<!-- CC-ONLY -->
 **Structural code search.** First action on any task. Replaces Grep/Glob for symbol/call/impact queries. Complements Semble (intent search — see `cli-tools.md`).
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+**Structural code search.** Use for runtime-code structure: unknown entry points, symbol relationships, callers/callees, and blast radius. In Codex, do not spend a graph call on docs, rules, markdown, config, UI copy, reviews of a known diff, or named-file tasks unless a runtime symbol relationship is genuinely unknown. Complements Semble (intent search — see `cli-tools.md`).
+CODEX-END -->
 
 <!-- CODEX-START
 For `$spec` and `$prd` planning in Codex, CodeGraph is an orientation tool, not a mandate to exhaust the graph. If the first CodeGraph result is irrelevant, pivot to Semble or direct file reads immediately. Do not chain context, search, explore, callers, and impact unless the next step needs that evidence.
 CODEX-END -->
 
+<!-- CC-ONLY -->
 | Tool | Purpose |
 |------|---------|
 | `codegraph_context(task=...)` | **START HERE** — entry points + related symbols |
@@ -41,6 +47,18 @@ CODEX-END -->
 | `codegraph_impact` | Blast radius before committing to a change |
 | `codegraph_node` | Details + source for one symbol |
 | `codegraph_files` | Project file tree (NOT Glob/ls) |
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+| Tool | Purpose |
+|------|---------|
+| `codegraph_context(task=...)` | Structural orientation when runtime-code entry points are unknown; skip for named paths, docs/config/rules, and reviews of a known diff. |
+| `codegraph_explore(query="SymA SymB file.ts")` | Full source from relevant known symbols/files in one call. Use specific symbol/file names — NOT broad natural-language questions. |
+| `codegraph_search` | Find symbols by name. |
+| `codegraph_callers` / `codegraph_callees` | Trace call flow before modifying a runtime function with non-local effects. Supplement with exact-text verification for indirect/dynamic callers. |
+| `codegraph_impact` | Blast radius for a non-local runtime change. |
+| `codegraph_node` | Details + source for one symbol. |
+| `codegraph_files` | Project file tree when structure, not code intent, is the question. |
+CODEX-END -->
 
 **⛔ NEVER pass `projectPath` for the current project.** The server defaults correctly. Passing it triggers a different code path that fails if `.codegraph/` isn't at that exact path. Only use it for genuinely different codebases.
 
@@ -126,6 +144,7 @@ Useful options: `waitUntil` (`load`/`domcontentloaded`/`networkidle`), `returnHt
 
 ### Tool Selection Quick Reference
 
+<!-- CC-ONLY -->
 | Need | Tool |
 |------|------|
 | Task orientation (FIRST on every task) | `codegraph_context` |
@@ -142,3 +161,23 @@ Useful options: `waitUntil` (`load`/`domcontentloaded`/`networkidle`), `returnHt
 | GitHub README | web-search `fetchGithubReadme` |
 | Production code examples | grep-mcp |
 | Full web page content | web-fetch |
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+| Need | Tool |
+|------|------|
+| Structural runtime-code orientation when entry points are unknown | `codegraph_context` |
+| Known file/path, docs/rules/config/UI copy, or known diff | Direct file read, `git diff`, or Semble |
+| Symbol search by name | `codegraph_search` |
+| Call tracing / impact analysis for non-local runtime changes | CodeGraph (`callers` / `callees` / `impact`) |
+| Deep code understanding for known symbols | `codegraph_explore` |
+| Concept / feature area search | Semble (`mcp__semble__search` or `semble search`) |
+| "Where is X modified / configured" | Semble — finds mutation sites across languages |
+| Cross-cutting concern discovery | Semble — surfaces full feature stack (UI, routes, logic) |
+| Find similar code / parallel patterns | Semble `find_related` (unique — no CodeGraph equivalent) |
+| Past work / decisions | mem-search 3-step |
+| Library/framework docs | context7 |
+| Web search | web-search |
+| GitHub README | web-search `fetchGithubReadme` |
+| Production code examples | grep-mcp |
+| Full web page content | web-fetch |
+CODEX-END -->

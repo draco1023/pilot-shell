@@ -20,6 +20,8 @@ from installer.manifest import get as manifest_get
 from installer.platform_utils import (
     command_exists,
     ensure_sudo_credentials,
+    is_claude_installed,
+    is_codex_installed,
     is_linux_arm64,
     needs_sudo,
     npm_global_cmd,
@@ -142,25 +144,6 @@ def _get_nvm_source_cmd() -> str:
             return f"source {nvm_path} && "
 
     return ""
-
-
-def install_claude_code() -> bool:
-    """Install Claude Code via native installer if not present.
-
-    Endpoint is vendor-managed (Anthropic redeploys at any time), so the
-    manifest entry is `soft_pin: true` — hash mismatch logs a re-pin warning
-    but proceeds.
-    """
-    if command_exists("claude"):
-        _record_outcome(_OUTCOME_UNCHANGED)
-        return True
-    if _curl_pipe_from_manifest(
-        "claude-code-installer",
-        CurlPipeRunOptions(timeout=300),
-    ):
-        _record_outcome(_OUTCOME_INSTALLED)
-        return True
-    return False
 
 
 def install_nodejs() -> bool:
@@ -390,7 +373,12 @@ def install_rtk() -> bool:
 
 
 def _init_rtk() -> None:
-    """Initialize RTK for all detected agents (Claude Code, Codex)."""
+    """Initialize RTK for all detected agents (Claude Code, Codex).
+
+    Each agent's init runs only when the agent CLI is detected — uses the
+    canonical platform_utils helpers so the detection set matches cmd_install
+    and the per-step agent gates (PATH + native installer fallback paths).
+    """
     rtk = shutil.which("rtk")
     if not rtk:
         return
@@ -403,16 +391,17 @@ def _init_rtk() -> None:
         )
     except (OSError, subprocess.TimeoutExpired):
         pass
-    try:
-        subprocess.run(
-            [rtk, "init", "-g", "--auto-patch", "--skip-env"],
-            capture_output=True,
-            timeout=30,
-            stdin=subprocess.DEVNULL,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        pass
-    if shutil.which("codex"):
+    if is_claude_installed():
+        try:
+            subprocess.run(
+                [rtk, "init", "-g", "--auto-patch", "--skip-env"],
+                capture_output=True,
+                timeout=30,
+                stdin=subprocess.DEVNULL,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    if is_codex_installed():
         try:
             subprocess.run(
                 [rtk, "init", "-g", "--codex"],
@@ -1577,9 +1566,13 @@ class DependenciesStep(BaseStep):
         """Install all required dependencies.
 
         Runs in three phases:
-        1. Foundation (sequential) — Claude Code, Node.js, uv (each depends on the previous)
+        1. Foundation (sequential) — Node.js, uv (each depends on the previous)
         2. Tools (parallel) — independent npm/uv/curl installs run concurrently
         3. Post-install (sequential) — CodeGraph init, MCP cache (depend on phase 2 binaries)
+
+        Note: Claude Code and Codex CLI are user-installed (README prerequisites).
+        The installer detects them in cmd_install; agent-side plugin/integration
+        steps below silently no-op when their target agent is absent.
         """
         global _allow_sudo_fallback
         ui = ctx.ui
@@ -1596,9 +1589,6 @@ class DependenciesStep(BaseStep):
                     ui.warning("Could not obtain sudo credentials — some installations may fail")
 
             # --- Phase 1: Foundation (sequential — each depends on the previous) ---
-            if _install_with_spinner(ui, "Claude Code", install_claude_code):
-                installed.append("claude_code")
-
             if _install_with_spinner(ui, "Node.js", install_nodejs):
                 installed.append("nodejs")
 

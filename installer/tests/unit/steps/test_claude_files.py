@@ -2,10 +2,40 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
+
+
+def _run_full_install_flow(
+    ctx,
+    *,
+    home_dir: Path | None = None,
+    claude_installed: bool = True,
+) -> None:
+    """Run PilotFilesStep then ClaudeFilesStep with Claude-detection mocked.
+
+    Mirrors the production install order (PilotFilesStep cleans + installs
+    agent-neutral assets + skill source; ClaudeFilesStep installs Claude-only
+    rules/agents/settings and runs Claude post-install merges). Tests that
+    exercise the full install flow use this helper.
+
+    When ``home_dir`` is provided, ``Path.home`` is patched on both step
+    modules so the install lands under the test's tempdir.
+    """
+    from installer.steps.claude_files import ClaudeFilesStep
+    from installer.steps.pilot_files import PilotFilesStep
+
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(patch("installer.steps.pilot_files.is_claude_installed", return_value=claude_installed))
+        stack.enter_context(patch("installer.steps.claude_files.is_claude_installed", return_value=claude_installed))
+        if home_dir is not None:
+            stack.enter_context(patch("installer.steps.pilot_files.Path.home", return_value=home_dir))
+            stack.enter_context(patch("installer.steps.claude_files.Path.home", return_value=home_dir))
+        PilotFilesStep().run(ctx)
+        ClaudeFilesStep().run(ctx)
 
 
 class TestPatchClaudePaths:
@@ -127,8 +157,12 @@ class TestProcessSettings:
 class TestClaudeFilesStep:
     """Test ClaudeFilesStep class."""
 
-    def test_claude_files_step_has_correct_name(self):
-        """ClaudeFilesStep has name 'claude_files'."""
+    def test_claude_files_step_name(self):
+        """ClaudeFilesStep handles Claude-specific assets; display label 'Claude Files'.
+
+        The agent-neutral runtime + skill source live in PilotFilesStep (separate file,
+        always runs). ClaudeFilesStep only runs when Claude Code CLI is detected.
+        """
         from installer.steps.claude_files import ClaudeFilesStep
 
         step = ClaudeFilesStep()
@@ -156,7 +190,7 @@ class TestClaudeFilesStep:
         from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
+        ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -177,8 +211,7 @@ class TestClaudeFilesStep:
                 local_repo_dir=Path(tmpdir) / "source",
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             assert (home_dir / ".claude" / "rules" / "rule.md").exists()
 
@@ -188,7 +221,7 @@ class TestClaudeFilesStep:
         from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
+        ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -207,8 +240,7 @@ class TestClaudeFilesStep:
                 local_repo_dir=Path(tmpdir) / "source",
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             assert (home_dir / ".claude" / "settings.json").exists()
             assert not (dest_dir / ".claude" / "settings.local.json").exists()
@@ -223,7 +255,7 @@ class TestClaudeFilesCustomRulesPreservation:
         from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
+        ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -253,8 +285,7 @@ class TestClaudeFilesCustomRulesPreservation:
                 local_repo_dir=Path(tmpdir) / "source",
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             assert (dest_rules / "my-project-rules.md").exists()
             assert (dest_rules / "my-project-rules.md").read_text() == "USER PROJECT RULES - PRESERVED"
@@ -276,7 +307,7 @@ class TestClaudeFilesCustomRulesPreservation:
         from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
+        ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -298,8 +329,7 @@ class TestClaudeFilesCustomRulesPreservation:
                 local_repo_dir=Path(tmpdir) / "source",
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             global_rules = home_dir / ".claude" / "rules"
             assert (global_rules / "test-rule.md").exists()
@@ -312,10 +342,8 @@ class TestDirectoryClearing:
     def test_clears_managed_files_preserves_user_files(self):
         """Pilot-managed rules are removed on update; user-created files are preserved."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -344,8 +372,7 @@ class TestDirectoryClearing:
                 local_repo_dir=source_dir,
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             global_rules = home_dir / ".claude" / "rules"
             assert (global_rules / "new-rule.md").exists()
@@ -357,10 +384,9 @@ class TestDirectoryClearing:
     def test_legacy_upgrade_seeds_manifest_and_cleans_old_files(self):
         """Pre-manifest upgrade: old Pilot files are seeded into manifest and cleaned up."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import PILOT_MANIFEST_FILE, ClaudeFilesStep
+        from installer.steps.claude_files import PILOT_MANIFEST_FILE
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -393,8 +419,7 @@ class TestDirectoryClearing:
                 local_repo_dir=source_dir,
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             global_rules = home_dir / ".claude" / "rules"
             assert (global_rules / "new-rule.md").exists()
@@ -450,7 +475,7 @@ class TestDirectoryClearing:
         from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
+        ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -467,18 +492,15 @@ class TestDirectoryClearing:
                 local_repo_dir=Path(tmpdir),
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             assert (home_dir / ".claude" / "rules" / "existing-rule.md").exists()
 
     def test_stale_managed_rules_removed_when_source_equals_destination(self):
         """Stale Pilot-managed rules are removed even when source == destination."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -502,8 +524,7 @@ class TestDirectoryClearing:
                 local_repo_dir=Path(tmpdir),
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             assert (global_rules / "current-rule.md").exists()
             assert not (global_rules / "old-deleted-rule.md").exists()
@@ -514,7 +535,7 @@ class TestDirectoryClearing:
         from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
+        ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -538,8 +559,7 @@ class TestDirectoryClearing:
                 local_repo_dir=source_dir,
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             assert (dest_project_rules / "my-project.md").exists()
             assert (dest_project_rules / "my-project.md").read_text() == "USER PROJECT RULE"
@@ -550,10 +570,8 @@ class TestDirectoryClearing:
     def test_skills_installed_to_root_level(self):
         """Skills from pilot/skills/ are installed to ~/.claude/skills/."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -574,8 +592,7 @@ class TestDirectoryClearing:
                 local_repo_dir=source_dir,
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             global_skills = home_dir / ".claude" / "skills"
             assert (global_skills / "spec" / "SKILL.md").exists()
@@ -585,10 +602,8 @@ class TestDirectoryClearing:
         """Hooks go to ~/.pilot/hooks/, scripts and MCP config to ~/.pilot/,
         no files end up in the legacy ~/.claude/pilot/ directory."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -615,8 +630,7 @@ class TestDirectoryClearing:
                 local_repo_dir=source_dir,
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             claude_dir = home_dir / ".claude"
             pilot_home = home_dir / ".pilot"
@@ -704,10 +718,8 @@ class TestMergeAppConfig:
     def test_integration_merges_claude_json(self):
         """Installer merges pilot/claude.json preferences into ~/.claude.json."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -753,8 +765,7 @@ class TestMergeAppConfig:
                 local_repo_dir=Path(tmpdir) / "source",
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             patched = json.loads(claude_json_path.read_text())
 
@@ -768,10 +779,8 @@ class TestMergeAppConfig:
     def test_creates_claude_json_if_missing(self):
         """Installer creates ~/.claude.json if it doesn't exist."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -799,8 +808,7 @@ class TestMergeAppConfig:
             claude_json_path = home_dir / ".claude.json"
             assert not claude_json_path.exists()
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             assert claude_json_path.exists()
             patched = json.loads(claude_json_path.read_text())
@@ -813,7 +821,7 @@ class TestMergeAppConfig:
         from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
+        ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -835,8 +843,7 @@ class TestMergeAppConfig:
                 local_repo_dir=Path(tmpdir) / "source",
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             assert not (home_dir / ".claude.json").exists()
 
@@ -1098,10 +1105,8 @@ class TestSkillsDeployment:
     def test_skills_deployed_to_root_skills_dir(self):
         """Skills are installed to ~/.claude/skills/<name>/ (root level, not plugin)."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -1122,8 +1127,7 @@ class TestSkillsDeployment:
                 local_repo_dir=source_dir,
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             expected_path = home_dir / ".claude" / "skills" / "mcp-servers" / "SKILL.md"
             assert expected_path.exists(), f"Skill not at {expected_path}"
@@ -1136,10 +1140,9 @@ class TestCommandsToSkillsMigration:
     def test_old_commands_cleaned_up_during_migration(self):
         """Legacy commands in manifest are removed when upgrading to skills format."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import PILOT_MANIFEST_FILE, ClaudeFilesStep
+        from installer.steps.claude_files import PILOT_MANIFEST_FILE
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -1170,8 +1173,7 @@ class TestCommandsToSkillsMigration:
                 local_repo_dir=source_dir,
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             # Old commands removed
             assert not (old_commands / "spec.md").exists()
@@ -1190,10 +1192,9 @@ class TestCommandsToSkillsMigration:
     def test_user_commands_preserved_during_migration(self):
         """User-created commands not in manifest are preserved during migration."""
         from installer.context import InstallContext
-        from installer.steps.claude_files import PILOT_MANIFEST_FILE, ClaudeFilesStep
+        from installer.steps.claude_files import PILOT_MANIFEST_FILE
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -1223,8 +1224,7 @@ class TestCommandsToSkillsMigration:
                 local_repo_dir=source_dir,
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             # User command preserved
             assert (old_commands / "my-custom-cmd.md").exists()
@@ -1239,7 +1239,7 @@ class TestCommandsToSkillsMigration:
         from installer.steps.claude_files import PILOT_MANIFEST_FILE, ClaudeFilesStep
         from installer.ui import Console
 
-        step = ClaudeFilesStep()
+        ClaudeFilesStep()
         with tempfile.TemporaryDirectory() as tmpdir:
             home_dir = Path(tmpdir) / "home"
             home_dir.mkdir()
@@ -1273,8 +1273,7 @@ class TestCommandsToSkillsMigration:
                 local_repo_dir=source_dir,
             )
 
-            with patch("installer.steps.claude_files.Path.home", return_value=home_dir):
-                step.run(ctx)
+            _run_full_install_flow(ctx, home_dir=home_dir)
 
             # User skill preserved — not seeded, not deleted
             assert (user_skill / "SKILL.md").exists()

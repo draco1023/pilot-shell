@@ -175,7 +175,6 @@ class TestAliasLines:
         assert PILOT_BIN in result
         assert CLAUDE_ALIAS_MARKER in result
 
-
     def test_bash_session_id_is_unique_per_invocation(self):
         """Bash/zsh session wrapper must NOT use bare $$ as session ID."""
         result = get_alias_lines("bash")
@@ -190,9 +189,7 @@ class TestAliasLines:
         assert "PILOT_SESSION_ID %self;" not in lines_without_sid_ref, (
             "Bare %self reuses the fish PID across invocations"
         )
-        assert "$fish_pid-(random)" in result, (
-            "Fish wrapper must use $fish_pid for PID expansion in concatenation"
-        )
+        assert "$fish_pid-(random)" in result, "Fish wrapper must use $fish_pid for PID expansion in concatenation"
 
 
 class TestAliasDetection:

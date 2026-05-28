@@ -12,10 +12,10 @@ For Codex, this replaces the generic 3.1 scan below.
 
 Run at most two orientation calls total:
 
-1. `codegraph_context(task="<task description from user>")` only when the task likely modifies runtime code or named symbols.
+1. `codegraph_context(task="<task description from user>")` only when the task likely modifies runtime code and the entry points are not already named.
 2. `mcp__semble__search(query="<2-3 key nouns from task>", top_k=5)` only when CodeGraph is weak, the task is cross-cutting, or the task is docs/config/rules-heavy.
 
-If the user names concrete paths, read those files directly after the first orientation call instead of adding more search. If CodeGraph returns irrelevant symbols, treat that as a signal to stop graph exploration, not to retry with more graph tools.
+If the user names concrete paths, docs, rules, markdown, config, UI copy, or a known diff, read those files directly instead of spending a graph call. If CodeGraph returns irrelevant symbols, treat that as a signal to stop graph exploration, not to retry with more graph tools.
 
 Capture no more than five bullets in the Workspace Scan. The scan is a routing aid, not a research report.
 CODEX-END -->

@@ -75,6 +75,14 @@ const NavBar = () => {
           >
             <a href="/docs">Docs</a>
           </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+          >
+            <Link to="/pricing">Subscribe</Link>
+          </Button>
           <a
             href="https://pilot.openchangelog.com/"
             target="_blank"
@@ -155,6 +163,13 @@ const NavBar = () => {
           >
             Docs
           </a>
+          <Link
+            to="/pricing"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block w-full text-left py-3 text-muted-foreground hover:text-foreground border-b border-border transition-colors"
+          >
+            Subscribe
+          </Link>
           <Button
             onClick={() => handleSectionClick("#installation")}
             className="mt-4 w-full"

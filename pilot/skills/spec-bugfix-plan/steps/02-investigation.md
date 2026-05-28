@@ -33,7 +33,7 @@ CODEX-END -->
 **Start with `codegraph_context(task="<bug description and symptoms>")`** — single call, returns entry points, related symbols, and code context. Then `mcp__semble__search` for the bug's *intent* ("where does X get modified", "error handling in Y") — catches cross-language connections and mutation sites the graph misses.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-Start with `codegraph_context(task="<bug description and symptoms>")` when the bug location is not already named. Add one `mcp__semble__search` only when CodeGraph is weak or the bug is cross-cutting. If the user names concrete paths or the symptom points to a specific file, read that file instead of adding more search.
+Use `codegraph_context(task="<bug description and symptoms>")` only when the bug location is not already named and the problem appears to involve runtime-code structure. Add one `mcp__semble__search` only when CodeGraph is weak or the bug is cross-cutting. If the user names concrete paths, docs, rules, markdown, config, UI copy, or the symptom points to a specific file, read that file instead of spending a graph call.
 CODEX-END -->
 
 <!-- CC-ONLY -->

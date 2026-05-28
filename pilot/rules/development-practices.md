@@ -2,12 +2,20 @@
 
 ### Codebase Exploration
 
-CodeGraph (structure) and Semble (intent) are primary; Grep/Glob are *verifiers* for completeness checks or known-string lookups. Never start a code-search task with Grep/Glob.
+CodeGraph (structure) and Semble (intent) are primary; Grep/Glob are *verifiers* for completeness checks or known-string lookups.
+
+<!-- CC-ONLY -->
+Never start a code-search task with Grep/Glob.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+In Codex, spend graph calls only when the graph can answer the next question. For docs, rules, markdown, config, UI copy, reviews of a known diff, or named paths, start with direct file reads, `git diff`, or Semble. Call CodeGraph only after that if a runtime symbol relationship, call path, or blast radius is genuinely unknown.
+CODEX-END -->
 
 **⛔ NEVER pass `projectPath` to CodeGraph for the current project** — it causes "not initialized" errors. The MCP server defaults correctly.
 
 #### Tool Selection by Scenario
 
+<!-- CC-ONLY -->
 CodeGraph and Semble are **co-primary**. Pick by scenario, not by habit.
 
 | Scenario | Tool |
@@ -24,11 +32,29 @@ CodeGraph and Semble are **co-primary**. Pick by scenario, not by habit.
 | Find similar patterns | `semble find-related <file> <line> ./` (unique — no CodeGraph equivalent) |
 
 **Combined workflow:** `codegraph_context` first (structure), then `semble search` (intent) — especially for cross-language connections and non-structural relationships.
+<!-- /CC-ONLY -->
 
 <!-- CODEX-START
-#### Codex Planning Budget
+CodeGraph and Semble are **co-primary**. Pick by scenario, not by habit.
 
-During `$spec` and `$prd` planning, the Codex planning contracts override generic "always" search rules. One CodeGraph orientation call plus one Semble search is enough for most plans. If either result is irrelevant, pivot to direct file reads and draft the plan or PRD. Do not run callers/callees/impact analysis for docs, rules, markdown, config, UI-copy changes, or local bugfixes; for runtime code, run it only for functions you are about to modify or have identified as the likely root cause.
+| Scenario | Tool |
+|----------|------|
+| Structural runtime-code orientation when entry points are unknown | `codegraph_context(task=...)` |
+| Find a symbol by name | `codegraph_search` |
+| Enumerate callers / callees for a function you will modify | `codegraph_callers` + `codegraph_callees`, then exact-text verification if needed |
+| Blast radius for a non-local runtime change | `codegraph_impact` |
+| Deep dive across known symbols | `codegraph_explore(query="SymA SymB file.ts")` |
+| Understand a concept / feature area | `semble search "how does X work" ./` |
+| Find where something is modified | `semble search "settings.json modify write" ./` |
+| Cross-cutting concerns | `semble search "notification push events" ./` |
+| Debug: "where does X happen" | `semble search "error handling recovery" ./` |
+| Find similar patterns | `semble find-related <file> <line> ./` |
+
+Use `codegraph_context` selectively for structural runtime-code questions, especially when entry points are unknown. For docs, rules, markdown, config, UI copy, reviews of a known diff, or named paths, start with direct file reads or Semble; only call CodeGraph if that reveals an actual runtime symbol/call-graph question.
+
+#### Codex Search Budget
+
+During `$spec` and `$prd` planning, the Codex planning contracts override generic exploration rules. At most one CodeGraph orientation call plus one Semble search is enough for most plans where runtime code structure is unknown. If either result is irrelevant, pivot to direct file reads and draft the plan or PRD. Do not run callers/callees/impact analysis for docs, rules, markdown, config, UI-copy changes, reviews of a known diff, or local bugfixes; for runtime code, run it only for functions you are about to modify or have identified as the likely root cause.
 CODEX-END -->
 
 Grep/Glob: (1) verifying CodeGraph/Semble completeness, (2) exact text/regex in a known file.

@@ -49,6 +49,11 @@ For extracting an enclosing function/class at a known line, use `Read` with `off
 2. **Glob** for file structure — `**/*.test.*`, `**/routes/**`, `**/config/**`, `**/middleware/**`
 3. **Read** 5-10 representative files in key directories
 4. For each gap from Step 2: run a targeted search (Semble if available, otherwise Grep) to find current patterns
+<!-- CC-ONLY -->
 5. **Use CodeGraph** (`codegraph_context` to orient, `codegraph_search` → `codegraph_explore` for deep understanding, `codegraph_callers`/`codegraph_files` for structure) — CodeGraph is the primary exploration tool, not a fallback
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+5. **Use CodeGraph selectively** only for runtime-code structure gaps that remain after the Semble/direct-read pass. For docs, rules, markdown, config inventory, and named paths, keep using targeted reads or Semble; do not add graph calls just to satisfy a checklist.
+CODEX-END -->
 
 **Monorepo:** Repeat Steps 5.1-5.3 for each sub-project identified in Step 2. Each sub-project gets its own exploration context.

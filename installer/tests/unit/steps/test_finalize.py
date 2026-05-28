@@ -215,7 +215,11 @@ class TestFinalSuccessPanel:
                     "Additional Workflows (Claude Code + Codex)": 3,
                 }
                 for title, items in sections:
-                    assert len(items) == expected_lengths[title], f"{title}: expected {expected_lengths[title]}, got {len(items)}"
+                    assert len(items) == expected_lengths[title], (
+                        f"{title}: expected {expected_lengths[title]}, got {len(items)}"
+                    )
+                getting_started = dict(sections)["Getting Started"]
+                assert ("Check for updates", "Run 'pilot update' to update Pilot Shell") in getting_started
                 core_labels = [label for label, _ in dict(sections)["Core Workflows (Claude Code + Codex)"]]
                 assert "/prd · $prd" in core_labels
                 assert "/spec · $spec" in core_labels

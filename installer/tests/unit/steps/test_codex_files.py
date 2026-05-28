@@ -33,7 +33,7 @@ class TestCodexFilesStepSkipsWhenNoCodex:
         ctx = MagicMock()
         ctx.ui = None
         with patch(
-            "installer.steps.codex_files._is_codex_installed",
+            "installer.steps.codex_files.is_codex_installed",
             return_value=False,
         ):
             step.run(ctx)
@@ -44,7 +44,7 @@ class TestCodexFilesStepSkipsWhenNoCodex:
         ctx.ui = MagicMock()
 
         with (
-            patch("installer.steps.codex_files._is_codex_installed", return_value=True),
+            patch("installer.steps.codex_files.is_codex_installed", return_value=True),
             patch(
                 "installer.steps.codex_files._get_codex_config_dir",
                 side_effect=ValueError("CODEX_HOME must be an absolute path, got: relative"),
@@ -371,6 +371,15 @@ class TestCodexSkillsInstallation:
         assert "--agent codex" in result
         assert "with/.claude/skills/<name>/" not in result
 
+    def test_fix_codex_skill_uses_selective_codegraph_guidance(self) -> None:
+        from installer.steps.codex_files import build_codex_skill_md
+
+        result = build_codex_skill_md(Path("pilot/skills/fix"))
+
+        assert 'Start with `codegraph_context(task="<bug description>")`' not in result
+        assert "Use `codegraph_context` only when the bug is structural" in result
+        assert "For docs, rules, markdown, config, UI copy, or a named local file/function" in result
+
 
 class TestCodexRulesInstallation:
     def test_creates_agents_md_with_markers(self, tmp_path: Path) -> None:
@@ -472,6 +481,10 @@ class TestCodexRulesInstallation:
         assert "update_plan" in content
         assert "verify the generated artifacts directly" in content
         assert "persist returned agent/job ids to a session file" in content
+        assert "| Start any new task | `codegraph_context(task=...)` — ALWAYS FIRST |" not in content
+        assert "| Task orientation (FIRST on every task) | `codegraph_context` |" not in content
+        assert "Use `codegraph_context` selectively for structural runtime-code questions" in content
+        assert "For docs, rules, markdown, config, UI copy, reviews of a known diff, or named paths" in content
         preamble_end = "Skill invocation: use `$skill-name` (not `/skill-name`)."
         assert preamble_end in content
         rules_body = content.split(preamble_end, 1)[1]
@@ -669,9 +682,14 @@ class TestAdaptInvocationSyntax:
         result = build_codex_skill_md(Path("pilot/skills/spec"))
         assert "Codex has no callable phase-dispatch tool" in result
         assert "continue immediately with the `$spec-plan` skill instructions" in result
-        assert "sub-agents (spec-review, changes-review), and the Codex companion reviewer are not available" not in result
+        assert (
+            "sub-agents (spec-review, changes-review), and the Codex companion reviewer are not available" not in result
+        )
         assert "Native `spec-review` and `changes-review` run as managed Codex custom agents" in result
-        assert "The current running session may not expose newly generated skills or agent types until the next install or SessionStart sync" in result
+        assert (
+            "The current running session may not expose newly generated skills or agent types until the next install or SessionStart sync"
+            in result
+        )
         assert "Skill(skill=" not in result
         assert "Skill('" not in result
 

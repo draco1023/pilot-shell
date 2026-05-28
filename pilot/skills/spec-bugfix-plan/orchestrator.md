@@ -69,7 +69,7 @@ CODEX-END -->
 For Codex, bugfix quality means a traced root cause, a reproducing RED test plan, and a source-level fix strategy. It does not mean exhaustive graph traversal.
 
 - Reach the first complete bugfix plan before context reaches 35% unless the bug is not reproducible.
-- Use a bounded investigation: one reproduction attempt path, one CodeGraph orientation call, one Semble intent search, then targeted reads of the suspected files.
+- Use a bounded investigation: one reproduction attempt path, at most one CodeGraph orientation call when the entry point is unknown, one Semble intent search, then targeted reads of the suspected files. Skip CodeGraph for docs, rules, markdown, config, UI copy, reviews of a known diff, or named paths.
 - Run callers/callees/impact only after a likely root-cause function is known and the bug spans more than one component.
 - Ask at most one bundled clarification prompt before the approval prompt. If the missing signal blocks reproduction, ask; otherwise record a Medium-confidence root cause and a verification task.
 - Stop investigating once you can state `Root Cause: file:line — function() does X but should do Y`, name the RED test, and name the source file the fix must touch.

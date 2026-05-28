@@ -94,16 +94,22 @@ def run_post_compact_restore() -> int:
     fallback_state = _read_fallback_state(session_id)
 
     message = _format_context_message(plan_data, fallback_state)
-    print(
-        json.dumps(
-            {
-                "hookSpecificOutput": {
-                    "hookEventName": "SessionStart",
-                    "additionalContext": message,
+    platform = os.environ.get("CLAUDE_PROJECT_PLATFORM") or hook_data.get("platform") or ""
+    if str(platform).lower() == "codex":
+        # Codex hooks consume additionalContext on stderr instead of the
+        # Claude Code SessionStart hookSpecificOutput envelope.
+        print(message, file=sys.stderr)
+    else:
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "SessionStart",
+                        "additionalContext": message,
+                    }
                 }
-            }
+            )
         )
-    )
 
     return 0
 

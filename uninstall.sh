@@ -59,7 +59,7 @@ has_codex_pilot_content() {
 	if [ -f "$CODEX_DIR/hooks.json" ] && grep -q '/.pilot/' "$CODEX_DIR/hooks.json" 2>/dev/null; then
 		return 0
 	fi
-	if [ -f "$CODEX_DIR/config.toml" ] && grep -q 'pilot-shell managed MCP servers' "$CODEX_DIR/config.toml" 2>/dev/null; then
+	if [ -f "$CODEX_DIR/config.toml" ] && grep -q -e 'pilot-shell managed MCP servers' -e 'pilot-shell managed env vars' "$CODEX_DIR/config.toml" 2>/dev/null; then
 		return 0
 	fi
 	if [ -f "$CODEX_DIR/AGENTS.md" ] && grep -q 'PILOT:START' "$CODEX_DIR/AGENTS.md" 2>/dev/null; then
@@ -106,6 +106,10 @@ get_affected_shell_configs() {
 			-e "$OLD_CCP_MARKER" \
 			-e "alias ccp=" \
 			-e "alias pilot=" \
+			-e "claude()" \
+			-e "codex()" \
+			-e "function claude" \
+			-e "function codex" \
 			-e 'PATH="$HOME/.pilot/bin' \
 			-e 'PATH "$HOME/.pilot/bin' \
 			"$config_file" 2>/dev/null; then
@@ -245,6 +249,10 @@ remove_shell_aliases() {
 			-e "$OLD_CCP_MARKER" \
 			-e "alias ccp=" \
 			-e "alias pilot=" \
+			-e "claude()" \
+			-e "codex()" \
+			-e "function claude" \
+			-e "function codex" \
 			-e 'PATH="$HOME/.pilot/bin' \
 			-e 'PATH "$HOME/.pilot/bin' \
 			"$config_file" 2>/dev/null; then
@@ -261,6 +269,10 @@ remove_shell_aliases() {
 		/^[[:space:]]*alias ccp=/ { next }
 		/^[[:space:]]*alias pilot=/ { next }
 		/^[[:space:]]*alias claude=/ { next }
+		/^[[:space:]]*claude\(\)[[:space:]]*\{/ { next }
+		/^[[:space:]]*codex\(\)[[:space:]]*\{/ { next }
+		/^[[:space:]]*function[[:space:]]+claude([[:space:];]|$).*;[[:space:]]*end[[:space:]]*$/ { next }
+		/^[[:space:]]*function[[:space:]]+codex([[:space:];]|$).*;[[:space:]]*end[[:space:]]*$/ { next }
 		/^[[:space:]]*export PATH="\$HOME\/.pilot\/bin/ { next }
 		/^[[:space:]]*set -gx PATH "\$HOME\/.pilot\/bin/ { next }
 		/^[[:space:]]*export PATH="\$HOME\/.bun\/bin:\$PATH"/ { next }
@@ -687,16 +699,17 @@ if removed > 0:
 ' 2>&1
 	fi
 
-	# Remove Pilot managed MCP server block from ~/.codex/config.toml.
-	# The block is delimited by "# --- pilot-shell managed MCP servers ---" markers.
+	# Remove Pilot managed MCP server and env var blocks from ~/.codex/config.toml.
 	local config_file="$CODEX_DIR/config.toml"
-	if [ -f "$config_file" ] && command -v python3 >/dev/null 2>&1 && grep -q 'pilot-shell managed MCP servers' "$config_file" 2>/dev/null; then
+	if [ -f "$config_file" ] && command -v python3 >/dev/null 2>&1 && grep -q -e 'pilot-shell managed MCP servers' -e 'pilot-shell managed env vars' "$config_file" 2>/dev/null; then
 		PILOT_CODEX_CONFIG="$config_file" python3 -c '
 import os, sys
 
 config_path = os.environ["PILOT_CODEX_CONFIG"]
-marker_start = "# --- pilot-shell managed MCP servers ---"
-marker_end = "# --- end pilot-shell managed MCP servers ---"
+marker_pairs = [
+    ("# --- pilot-shell managed MCP servers ---", "# --- end pilot-shell managed MCP servers ---"),
+    ("# --- pilot-shell managed env vars ---", "# --- end pilot-shell managed env vars ---"),
+]
 
 try:
     with open(config_path) as f:
@@ -704,26 +717,36 @@ try:
 except Exception:
     sys.exit(0)
 
-if marker_start not in content:
+changed = False
+for marker_start, marker_end in marker_pairs:
+    if marker_start not in content:
+        continue
+    if marker_end not in content:
+        # End marker missing (user edit, partial revert). Refuse to truncate the
+        # rest of the file — preserve everything and continue with other blocks.
+        continue
+
+    start_idx = content.index(marker_start)
+    end_idx = content.index(marker_end) + len(marker_end)
+
+    before = content[:start_idx].rstrip("\n")
+    after = content[end_idx:].lstrip("\n")
+
+    if before and after.strip():
+        content = before + "\n\n" + after
+    elif before:
+        content = before + "\n"
+    else:
+        content = after
+    changed = True
+
+if not changed:
     sys.exit(0)
 
-start_idx = content.index(marker_start)
-end_idx = content.index(marker_end) + len(marker_end) if marker_end in content else len(content)
-
-before = content[:start_idx].rstrip("\n")
-after = content[end_idx:].lstrip("\n")
-
-if before and after.strip():
-    result = before + "\n\n" + after
-elif before:
-    result = before + "\n"
-else:
-    result = after
-
 with open(config_path, "w") as f:
-    f.write(result)
+    f.write(content)
 
-print("    [OK] Removed Pilot managed MCP block from ~/.codex/config.toml")
+print("    [OK] Removed Pilot managed config block(s) from ~/.codex/config.toml")
 ' 2>&1
 	fi
 

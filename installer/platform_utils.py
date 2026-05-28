@@ -37,6 +37,48 @@ def command_exists(command: str) -> bool:
     return shutil.which(command) is not None
 
 
+def _agent_present(command: str, *fallback_paths: Path) -> bool:
+    """True if `command` is on PATH or any fallback path exists and is executable."""
+    if shutil.which(command):
+        return True
+    return any(p.is_file() and os.access(p, os.X_OK) for p in fallback_paths)
+
+
+def is_claude_installed() -> bool:
+    """Check whether Claude Code CLI is available.
+
+    Per README prerequisites, users install Claude Code via the native installer;
+    the installer only detects its presence (never installs it).
+
+    Fallback paths mirror the canonical set used by ``launcher/agent_runtime.py``:
+    Anthropic's native installer (~/.claude/local/bin/claude), system bin
+    (/usr/local/bin/claude), and the macOS app bundle (/Applications/Claude.app).
+    """
+    home = Path.home()
+    return _agent_present(
+        "claude",
+        home / ".claude" / "local" / "bin" / "claude",
+        home / ".local" / "bin" / "claude",
+        Path("/usr/local/bin/claude"),
+        Path("/Applications/Claude.app/Contents/Resources/bin/claude"),
+    )
+
+
+def is_codex_installed() -> bool:
+    """Check whether Codex CLI is available.
+
+    Per README prerequisites, users install Codex CLI via the native installer;
+    the installer only detects its presence (never installs it).
+    """
+    home = Path.home()
+    return _agent_present(
+        "codex",
+        home / ".codex" / "bin" / "codex",
+        home / ".local" / "bin" / "codex",
+        Path("/usr/local/bin/codex"),
+    )
+
+
 def needs_npm_sudo() -> bool:
     """Check if npm global installs require sudo.
 

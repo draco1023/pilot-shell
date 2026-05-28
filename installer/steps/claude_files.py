@@ -17,8 +17,8 @@ from installer.downloads import (
     FileInfo,
     download_file,
     download_files_parallel,
-    get_repo_files,
 )
+from installer.platform_utils import is_claude_installed
 from installer.steps.base import BaseStep
 from installer.steps.config_migration import migrate_model_config
 from installer.steps.settings_merge import (
@@ -193,38 +193,97 @@ def _clear_directory_safe(path: Path, ui: Any = None, error_msg: str = "") -> No
 
 
 class ClaudeFilesStep(BaseStep):
-    """Step that installs pilot directory files from the repository."""
+    """Installs Claude Code-specific assets to ``~/.claude/``.
+
+    Scope: ``rules`` → ``~/.claude/rules/``, ``agents`` → ``~/.claude/agents/``,
+    ``settings`` → ``~/.claude/settings.json`` (three-way merged), plus the
+    Claude-side post-install merges (hooks-into-settings, app config,
+    ``~/.claude.json`` MCP block, model config migration, customization
+    reapply).
+
+    Gated on ``is_claude_installed()`` — skipped cleanly when Claude Code CLI
+    is not detected on the system.
+
+    This class also owns all the shared download/categorize/install helper
+    methods used by :class:`installer.steps.pilot_files.PilotFilesStep`
+    (Pilot inherits and reuses them). The reduced ``run()`` here handles only
+    the Claude-targeted categories; skills, hooks, and Pilot runtime files
+    are installed by ``PilotFilesStep`` first, which caches the download
+    metadata in ``ctx.config`` so this step can re-use it without a second
+    GitHub round-trip.
+    """
 
     name = "claude_files"
 
+    _CLAUDE_CATEGORIES = ("rules", "agents", "settings")
+
     def check(self, ctx: InstallContext) -> bool:
-        """Check if pilot files are already installed."""
+        """Always run — gating happens inside ``run()`` so we can emit a
+        clear skip message instead of the generic 'Already complete'."""
         return False
 
     def run(self, ctx: InstallContext) -> None:
-        """Install all pilot files from repository."""
+        """Install Claude Code-specific assets when Claude Code is detected."""
         ui = ctx.ui
-        config = self._create_download_config(ctx)
-
-        if ui:
-            ui.status("Installing pilot files...")
-
-        pilot_files = get_repo_files("pilot", config)
-        if not pilot_files:
-            self._handle_no_files(ui, config)
+        if not is_claude_installed():
+            if ui:
+                ui.info("Claude Code CLI not detected — skipping Claude-specific assets")
             return
 
-        categories = self._categorize_files(pilot_files, ctx)
+        categories, config = self._get_cached_pilot_files(ctx, ui)
+        if categories is None or config is None:
+            return
 
-        self._cleanup_old_directories(ctx, config, ui)
+        if ui:
+            ui.status("Installing Claude Code assets...")
 
-        installed_files, file_count, failed_files = self._install_categories(categories, ctx, config, ui)
+        claude_categories = {
+            cat: files for cat, files in categories.items() if cat in self._CLAUDE_CATEGORIES and files
+        }
+        installed_files, file_count, failed_files = self._install_categories(claude_categories, ctx, config, ui)
 
-        ctx.config["installed_files"] = installed_files
+        merged = list(ctx.config.get("installed_files", [])) + installed_files
+        ctx.config["installed_files"] = merged
 
-        self._post_install_processing(ctx, ui)
+        self._merge_hooks_into_settings()
+        self._merge_app_config()
+        self._merge_mcp_servers_into_claude_json(ui)
+        migrate_model_config(create_if_missing=True)
+        self._cleanup_stale_managed_files(ctx)
+        self._save_pilot_manifest(ctx)
+        self._reapply_customization(ui)
 
         self._report_results(ui, file_count, failed_files)
+
+    def _get_cached_pilot_files(
+        self,
+        ctx: InstallContext,
+        ui: Any,
+    ) -> tuple[dict[str, list[FileInfo]] | None, DownloadConfig | None]:
+        """Return categorized files + download config from PilotFilesStep's cache.
+
+        ``PilotFilesStep`` is contracted to run first in ``get_all_steps()`` and
+        populate the cache keys. If the cache is missing we surface that
+        ordering violation loudly via the install UI rather than silently
+        re-downloading (which would mask the regression and double the GitHub
+        round-trip on the failure path).
+        """
+        from installer.steps.pilot_files import (
+            PILOT_FILES_CACHE_CATEGORIES_KEY,
+            PILOT_FILES_CACHE_CONFIG_KEY,
+        )
+
+        categories = ctx.config.get(PILOT_FILES_CACHE_CATEGORIES_KEY)
+        config = ctx.config.get(PILOT_FILES_CACHE_CONFIG_KEY)
+        if categories is not None and config is not None:
+            return categories, config
+
+        if ui:
+            ui.warning(
+                "PilotFilesStep cache missing — ClaudeFilesStep cannot install without it. "
+                "Verify get_all_steps() in installer/cli.py runs PilotFilesStep before ClaudeFilesStep."
+            )
+        return None, None
 
     def _create_download_config(self, ctx: InstallContext) -> DownloadConfig:
         """Create download configuration based on context."""
@@ -320,6 +379,10 @@ class ClaudeFilesStep(BaseStep):
         _clear_directory_safe(pilot_home_dir / "scripts")
         _clear_directory_safe(pilot_home_dir / "ui")
         _clear_directory_safe(pilot_home_dir / "hooks")
+        # ~/.pilot/rules/ is the raw-rule staging area read by
+        # CodexFilesStep._install_codex_rules. Cleared with the other
+        # Pilot-managed dirs so renamed/removed rule files don't linger.
+        _clear_directory_safe(pilot_home_dir / "rules")
 
         manifest_path = home_claude_dir / PILOT_MANIFEST_FILE
         if not manifest_path.exists():
@@ -554,19 +617,6 @@ class ClaudeFilesStep(BaseStep):
             return home_claude_dir / SETTINGS_FILE
         else:
             return ctx.project_dir / file_path
-
-    def _post_install_processing(self, ctx: InstallContext, ui: Any) -> None:
-        """Run post-installation processing tasks."""
-        self._make_scripts_executable(Path.home() / ".pilot" / "scripts")
-
-        self._merge_hooks_into_settings()
-        self._merge_app_config()
-        self._merge_mcp_servers_into_claude_json(ui)
-        migrate_model_config(create_if_missing=True)
-        self._cleanup_stale_managed_files(ctx)
-        self._build_skill_md_files(ctx, ui)
-        self._save_pilot_manifest(ctx)
-        self._reapply_customization(ui)
 
     def _save_pilot_manifest(self, ctx: InstallContext) -> None:
         """Save manifest of Pilot-managed files in skills/, rules/, agents/, hooks/.

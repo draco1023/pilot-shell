@@ -292,3 +292,18 @@ class Console:
     def rule(self, title: str = "", style: str = "muted") -> None:
         """Print a horizontal rule."""
         self._console.print(Rule(title, style=style))
+
+    def substep(self, name: str) -> None:
+        """Print a sub-section divider inside a top-level step.
+
+        Used to visually separate plugin-style installations (e.g. Codex CLI
+        integration) that run inside Dependencies but warrant their own
+        labelled section in the install output.
+        """
+        if self._quiet:
+            self._console.print(f"  --- {name} ---")
+            return
+        self._console.print()
+        sub_text = Text()
+        sub_text.append(f"── {name} ──", style="bold cyan")
+        self._console.print(f"  {sub_text}")

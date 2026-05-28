@@ -106,7 +106,7 @@ def _check_license() -> bool:
         data = json.loads(result.stdout)
         return data.get("valid", False)
     except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError, ValueError):
-        return True
+        return False
 
 
 def _canonicalize(text: str) -> str:
@@ -291,7 +291,7 @@ def _is_pilot_managed_codex_review_agent(agent_file: Path) -> bool:
 def _remove_codex_skills() -> int:
     agents_dir = Path.home() / ".agents" / "skills"
     removed = 0
-    for skill_name in _SUPPORTED_SKILLS:
+    for skill_name in _PILOT_SKILL_NAMES:
         skill_md = agents_dir / skill_name / "SKILL.md"
         if skill_md.is_file():
             skill_md.unlink()

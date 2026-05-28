@@ -11,28 +11,11 @@ import os
 import re
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from installer.context import InstallContext
+from installer.platform_utils import is_codex_installed
 from installer.steps.base import BaseStep
-
-# Vendored from launcher.agent_runtime — installer cannot import from launcher
-# (see .claude/rules/pilot-shell-package-boundaries.md).
-
-_CODEX_BINARY_NAME = "codex"
-
-
-def _is_codex_installed() -> bool:
-    """Check if Codex CLI is available on this system."""
-    if shutil.which(_CODEX_BINARY_NAME):
-        return True
-    for candidate in [
-        Path.home() / ".codex" / "bin" / "codex",
-        Path("/usr/local/bin/codex"),
-    ]:
-        if candidate.is_file() and os.access(candidate, os.X_OK):
-            return True
-    return False
 
 
 def _get_codex_config_dir() -> Path:
@@ -46,6 +29,54 @@ def _get_codex_config_dir() -> Path:
     return Path.home() / ".codex"
 
 
+# Per-sub-install label formatters used by CodexFilesStep.run(). Each
+# receives the sub-install's return value (count or bool) and returns the
+# success-line string, or None to suppress (for empty/no-op installs).
+def _label_hook_events(n: int) -> str | None:
+    return f"Configured {n} hook events" if n else None
+
+
+def _label_adapted_skills(n: int) -> str | None:
+    return f"Installed {n} adapted skills" if n else None
+
+
+def _label_review_agents(n: int) -> str | None:
+    return f"Installed {n} review agents" if n else None
+
+
+def _label_codex_config(changed: bool) -> str | None:
+    return "Configured Codex config.toml" if changed else None
+
+
+def _label_mcp_servers(n: int) -> str | None:
+    return f"Configured {n} MCP servers" if n else None
+
+
+def _label_codex_rules(n: int) -> str | None:
+    return f"Merged {n} rule files into ~/.codex/AGENTS.md" if n else None
+
+
+class _CodexReport:
+    """Accumulator + reporter for CodexFilesStep sub-installs.
+
+    Replaces the previous pattern of six ``if ui and n_X: ui.success(...)``
+    inline calls scattered across :meth:`CodexFilesStep.run`. Adding a new
+    sub-install now means: write the method, write its label formatter, and
+    add ONE ``report.record(...)`` call — no extra UI gates or format strings
+    to thread through ``run()``.
+    """
+
+    def __init__(self, ui: Any) -> None:
+        self._ui = ui
+
+    def record(self, value: int | bool, formatter: "Callable[[Any], str | None]") -> None:
+        if self._ui is None:
+            return
+        line = formatter(value)
+        if line:
+            self._ui.success(line)
+
+
 class CodexFilesStep(BaseStep):
     """Install Pilot Shell assets for Codex CLI."""
 
@@ -55,52 +86,59 @@ class CodexFilesStep(BaseStep):
         return False
 
     def run(self, ctx: InstallContext) -> None:
-        if not _is_codex_installed():
-            if ctx.ui:
-                ctx.ui.info("Codex CLI not detected — skipping Codex file installation")
+        ui = ctx.ui
+        if not is_codex_installed():
+            if ui:
+                ui.info("Codex CLI not detected — skipping Codex file installation")
             return
 
-        if ctx.ui:
-            ctx.ui.status("Installing Codex CLI integration...")
+        if ui:
+            ui.status("Installing Codex CLI integration...")
+
+        # Sub-install pipeline: each entry is (method, label-formatter).
+        # The formatter receives the method's return value and produces the
+        # success line, or None to suppress (when nothing was installed).
+        # Errors are caught around the right slice — TOML errors only happen
+        # inside the config/mcp methods.
+        report = _CodexReport(ui)
 
         try:
-            self._install_codex_hooks(ctx)
-            self._install_codex_skills(ctx)
-            self._install_codex_agents(ctx)
+            report.record(self._install_codex_hooks(ctx), _label_hook_events)
+            report.record(self._install_codex_skills(ctx), _label_adapted_skills)
+            report.record(self._install_codex_agents(ctx), _label_review_agents)
         except ValueError as e:
-            if ctx.ui:
-                ctx.ui.warning(f"Skipping Codex file installation: {e}")
+            if ui:
+                ui.warning(f"Skipping Codex file installation: {e}")
             return
+
         try:
-            self._install_codex_config(ctx)
-            self._install_codex_mcp(ctx)
+            report.record(self._install_codex_config(ctx), _label_codex_config)
+            report.record(self._install_codex_mcp(ctx), _label_mcp_servers)
         except _TomlStructureError as e:
-            if ctx.ui:
-                ctx.ui.warning(f"Skipping Codex TOML config due to structure error: {e}")
+            if ui:
+                ui.warning(f"Skipping Codex TOML config due to structure error: {e}")
         except ValueError as e:
-            if ctx.ui:
-                ctx.ui.warning(f"Skipping Codex file installation: {e}")
+            if ui:
+                ui.warning(f"Skipping Codex file installation: {e}")
             return
-        self._install_codex_rules(ctx)
 
-        if ctx.ui:
-            ctx.ui.success("Installed Codex CLI integration")
+        report.record(self._install_codex_rules(ctx), _label_codex_rules)
 
-    def _install_codex_hooks(self, ctx: InstallContext) -> None:
-        """Install hooks.json for Codex CLI."""
+    def _install_codex_hooks(self, ctx: InstallContext) -> int:
+        """Install hooks.json for Codex CLI. Returns # of hook events configured."""
         codex_dir = _get_codex_config_dir()
         codex_dir.mkdir(parents=True, exist_ok=True)
 
         template_path = self._find_codex_hooks_template(ctx)
         if template_path is None:
-            return
+            return 0
 
         try:
             incoming = json.loads(template_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
-            return
+            return 0
 
-        self._merge_codex_hooks(codex_dir, incoming)
+        return self._merge_codex_hooks(codex_dir, incoming)
 
     def _find_codex_hooks_template(self, ctx: InstallContext) -> Path | None:
         """Locate the codex_hooks.json template from install source."""
@@ -116,11 +154,12 @@ class CodexFilesStep(BaseStep):
 
         return None
 
-    def _merge_codex_hooks(self, codex_dir: Path, incoming: dict[str, Any]) -> None:
+    def _merge_codex_hooks(self, codex_dir: Path, incoming: dict[str, Any]) -> int:
         """Write or merge hooks into ~/.codex/hooks.json.
 
         Pilot Shell-managed hook entries are identified by commands containing
         '/.pilot/' in their command string. User-added entries are preserved.
+        Returns the number of Pilot-managed hook events present in the result.
         """
         hooks_file = codex_dir / "hooks.json"
         incoming_hooks = incoming.get("hooks", {})
@@ -128,13 +167,13 @@ class CodexFilesStep(BaseStep):
         if not hooks_file.exists():
             hooks_file.parent.mkdir(parents=True, exist_ok=True)
             _atomic_write(hooks_file, json.dumps(incoming, indent=2) + "\n")
-            return
+            return len(incoming_hooks)
 
         try:
             existing = json.loads(hooks_file.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             _atomic_write(hooks_file, json.dumps(incoming, indent=2) + "\n")
-            return
+            return len(incoming_hooks)
 
         existing_hooks = existing.get("hooks", {})
 
@@ -152,22 +191,27 @@ class CodexFilesStep(BaseStep):
         result = dict(existing)
         result["hooks"] = merged
         _atomic_write(hooks_file, json.dumps(result, indent=2) + "\n")
+        return len(incoming_hooks)
 
-    def _install_codex_mcp(self, ctx: InstallContext) -> None:
-        """Generate MCP server config in ~/.codex/config.toml from .mcp.json."""
+    def _install_codex_mcp(self, ctx: InstallContext) -> int:
+        """Generate MCP server config in ~/.codex/config.toml from .mcp.json.
+
+        Returns the number of MCP servers written into the managed block.
+        """
+        _ = ctx
         pilot_home = Path.home() / ".pilot"
         mcp_json_path = pilot_home / ".mcp.json"
         if not mcp_json_path.is_file():
-            return
+            return 0
 
         try:
             mcp_data = json.loads(mcp_json_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
-            return
+            return 0
 
         toml_block = _mcp_json_to_toml(mcp_data)
         if not toml_block.strip():
-            return
+            return 0
 
         codex_dir = _get_codex_config_dir()
         codex_dir.mkdir(parents=True, exist_ok=True)
@@ -202,8 +246,10 @@ class CodexFilesStep(BaseStep):
         final = preserved.rstrip("\n") + "\n" + managed_block if preserved.strip() else managed_block.lstrip("\n")
         _validate_toml_structure(final)
         _atomic_write(config_path, final)
+        servers = mcp_data.get("mcpServers", {})
+        return len(servers) if isinstance(servers, dict) else 0
 
-    def _install_codex_rules(self, ctx: InstallContext) -> None:
+    def _install_codex_rules(self, ctx: InstallContext) -> int:
         """Merge Pilot Shell rules into ~/.codex/AGENTS.md between markers."""
         rules_dir: Path | None = None
         if ctx.local_mode and ctx.local_repo_dir:
@@ -218,11 +264,11 @@ class CodexFilesStep(BaseStep):
         if rules_dir is None:
             rules_dir = Path.home() / ".claude" / "rules"
         if not rules_dir.is_dir():
-            return
+            return 0
 
         rule_files = sorted(f for f in rules_dir.iterdir() if f.suffix == ".md" and f.is_file())
         if not rule_files:
-            return
+            return 0
 
         parts: list[str] = []
         for rule_file in rule_files:
@@ -234,7 +280,7 @@ class CodexFilesStep(BaseStep):
                 continue
 
         if not parts:
-            return
+            return 0
 
         codex_preamble = (
             "## Codex Compatibility\n\n"
@@ -276,8 +322,9 @@ class CodexFilesStep(BaseStep):
             final = block + "\n"
 
         _atomic_write(agents_md, final)
+        return len(rule_files)
 
-    def _install_codex_config(self, ctx: InstallContext) -> None:
+    def _install_codex_config(self, ctx: InstallContext) -> bool:
         """Set Codex full-access config in ~/.codex/config.toml.
 
         Top-level keys are inserted before the first [section] header so they
@@ -355,13 +402,16 @@ class CodexFilesStep(BaseStep):
             changed = True
         elif "hide_full_access_warning" not in existing:
             idx = existing.index("[notice]")
-            end = existing.index("\n", idx) + 1
-            existing = existing[:end] + "hide_full_access_warning = true\n" + existing[end:]
+            newline_idx = existing.find("\n", idx)
+            end = newline_idx + 1 if newline_idx != -1 else len(existing)
+            insert_prefix = "" if end == 0 or existing[end - 1 : end] == "\n" else "\n"
+            existing = existing[:end] + insert_prefix + "hide_full_access_warning = true\n" + existing[end:]
             changed = True
 
         if changed:
             _validate_toml_structure(existing)
             _atomic_write(config_path, existing)
+        return changed
 
     _CODEX_SUPPORTED_SKILLS = frozenset(
         {
@@ -382,20 +432,20 @@ class CodexFilesStep(BaseStep):
     _CODEX_STALE_SKILLS = frozenset({"bot-boot", "bot-channel-task", "bot-defaults", "bot-heartbeat", "bot-jobs"})
     _CODEX_MANAGED_REVIEW_AGENTS = frozenset({"changes-review", "spec-review"})
 
-    def _install_codex_skills(self, ctx: InstallContext) -> None:
+    def _install_codex_skills(self, ctx: InstallContext) -> int:
         """Install supported Pilot Shell skills to ~/.agents/skills/ for Codex.
 
         All non-bot skills are shipped to Codex. Bot skills (bot-boot, bot-channel-task,
         bot-defaults, bot-heartbeat, bot-jobs) depend on Claude Code cron/remote-control.
-        Stale bot-* skills from older installs are cleaned up.
+        Stale bot-* skills from older installs are cleaned up. Returns the number
+        of adapted SKILL.md files successfully written.
         """
         claude_skills_dir = Path.home() / ".claude" / "skills"
         agents_skills_dir = Path.home() / ".agents" / "skills"
 
         if not claude_skills_dir.is_dir():
-            return
+            return 0
 
-        # Clean up stale bot-* skills from older installs
         if agents_skills_dir.is_dir():
             for name in self._CODEX_STALE_SKILLS:
                 stale = agents_skills_dir / name
@@ -408,6 +458,7 @@ class CodexFilesStep(BaseStep):
             if p.is_dir() and (p / "manifest.json").is_file() and p.name in self._CODEX_SUPPORTED_SKILLS
         ]
 
+        written = 0
         for skill_dir in decomposed:
             try:
                 codex_content = build_codex_skill_md(skill_dir)
@@ -419,11 +470,14 @@ class CodexFilesStep(BaseStep):
             dest_dir = agents_skills_dir / skill_dir.name
             dest_dir.mkdir(parents=True, exist_ok=True)
             _atomic_write(dest_dir / "SKILL.md", codex_content)
+            written += 1
+        return written
 
     def _find_codex_review_agents_source(self, ctx: InstallContext) -> Path | None:
         """Locate the source markdown agents used to build Codex custom agents."""
-        if getattr(ctx, "local_mode", False) is True and getattr(ctx, "local_repo_dir", None):
-            candidate = ctx.local_repo_dir / "pilot" / "agents"
+        local_repo_dir = getattr(ctx, "local_repo_dir", None)
+        if getattr(ctx, "local_mode", False) is True and local_repo_dir is not None:
+            candidate = local_repo_dir / "pilot" / "agents"
             if candidate.is_dir():
                 return candidate
 
@@ -433,15 +487,19 @@ class CodexFilesStep(BaseStep):
 
         return None
 
-    def _install_codex_agents(self, ctx: InstallContext) -> None:
-        """Install Pilot-managed review agents as Codex custom-agent TOML files."""
+    def _install_codex_agents(self, ctx: InstallContext) -> int:
+        """Install Pilot-managed review agents as Codex custom-agent TOML files.
+
+        Returns the number of agent files written.
+        """
         source_dir = self._find_codex_review_agents_source(ctx)
         if source_dir is None:
-            return
+            return 0
 
         codex_agents_dir = _get_codex_config_dir() / "agents"
         codex_agents_dir.mkdir(parents=True, exist_ok=True)
 
+        written = 0
         for agent_name in sorted(self._CODEX_MANAGED_REVIEW_AGENTS):
             source = source_dir / f"{agent_name}.md"
             if not source.is_file():
@@ -458,6 +516,8 @@ class CodexFilesStep(BaseStep):
                     ctx.ui.warning(f"Preserving user-created Codex agent: {target}")
                 continue
             _atomic_write(target, codex_content)
+            written += 1
+        return written
 
 
 def _ensure_section_keys(
@@ -536,14 +596,14 @@ def _mcp_json_to_toml(mcp_data: dict[str, Any]) -> str:
         if server_type == "http" or "url" in config:
             url = config.get("url", "")
             if url:
-                lines.append(f'url = "{url}"')
+                lines.append(f"url = {_toml_string(url)}")
         else:
             cmd = config.get("command", "")
             if cmd:
-                lines.append(f'command = "{cmd}"')
+                lines.append(f"command = {_toml_string(cmd)}")
             args = config.get("args")
             if isinstance(args, list) and args:
-                args_str = ", ".join(f'"{a}"' for a in args)
+                args_str = ", ".join(_toml_string(str(a)) for a in args)
                 lines.append(f"args = [{args_str}]")
 
         env = config.get("env")
@@ -551,7 +611,7 @@ def _mcp_json_to_toml(mcp_data: dict[str, Any]) -> str:
             lines.append("")
             lines.append(f"[mcp_servers.{name}.env]")
             for k, v in env.items():
-                lines.append(f'{k} = "{v}"')
+                lines.append(f"{k} = {_toml_string(str(v))}")
 
         lines.append("")
 
@@ -661,8 +721,12 @@ def _adapt_review_agent_instructions_for_codex(body: str) -> str:
     )
     adapted = adapted.replace("### 4. Write Output", "### 4. Return Output")
     adapted = adapted.replace("### 5. Write Output", "### 5. Return Output")
-    adapted = adapted.replace("**Write JSON to `output_path` as your FINAL action.**", "**Return JSON as your final response.**")
-    adapted = adapted.replace("Write JSON to `output_path` as your FINAL action.", "Return JSON as your final response.")
+    adapted = adapted.replace(
+        "**Write JSON to `output_path` as your FINAL action.**", "**Return JSON as your final response.**"
+    )
+    adapted = adapted.replace(
+        "Write JSON to `output_path` as your FINAL action.", "Return JSON as your final response."
+    )
     adapted = adapted.replace("The orchestrator provides:", "The parent prompt provides:")
     adapted = adapted.replace(", `output_path`", "")
     adapted = adapted.replace("`output_path`, ", "")

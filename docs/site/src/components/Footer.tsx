@@ -61,6 +61,14 @@ const Footer = () => {
                 </a>
               </li>
               <li>
+                <Link
+                  to="/pricing"
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Subscribe
+                </Link>
+              </li>
+              <li>
                 <button
                   onClick={() =>
                     navigateToSection("faq", location.pathname, navigate)

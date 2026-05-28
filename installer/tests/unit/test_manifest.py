@@ -315,8 +315,7 @@ class TestShippedManifest:
         """bun.sh/install is a vendor-managed live endpoint with no per-version URL.
 
         Regression: same class as GH #147 — without soft_pin, hash will drift on
-        every bun release and brick the installer. claude-code-installer uses
-        soft_pin for the same reason; bun-installer must too.
+        every bun release and brick the installer.
         """
         bun = get("bun-installer", manifest=load())
         assert bun.source_type == "curl"
@@ -325,7 +324,7 @@ class TestShippedManifest:
             assert bun.soft_pin is True, (
                 "bun-installer pins a vendor-managed live endpoint but is hard-pinned. "
                 "bun.sh/install rewrites on every release; the hash will drift. "
-                "Set soft_pin: true with a reason (mirror claude-code-installer)."
+                "Set soft_pin: true with a reason."
             )
 
     def test_uv_installer_pinned_to_immutable_versioned_url(self) -> None:
