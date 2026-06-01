@@ -2,6 +2,20 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.2.0] - 2026-06-01
+
+### Bug Fixes
+
+- Scope Trivy SARIF gate to CRITICAL,HIGH severities
+
+### Features
+
+- Codex CLI parity, automated /fix reviews, and console security & cross-session hardening
+
+### Miscellaneous
+
+- Updated Website
+
 ## [9.1.3] - 2026-05-28
 
 ### Bug Fixes
