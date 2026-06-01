@@ -129,6 +129,10 @@ jobs:
           scan-ref: '.'
           scanners: 'vuln,secret'
           severity: 'CRITICAL,HIGH'
+          # With format: sarif, trivy-action unsets the severity filter (scans
+          # ALL severities for the report) unless this is true — which makes
+          # exit-code fire on MEDIUM/LOW too. Keep the gate scoped to CRITICAL,HIGH.
+          limit-severities-for-sarif: true
           exit-code: '1'
           ignore-unfixed: true
           skip-dirs: '.venv,node_modules,console/node_modules,launcher,docs/site/api,console,docs/site/node_modules,docs/docusaurus/node_modules'
