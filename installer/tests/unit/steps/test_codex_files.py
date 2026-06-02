@@ -279,6 +279,7 @@ class TestCodexSkillsInstallation:
         data = tomllib.loads(result)
 
         assert data["name"] == "spec-review"
+        assert data["model"] == "codex-auto-review"
         assert "requirements" in data["description"]
         assert "developer_instructions" in data
         instructions = data["developer_instructions"]
@@ -309,8 +310,12 @@ class TestCodexSkillsInstallation:
         assert spec_agent.exists()
         assert changes_agent.exists()
         assert (codex_agents_dir / "user-agent.toml").exists()
-        assert tomllib.loads(spec_agent.read_text())["name"] == "spec-review"
-        assert tomllib.loads(changes_agent.read_text())["name"] == "changes-review"
+        spec_data = tomllib.loads(spec_agent.read_text())
+        changes_data = tomllib.loads(changes_agent.read_text())
+        assert spec_data["name"] == "spec-review"
+        assert spec_data["model"] == "codex-auto-review"
+        assert changes_data["name"] == "changes-review"
+        assert changes_data["model"] == "codex-auto-review"
 
     def test_preserves_user_created_same_name_codex_agent(self, tmp_path: Path) -> None:
         claude_agents_dir = tmp_path / ".claude" / "agents"
@@ -983,6 +988,48 @@ class TestDeprecatedKeyRemoval:
         assert "mentions_v2 = true" in result
         assert "tool_search = true" in result
         assert "apps = false" in result
+
+
+class TestUnstableFeaturesWarningSuppression:
+    def test_suppresses_unstable_features_warning_on_fresh_config(self, tmp_path: Path) -> None:
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir(parents=True)
+        config = codex_dir / "config.toml"
+        config.write_text('approval_policy = "never"\n')
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = None
+        with (
+            patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+        ):
+            step._install_codex_config(ctx)
+
+        result = config.read_text()
+        assert "suppress_unstable_features_warning = true" in result
+        # Must be a top-level key, inserted before the first [section] header.
+        first_section = result.index("[")
+        assert "suppress_unstable_features_warning" in result[:first_section]
+        _validate_toml_structure(result)
+
+    def test_does_not_duplicate_existing_suppression(self, tmp_path: Path) -> None:
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir(parents=True)
+        config = codex_dir / "config.toml"
+        config.write_text('approval_policy = "never"\nsuppress_unstable_features_warning = true\n')
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = None
+        with (
+            patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+        ):
+            step._install_codex_config(ctx)
+
+        result = config.read_text()
+        assert result.count("suppress_unstable_features_warning") == 1
 
 
 class TestMcpMarkerReplacement:

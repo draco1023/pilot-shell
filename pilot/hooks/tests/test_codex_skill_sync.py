@@ -222,6 +222,7 @@ class TestSyncCodexReviewAgents:
         assert result is not None
         data = tomllib.loads(result)
         assert data["name"] == "spec-review"
+        assert data["model"] == "codex-auto-review"
         instructions = data["developer_instructions"]
         assert "Output ONLY valid JSON" in instructions
         assert '"issues"' in instructions
@@ -243,8 +244,12 @@ class TestSyncCodexReviewAgents:
 
         assert built == 2
         assert failed == 0
-        assert tomllib.loads((codex_agents_dir / "spec-review.toml").read_text())["name"] == "spec-review"
-        assert tomllib.loads((codex_agents_dir / "changes-review.toml").read_text())["name"] == "changes-review"
+        spec_data = tomllib.loads((codex_agents_dir / "spec-review.toml").read_text())
+        changes_data = tomllib.loads((codex_agents_dir / "changes-review.toml").read_text())
+        assert spec_data["name"] == "spec-review"
+        assert spec_data["model"] == "codex-auto-review"
+        assert changes_data["name"] == "changes-review"
+        assert changes_data["model"] == "codex-auto-review"
         assert (codex_agents_dir / "user-agent.toml").exists()
 
     def test_syncs_review_agents_to_codex_home_agents_dir(self, tmp_path: Path) -> None:

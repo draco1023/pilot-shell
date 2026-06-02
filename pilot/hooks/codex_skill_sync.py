@@ -41,6 +41,7 @@ _SUPPORTED_SKILLS = frozenset(
 )
 
 _SUPPORTED_REVIEW_AGENTS = frozenset({"changes-review", "spec-review"})
+_CODEX_REVIEW_AGENT_MODEL = "codex-auto-review"
 
 _PILOT_SKILL_NAMES = frozenset(
     {
@@ -225,6 +226,7 @@ def _build_codex_review_agent(agent_file: Path) -> str | None:
         "# pilot-shell managed Codex review agent\n"
         f"name = {_toml_string(name)}\n"
         f"description = {_toml_string(description)}\n"
+        f"model = {_toml_string(_CODEX_REVIEW_AGENT_MODEL)}\n"
         f"developer_instructions = {_toml_string(instructions)}\n"
     )
 

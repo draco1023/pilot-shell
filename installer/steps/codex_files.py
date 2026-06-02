@@ -17,6 +17,8 @@ from installer.context import InstallContext
 from installer.platform_utils import is_codex_installed
 from installer.steps.base import BaseStep
 
+_CODEX_REVIEW_AGENT_MODEL = "codex-auto-review"
+
 
 def _get_codex_config_dir() -> Path:
     """Resolve the Codex config directory, respecting CODEX_HOME env var."""
@@ -353,6 +355,9 @@ class CodexFilesStep(BaseStep):
             "personality": '"pragmatic"',
             "check_for_update_on_startup": "true",
             "file_opener": '"vscode"',
+            # Suppress the "Under-development features enabled" warning that Codex
+            # prints because we opt into unstable features (e.g. mentions_v2) below.
+            "suppress_unstable_features_warning": "true",
         }
         changed = False
         section_match = re.search(r"(?m)^\[", existing)
@@ -687,6 +692,7 @@ def build_codex_review_agent_toml(agent_file: Path) -> str:
         "# pilot-shell managed Codex review agent\n"
         f"name = {_toml_string(name)}\n"
         f"description = {_toml_string(description)}\n"
+        f"model = {_toml_string(_CODEX_REVIEW_AGENT_MODEL)}\n"
         f"developer_instructions = {_toml_string(instructions)}\n"
     )
 

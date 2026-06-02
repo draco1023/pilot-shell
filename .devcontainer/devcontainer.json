@@ -83,6 +83,10 @@
     "ghcr.io/devcontainers/features/github-cli:1": {},
     /* https://github.com/michidk/devcontainers-features/tree/main/src/bun */
     "ghcr.io/michidk/devcontainers-features/bun:1": {},
+    /* https://github.com/stu-bell/devcontainer-features/tree/main/src/claude-code */
+    "ghcr.io/stu-bell/devcontainer-features/claude-code:0": {},
+    /* https://github.com/meaningful-ooo/devcontainer-features/tree/main/src/fish */
+    "ghcr.io/meaningful-ooo/devcontainer-features/fish:2": {},
     /* https://github.com/meaningful-ooo/devcontainer-features/tree/main/src/homebrew */
     "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {},
     /* https://github.com/braun-daniel/devcontainer-features/blob/main/src/spaceship */
