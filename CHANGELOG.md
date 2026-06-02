@@ -2,6 +2,13 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.2.2] - 2026-06-02
+
+### Bug Fixes
+
+- Add missing Worker Console Update
+- Changes to Codegraph for Codex
+
 ## [9.2.1] - 2026-06-01
 
 ### Bug Fixes
