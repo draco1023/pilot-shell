@@ -2,6 +2,13 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.2.4] - 2026-06-02
+
+### Bug Fixes
+
+- Improve Usage Savings Calculation
+- Remove unused code for Console, Launcher and Installer
+
 ## [9.2.3] - 2026-06-02
 
 ### Bug Fixes
