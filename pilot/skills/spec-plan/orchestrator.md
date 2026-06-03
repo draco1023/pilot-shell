@@ -32,6 +32,7 @@ CODEX-END -->
 - **ONLY stopping point is plan approval** — everything else is automatic. Never ask "Should I fix these?"
 - **Re-read plan after user edits** — before asking for approval again
 - **Plan file is source of truth** — survives across auto-compaction cycles
+- **⛔ No workflow narration** — never output text describing what step you are about to execute ("I'm scanning the workspace…", "I'm creating the plan header…", "The harness injected a reminder…"). Just do the work. The user sees tool calls and the final plan, not a running commentary.
 <!-- CC-ONLY -->
 - **Quality over speed** — never rush due to context pressure
 <!-- /CC-ONLY -->

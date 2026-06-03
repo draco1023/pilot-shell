@@ -12,6 +12,17 @@
           },
           {
             "type": "command",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/session_announcements.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/session_startup_maintenance.py\"",
+            "async": true,
+            "timeout": 15
+          },
+          {
+            "type": "command",
             "command": "uv run --no-project python \"$HOME/.pilot/hooks/codegraph_init.py\"",
             "async": true,
             "timeout": 120
@@ -80,14 +91,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/spec_handoff_resume.py\""
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
             "command": "bun \"$HOME/.pilot/scripts/worker-service.cjs\" hook claude-code session-init",
             "async": true,
             "timeout": 15
@@ -95,9 +98,20 @@
         ]
       }
     ],
+    "PermissionRequest": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project python \"$HOME/.pilot/hooks/auto_approve_plan.py\""
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
-        "matcher": "Bash|WebSearch|WebFetch|Grep|Glob|Agent|EnterPlanMode|ExitPlanMode",
+        "matcher": "Bash|WebSearch|WebFetch|Grep|Glob|Agent",
         "hooks": [
           {
             "type": "command",

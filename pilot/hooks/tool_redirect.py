@@ -35,16 +35,6 @@ BLOCKS: dict[str, dict[str, str]] = {
         "alternative": "Use ToolSearch to load mcp__plugin_pilot_web-fetch__fetch_url, then call it directly",
         "example": 'ToolSearch(query="+web-fetch fetch") then mcp__plugin_pilot_web-fetch__fetch_url(url="...")',
     },
-    "EnterPlanMode": {
-        "message": "EnterPlanMode is blocked (conflicts with /spec workflow)",
-        "alternative": "Use /spec for structured planning. Plan mode interferes with autonomous spec execution",
-        "example": "Type /spec <task description> to start a structured planning workflow",
-    },
-    "ExitPlanMode": {
-        "message": "ExitPlanMode is blocked (plan mode should not be entered)",
-        "alternative": "Plan mode is blocked entirely — use /spec for structured planning",
-        "example": "Type /spec <task description> to start a structured planning workflow",
-    },
 }
 
 RESEARCH_BLOCK = (

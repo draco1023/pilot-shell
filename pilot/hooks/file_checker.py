@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+from _checkers.charset import check_charset
 from _checkers.go import check_go
 from _checkers.python import check_python
 from _checkers.tdd import (
@@ -114,7 +115,8 @@ def main() -> int:
             _, file_reason = check_go(target_file)
 
         tdd_reason = _tdd_check(tool_name, tool_input, file_path_str)
-        all_reasons.extend(r for r in (file_reason, tdd_reason) if r)
+        charset_reason = check_charset(target_file)
+        all_reasons.extend(r for r in (file_reason, tdd_reason, charset_reason) if r)
 
     if all_reasons:
         print(post_tool_use_context("\n".join(all_reasons)))

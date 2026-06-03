@@ -69,20 +69,6 @@ class TestBlockedTools:
         code, _ = _run_with_input("WebFetch", {"url": "https://example.com"})
         assert code == 2
 
-    def test_blocks_enter_plan_mode(self):
-        """EnterPlanMode is blocked — conflicts with /spec workflow."""
-        code, output = _run_with_input("EnterPlanMode")
-        assert code == 2
-        result = json.loads(output)
-        assert result["permissionDecision"] == "deny"
-        assert "/spec" in result["reason"]
-
-    def test_blocks_exit_plan_mode(self):
-        code, output = _run_with_input("ExitPlanMode")
-        assert code == 2
-        result = json.loads(output)
-        assert result["permissionDecision"] == "deny"
-
 
 class TestBlockedAgentTypes:
     """Agent types that should be hard-blocked (exit code 2)."""
@@ -350,17 +336,6 @@ class TestSubprocessIntegration:
         assert exit_code == 2
         assert _is_denied(stdout)
         assert "WebFetch is blocked" in stdout
-
-    def test_enter_plan_mode_blocked(self):
-        exit_code, stdout, _ = _run_subprocess("EnterPlanMode")
-        assert exit_code == 2
-        assert _is_denied(stdout)
-        assert "/spec" in stdout
-
-    def test_exit_plan_mode_blocked(self):
-        exit_code, stdout, _ = _run_subprocess("ExitPlanMode")
-        assert exit_code == 2
-        assert _is_denied(stdout)
 
     def test_other_tools_allowed(self):
         for tool in ["Read", "Write", "Bash", "Glob", "Edit"]:

@@ -420,7 +420,9 @@ def _sync_codex_env_vars() -> int:
         "PILOT_BRANCH_ISOLATION_ENABLED": "true" if spec.get("branchIsolation", True) else "false",
         "PILOT_PLAN_QUESTIONS_ENABLED": "true" if spec.get("askQuestionsDuringPlanning", True) else "false",
         "PILOT_PLAN_APPROVAL_ENABLED": "true" if spec.get("planApproval", True) else "false",
-        "PILOT_MODEL_SWITCH_ENABLED": "true" if spec.get("modelSwitch", True) else "false",
+        # PILOT_MODEL_SWITCH_ENABLED is intentionally NOT emitted for Codex:
+        # automated model switching (opusplan + EnterPlanMode/ExitPlanMode) is
+        # Claude-Code-only. Codex runs plan -> implement -> verify continuously.
         "PILOT_SPEC_REVIEW_ENABLED": "true" if reviewers.get("specReview", True) else "false",
         "PILOT_CHANGES_REVIEW_ENABLED": "true" if reviewers.get("changesReview", True) else "false",
         "PILOT_CODEX_SPEC_REVIEW_ENABLED": "true" if codex_rev.get("specReview", False) else "false",

@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
-"""Guard: blocks /spec when in plan mode or on a non-Opus model, warns when not in
-bypassPermissions mode.
+"""Guard for /spec invocations (UserPromptSubmit hook).
+
+- Always blocks /spec when the user is manually in plan mode (the skill, not the
+  user, enters plan mode via EnterPlanMode for the Opus planning leg).
+- Warns when not in bypassPermissions mode.
+- Model gate (runs in BOTH toggle states, expected model flipped):
+    * Switching ON (default): the session runs `opusplan`, whose non-plan leg is
+      Sonnet, so at /spec-submit time a correct user shows Sonnet. A non-Sonnet
+      model (e.g. plain Opus) means they never ran `/model opusplan` -- blocked.
+      A user wrongly on plain Sonnet is indistinguishable from opusplan and is
+      allowed (accepted false-negative, avoids false-blocking correct users).
+    * Switching OFF: the whole workflow runs on Opus and only Opus may enter plan
+      mode, so a non-Opus model is blocked with a `/model opus[1m]` prompt.
 
 Reads:
-  - `permission_mode` from hook stdin (Plan mode block, bypassPermissions warn)
+  - `permission_mode` from hook stdin (plan-mode block, bypassPermissions warn)
+  - `PILOT_MODEL_SWITCH_ENABLED` from env (selects expected model; default ON)
   - `model_id` from the statusline cache at ``~/.pilot/sessions/<sid>/context-pct.json``
-    (Opus-only block) — the statusline writes this every render and Claude Code
-    UserPromptSubmit stdin does NOT include the active model field.
+    -- the statusline writes this every render and Claude Code UserPromptSubmit
+    stdin does NOT include the active model field.
 """
 
 from __future__ import annotations
@@ -22,6 +34,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _lib.util import resolve_session_id
 
 _CLAUDE_OPUS_PREFIX_RE = re.compile(r"^claude-opus(-|$)")
+_CLAUDE_SONNET_PREFIX_RE = re.compile(r"^claude-sonnet(-|$)")
+
+
+def _strip_1m(model: str) -> str:
+    """Strip a single trailing ``[1m]`` alias suffix from a model id."""
+    return model[:-4] if model.endswith("[1m]") else model
 
 
 def _is_opus(model: str) -> bool:
@@ -34,10 +52,27 @@ def _is_opus(model: str) -> bool:
     """
     if not isinstance(model, str) or not model:
         return False
-    base = model[:-4] if model.endswith("[1m]") else model
+    base = _strip_1m(model)
     if base == "opus":
         return True
     return bool(_CLAUDE_OPUS_PREFIX_RE.match(base))
+
+
+def _is_sonnet(model: str) -> bool:
+    """Return True iff ``model`` resolves to a Sonnet alias or explicit Sonnet ID.
+
+    Mirror of :func:`_is_opus`. Under Model Switching ON the session runs the
+    ``opusplan`` model, whose non-plan leg is Sonnet -- so at ``/spec``-submit
+    time (before plan mode) a correctly-configured user resolves to Sonnet.
+    Accepts the bare ``sonnet`` alias and any explicit ID matching
+    ``claude-sonnet(-|$)``; rejects lookalikes like ``claude-sonnetics-1``.
+    """
+    if not isinstance(model, str) or not model:
+        return False
+    base = _strip_1m(model)
+    if base == "sonnet":
+        return True
+    return bool(_CLAUDE_SONNET_PREFIX_RE.match(base))
 
 
 def _read_active_model_from_cache() -> str | None:
@@ -63,8 +98,8 @@ def _is_spec_invocation(prompt: str) -> bool:
 
     `prompt.startswith("/spec")` overmatches sibling commands such as
     `/spec-implement`, `/spec-verify`, `/spec-plan`, `/spec-bugfix-plan`,
-    `/spec-bugfix-verify`, which are intentional Sonnet entry points after
-    the model-switch handoff. Restrict to bare `/spec` or `/spec ` (with
+    `/spec-bugfix-verify`, which run on Sonnet under automated model switching
+    (the opusplan default leg). Restrict to bare `/spec` or `/spec ` (with
     whitespace before any args).
     """
     if not prompt.startswith("/spec"):
@@ -78,8 +113,8 @@ def _is_resume_existing_plan(prompt: str) -> bool:
 
     The dispatcher routes `/spec <path/to/plan.md>` to existing-plan handling
     (status-based dispatch). Such invocations must NOT be blocked by the Opus
-    gate — the resume path runs after the model-switch handoff when the user
-    has deliberately switched to Sonnet for implementation/verification.
+    gate -- the resume path runs on whichever model is active (Sonnet under
+    automated model switching) for implementation/verification.
 
     A "resume" prompt is `/spec` followed by a token ending in `.md` (case
     insensitive). Paths containing spaces are honored when quoted, via shlex.
@@ -129,41 +164,75 @@ def run_spec_mode_guard() -> int:
         sys.stderr.write("\033[0;31m[Pilot] /spec blocked: Plan mode is incompatible with /spec workflow\033[0m\n")
         return 2
 
-    # Opus is required only for the *planning* leg of /spec. Resuming an
-    # existing plan (`/spec <path/to/plan.md>`) dispatches to spec-implement /
-    # spec-verify — those phases run on whichever model the user chose during
-    # the model-switch handoff. Skipping the gate for resume is the difference
-    # between modelSwitch=true working and being unreachable on Sonnet.
+    # The model gate targets the *planning* leg of /spec. Resuming an existing
+    # plan (`/spec <path/to/plan.md>`) dispatches to spec-implement / spec-verify,
+    # which run on whichever model is active (Sonnet under automated switching).
+    # Skipping the gate for resume keeps it reachable on Sonnet.
     if _is_resume_existing_plan(prompt):
         return 0
 
+    # Model gate -- runs in BOTH toggle states, with the expected model flipped.
+    # Claude Code's UserPromptSubmit stdin does not carry the active model, so it
+    # is read from the statusline cache.
+    #
+    #   * Switching ON (default): the session runs the `opusplan` model, whose
+    #     non-plan leg is Sonnet. At /spec-submit time the skill has NOT yet
+    #     entered plan mode, so a correctly-configured user resolves to *Sonnet*.
+    #     Anything else (e.g. plain Opus) means they never ran `/model opusplan`
+    #     -- block and tell them to fix it. A user wrongly on plain Sonnet is
+    #     indistinguishable from opusplan and is allowed; that false-negative is
+    #     accepted to avoid false-blocking every correct user.
+    #   * Switching OFF: the whole workflow runs on Opus, and only Opus may enter
+    #     plan mode (planning on Sonnet is pointless) -- require Opus, block else.
+    #
+    # Unset env defaults to ON.
+    model_switch_on = os.environ.get("PILOT_MODEL_SWITCH_ENABLED", "true").strip().lower() != "false"
     active_model = _read_active_model_from_cache()
+
+    if model_switch_on:
+        model_is_correct = _is_sonnet
+        cache_warn = (
+            "\033[0;33m[Pilot] Warning: could not verify active model for /spec "
+            "(statusline cache unavailable). Proceeding without the model check -- "
+            "if you are not on the opusplan model, run '/model opusplan' before planning.\033[0m\n"
+        )
+        block_reason = (
+            "[Pilot] /spec with Model Switching ON requires the 'opusplan' model "
+            "(planning runs on Opus, the default leg on Sonnet). Before planning it shows "
+            "as Sonnet -- you are on a different model. Run '/model opusplan' and try again. "
+            "(Resuming an existing plan with '/spec <path/to/plan.md>' is allowed on any model.)"
+        )
+        block_stderr = (
+            "\033[0;31m[Pilot] /spec blocked: Model Switching is ON, so /spec must run on the "
+            "opusplan model (shows as Sonnet before planning). Current model: "
+            + (active_model or "unknown")
+            + ". Run '/model opusplan'.\033[0m\n"
+        )
+    else:
+        model_is_correct = _is_opus
+        cache_warn = (
+            "\033[0;33m[Pilot] Warning: could not verify active model for /spec "
+            "(statusline cache unavailable). Proceeding without the Opus check -- "
+            "if you are on Sonnet, run '/model opus[1m]' before planning.\033[0m\n"
+        )
+        block_reason = (
+            "[Pilot] /spec requires Opus for planning (Model Switching is OFF). "
+            "Run '/model opus[1m]' (or '/model opus') and try again. "
+            "(Resuming an existing plan with '/spec <path/to/plan.md>' is allowed on any model.)"
+        )
+        block_stderr = (
+            "\033[0;31m[Pilot] /spec blocked: planning requires Opus. "
+            "Current model: " + (active_model or "unknown") + ". Run '/model opus[1m]' (or '/model opus').\033[0m\n"
+        )
+
     if active_model is None:
         # Cache may not have been written yet (very first prompt of a fresh
-        # session, or a transient render that omitted model_id). Fall open
-        # but warn so the user knows the Opus check did not run.
-        sys.stderr.write(
-            "\033[0;33m[Pilot] Warning: could not verify active model for /spec "
-            "(statusline cache unavailable). Proceeding without the Opus check — "
-            "if you are on Sonnet, run '/clear' then '/model opus[1m]' before planning.\033[0m\n"
-        )
-    elif not _is_opus(active_model):
-        print(
-            json.dumps(
-                {
-                    "decision": "block",
-                    "reason": (
-                        "[Pilot] /spec requires Opus for planning. Run '/model opus[1m]' "
-                        "(or '/model opus') and try again. "
-                        "(Resuming an existing plan with '/spec <path/to/plan.md>' is allowed on any model.)"
-                    ),
-                }
-            )
-        )
-        sys.stderr.write(
-            "\033[0;31m[Pilot] /spec blocked: planning requires Opus. "
-            "Current model: " + active_model + ". Run '/model opus[1m]' (or '/model opus').\033[0m\n"
-        )
+        # session, or a transient render that omitted model_id). Fall open but
+        # warn so the user knows the model check did not run.
+        sys.stderr.write(cache_warn)
+    elif not model_is_correct(active_model):
+        print(json.dumps({"decision": "block", "reason": block_reason}))
+        sys.stderr.write(block_stderr)
         return 2
 
     if permission_mode and permission_mode != "bypassPermissions":

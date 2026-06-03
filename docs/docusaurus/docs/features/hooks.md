@@ -17,6 +17,8 @@ Blocking hooks reject actions or force fixes before they land. Non-blocking hook
 | Hook | Description |
 |------|-------------|
 | `license_check.py` | Verifies Pilot Shell license — blocks session if invalid |
+| `session_announcements.py` | Delivers one-time announcements; re-injects until acknowledged *(Claude Code only)* |
+| `session_startup_maintenance.py` | Cleans stale Claude task files and dead-PID session dirs (async) *(Claude Code only)* |
 | `codegraph_init.py` | Initializes CodeGraph for the current project (async) |
 | `post_compact_restore.py` | Re-injects active plan and task state after compaction *(Claude Code only)* |
 | `session_clear.py` | Resets Pilot session state on `/clear` *(Claude Code only)* |
@@ -28,8 +30,7 @@ Blocking hooks reject actions or force fixes before they land. Non-blocking hook
 
 | Hook | Description |
 |------|-------------|
-| `spec_mode_guard.py` | Blocks `/spec` outside bypassPermissions mode |
-| `spec_handoff_resume.py` | Detects model-switch handoff and resumes `/spec` *(Claude Code only)* |
+| `spec_mode_guard.py` | Warns outside bypassPermissions; blocks manual plan mode; gates the `/spec` planning model — requires `opusplan` (shows as Sonnet) when Model Switching is ON, Opus when OFF |
 | Session initializer | Registers session with the Console worker (async) |
 
 ## PreToolUse

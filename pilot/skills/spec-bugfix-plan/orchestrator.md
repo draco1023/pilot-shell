@@ -54,6 +54,7 @@ If Step 2 is incomplete, you cannot propose fixes. Symptom fixes are failure. Re
 - **NEVER assume — verify by reading files.** Trace the bug to actual file:line.
 - **Lean ≠ skipping steps.** Small bugs get short tasks, not fewer tasks. The three-task structure (Reproducing Test → Fix → Quality Gate) is non-negotiable.
 - **Plan file is source of truth** — survives across auto-compaction cycles
+- **⛔ No workflow narration** — never output text describing what step you are about to execute ("I'm investigating root cause…", "The harness injected a reminder…"). Just do the work. The user sees tool calls and the final plan, not a running commentary.
 <!-- CC-ONLY -->
 - **Use the `AskUserQuestion` tool for clarifications** — it renders a structured form; don't fall back to plain-text numbered questions
 <!-- /CC-ONLY -->

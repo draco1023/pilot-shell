@@ -134,9 +134,9 @@ Four toggles control user interaction points during `/spec`. Disable all four fo
 | **Branch Isolation** | On | Asks how to isolate `/spec` changes (new branch or worktree) | Always works on the current branch |
 | **Ask Questions** | On | Asks clarifying questions during planning | Planning makes autonomous default choices |
 | **Plan Approval** | On | Requires your approval before implementation starts | Implementation begins automatically after planning |
-| **Model Switching** *(Claude Code only)* | On | Pauses after plan approval. Option A: run `/model sonnet[1m]`, type any prompt — resumes with planning context in the new model. Option B: run `/clear` then `/spec <plan path>` — fresh session, lower cost. | Plan → implement → verify runs continuously on whichever model is active |
+| **Model Switching** *(Claude Code only)* | On | Automatically runs `/spec` planning on Opus and implementation + verification on Sonnet (requires the `opusplan` model — see [Model Routing](model-routing)). No manual `/model` step. | The whole `/spec` workflow runs on Opus (`opus[1m]`) |
 
-With all four off, `/spec add user authentication` plans, implements, and verifies the feature end-to-end without checkpoints on whichever model is currently active.
+With all four off, `/spec add user authentication` plans, implements, and verifies the feature end-to-end without checkpoints, entirely on Opus.
 
 :::warning Token usage in autonomous mode
 No checkpoints means your agent executes the entire workflow without asking. Make sure your prompt is specific enough to avoid misinterpretation. You can always interrupt with Escape.

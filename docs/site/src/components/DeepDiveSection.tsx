@@ -323,7 +323,7 @@ const DeepDiveSection = () => {
               </h3>
               <p className="text-sm text-muted-foreground">
                 Opus for planning, Sonnet for implementation — the cost-saving
-                swap made ergonomic.
+                swap, fully automatic.
               </p>
             </div>
           </div>
@@ -332,44 +332,41 @@ const DeepDiveSection = () => {
             <div className="rounded-lg p-5 border border-violet-400/30 bg-violet-400/5">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-sm font-mono font-semibold text-violet-400 bg-violet-400/10 px-3 py-1 rounded-lg">
-                  /model opus
+                  /model opusplan
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  before /spec
+                  set once
                 </span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Planning is where deep reasoning pays off most. The
-                spec-mode-guard hook hard-blocks <code>/spec</code> on non-Opus
-                models so the foundation of every feature gets the best
-                reasoning hop.
+                Set the Opus Plan model once (Pilot persists it for you). Planning
+                is where deep reasoning pays off most, so <code>/spec</code> enters
+                plan mode and runs the planning leg on Opus automatically.
               </p>
             </div>
             <div className="rounded-lg p-5 border border-primary/30 bg-primary/5">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-sm font-mono font-semibold text-primary bg-primary/10 px-3 py-1 rounded-lg">
-                  /model sonnet
+                  Sonnet
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  before implementation
+                  automatic
                 </span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                When the plan is approved, Pilot pauses so you can pick the
-                model for the rest of the workflow. Run <code>/model …</code>{" "}
-                and send any prompt — implementation and verification resume
-                on the new model and run continuously from there.
+                When you approve the plan, Pilot drops to Sonnet automatically and
+                runs implementation and verification continuously — no manual{" "}
+                <code>/model</code> switch, no pause, no re-invoke.
               </p>
             </div>
           </div>
 
           <div className="rounded-lg p-4 border border-border/30 bg-card/20">
             <p className="text-xs text-muted-foreground text-center">
-              `/model` is the single switch — no separate per-phase dropdowns to
-              manage. The opt-out <strong>Model Switching</strong> automation
-              toggle pauses between planning and implementation; turn it off in
-              Console Settings → Automation to run the whole workflow on a
-              single model.
+              One model, set once — no per-phase dropdowns to manage. The opt-out{" "}
+              <strong>Model Switching</strong> automation flips Opus → Sonnet
+              between planning and implementation for you; turn it off in Console
+              Settings → Automation to run the whole workflow on Opus.
             </p>
           </div>
         </div>

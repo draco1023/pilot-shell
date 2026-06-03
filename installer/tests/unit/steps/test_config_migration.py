@@ -1447,11 +1447,6 @@ class TestMigrationV11:
 class TestMigrationV12:
     """Migration v11 → v12: Strip dead model keys, seed specWorkflow.modelSwitch, write .bak.v11 once."""
 
-    def test_current_version_is_12(self) -> None:
-        from installer.steps.config_migration import CURRENT_CONFIG_VERSION
-
-        assert CURRENT_CONFIG_VERSION == 12
-
     def test_v12_strips_dead_model_keys_and_seeds_model_switch(self, tmp_path: Path) -> None:
         from installer.steps.config_migration import migrate_model_config
 
@@ -1479,7 +1474,7 @@ class TestMigrationV12:
 
         assert result is True
         migrated = json.loads(config_path.read_text())
-        assert migrated["_configVersion"] == 12
+        assert migrated["_configVersion"] == 13
         for dead in ("model", "skills", "agents", "extendedContext", "extendedContextOverrides"):
             assert dead not in migrated, f"{dead} should have been pruned"
         assert migrated["specWorkflow"]["modelSwitch"] is True
@@ -1522,7 +1517,8 @@ class TestMigrationV12:
         assert first_backup == second_backup
         assert json.loads(first_backup) == original
 
-    def test_v12_idempotent_when_already_v12(self, tmp_path: Path) -> None:
+    def test_v12_config_migrates_forward_to_v13(self, tmp_path: Path) -> None:
+        """A config already at v12 still advances to v13 (force-on + version bump)."""
         from installer.steps.config_migration import migrate_model_config
 
         config_path = tmp_path / "config.json"
@@ -1536,7 +1532,10 @@ class TestMigrationV12:
         )
 
         result = migrate_model_config(config_path)
-        assert result is False
+        assert result is True
+        migrated = json.loads(config_path.read_text())
+        assert migrated["_configVersion"] == 13
+        assert migrated["specWorkflow"]["modelSwitch"] is True
 
     def test_v12_seeds_model_switch_when_specworkflow_missing(self, tmp_path: Path) -> None:
         from installer.steps.config_migration import migrate_model_config
@@ -1548,20 +1547,123 @@ class TestMigrationV12:
         migrated = json.loads(config_path.read_text())
         assert migrated["specWorkflow"]["modelSwitch"] is True
 
-    def test_v12_preserves_user_model_switch_false(self, tmp_path: Path) -> None:
-        """If user already set modelSwitch=false explicitly, do not overwrite to true."""
+    def test_v12_in_isolation_preserves_user_model_switch_false(self) -> None:
+        """v12 ALONE preserves an explicit modelSwitch=false (v13 is what force-enables)."""
+        from installer.steps.config_migration import _migration_v12
+
+        raw: dict = {"specWorkflow": {"modelSwitch": False, "branchIsolation": True}}
+        _migration_v12(raw)
+        assert raw["specWorkflow"]["modelSwitch"] is False
+
+
+class TestMigrationV13:
+    """Migration v12 -> v13: force-enable automated model switching + strip dead isolated-impl keys."""
+
+    def test_current_version_is_13(self) -> None:
+        from installer.steps.config_migration import CURRENT_CONFIG_VERSION
+
+        assert CURRENT_CONFIG_VERSION == 13
+
+    def test_v13_force_enables_model_switch_when_false(self) -> None:
+        """v13 overrides an explicit modelSwitch=false -> true (one-time force-on)."""
+        from installer.steps.config_migration import _migration_v13
+
+        raw: dict = {"specWorkflow": {"modelSwitch": False, "branchIsolation": True}}
+        modified = _migration_v13(raw)
+
+        assert modified is True
+        assert raw["specWorkflow"]["modelSwitch"] is True
+        assert raw["specWorkflow"]["branchIsolation"] is True
+
+    def test_v13_force_enables_when_specworkflow_missing(self) -> None:
+        from installer.steps.config_migration import _migration_v13
+
+        raw: dict = {}
+        modified = _migration_v13(raw)
+
+        assert modified is True
+        assert raw["specWorkflow"]["modelSwitch"] is True
+
+    def test_v13_no_change_when_already_true_and_no_dead_keys(self) -> None:
+        from installer.steps.config_migration import _migration_v13
+
+        raw: dict = {"specWorkflow": {"modelSwitch": True}}
+        modified = _migration_v13(raw)
+
+        assert modified is False
+        assert raw["specWorkflow"]["modelSwitch"] is True
+
+    def test_v13_strips_dead_isolated_impl_keys_when_model_switch_true(self) -> None:
+        """Dead keys from the reverted isolated-implementation plan are removed."""
+        from installer.steps.config_migration import _migration_v13
+
+        raw: dict = {
+            "specWorkflow": {
+                "modelSwitch": True,
+                "isolatedImplementation": False,
+                "implementationModel": "sonnet",
+                "branchIsolation": True,
+            }
+        }
+        modified = _migration_v13(raw)
+
+        assert modified is True
+        sw = raw["specWorkflow"]
+        assert "isolatedImplementation" not in sw
+        assert "implementationModel" not in sw
+        assert sw["modelSwitch"] is True
+        assert sw["branchIsolation"] is True
+
+    def test_v13_strips_dead_keys_and_force_enables_when_model_switch_false(self) -> None:
+        from installer.steps.config_migration import _migration_v13
+
+        raw: dict = {
+            "specWorkflow": {
+                "modelSwitch": False,
+                "isolatedImplementation": True,
+                "implementationModel": "opus",
+            }
+        }
+        modified = _migration_v13(raw)
+
+        assert modified is True
+        sw = raw["specWorkflow"]
+        assert "isolatedImplementation" not in sw
+        assert "implementationModel" not in sw
+        assert sw["modelSwitch"] is True
+
+    def test_full_migration_from_v12_false_forces_true_and_bumps_version(self, tmp_path: Path) -> None:
         from installer.steps.config_migration import migrate_model_config
 
         config_path = tmp_path / "config.json"
         config_path.write_text(
             json.dumps(
                 {
-                    "_configVersion": 11,
+                    "_configVersion": 12,
                     "specWorkflow": {"modelSwitch": False, "branchIsolation": True},
                 }
             )
         )
 
-        migrate_model_config(config_path)
+        result = migrate_model_config(config_path)
+
+        assert result is True
         migrated = json.loads(config_path.read_text())
-        assert migrated["specWorkflow"]["modelSwitch"] is False
+        assert migrated["_configVersion"] == 13
+        assert migrated["specWorkflow"]["modelSwitch"] is True
+
+    def test_v13_idempotent_when_already_v13(self, tmp_path: Path) -> None:
+        from installer.steps.config_migration import migrate_model_config
+
+        config_path = tmp_path / "config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "_configVersion": 13,
+                    "specWorkflow": {"modelSwitch": True, "branchIsolation": True},
+                }
+            )
+        )
+
+        result = migrate_model_config(config_path)
+        assert result is False

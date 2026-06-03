@@ -125,6 +125,36 @@ class TestContextOutput:
         assert captured.out == ""
 
 
+class TestCharsetEnforcement:
+    """Charset check runs for all non-Markdown text files, including types the
+    language checkers never open (shell, .cfg, Dockerfile, PHP, manifests)."""
+
+    def test_shell_file_decorative_char_surfaced(self, tmp_path, capsys):
+        """A shell file (never opened by language checkers) with an em-dash is flagged."""
+        sh_file = tmp_path / "deploy.sh"
+        sh_file.write_text("#!/bin/sh\necho 'start \u2014 done'\n")
+
+        with patch("sys.stdin", _make_stdin("Edit", str(sh_file))):
+            result = main()
+
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        context = output["hookSpecificOutput"]["additionalContext"]
+        assert "U+2014" in context
+        assert result == 0
+
+    def test_markdown_file_decorative_char_ignored(self, tmp_path, capsys):
+        """Markdown is excluded \u2014 decorative chars there produce no output."""
+        md_file = tmp_path / "notes.md"
+        md_file.write_text("A heading \u2014 with an em-dash is fine here.\n")
+
+        with patch("sys.stdin", _make_stdin("Edit", str(md_file))):
+            main()
+
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+
 class TestApplyPatchFormat:
     """Test Codex apply_patch tool_input format (command field instead of file_path)."""
 

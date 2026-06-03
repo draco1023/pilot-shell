@@ -1,18 +1,21 @@
 {
   "env": {
-    "CLAUDE_CODE_WORKFLOWS": "true",
-    "CLAUDE_CODE_NO_FLICKER": "true",
+    "ANTHROPIC_MODEL": "opusplan",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6[1m]",
+    "CLAUDE_CODE_DISABLE_1M_CONTEXT": "false",
     "CLAUDE_CODE_EFFORT_LEVEL": "xhigh",
+    "CLAUDE_CODE_WORKFLOWS": "true",
+    "CLAUDE_CODE_AUTO_CONNECT_IDE": "true",
+    "CLAUDE_CODE_NO_FLICKER": "true",
     "CLAUDE_CODE_ENABLE_TASKS": "true",
     "CLAUDE_CODE_HIDE_ACCOUNT_INFO": "true",
     "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "true",
-    "CLAUDE_CODE_DISABLE_WORKFLOWS": "false",
     "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "true",
     "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS": "true",
     "ENABLE_TOOL_SEARCH": "true",
     "ENABLE_LSP_TOOL": "true",
     "DISABLE_COMPACT": "false",
-    "ENABLE_EXPERIMENTAL_MCP_CLI": "false",
     "DISABLE_AUTO_COMPACT": "false",
     "DISABLE_MICROCOMPACT": "false",
     "DISABLE_AUTOUPDATER": "false",
@@ -109,6 +112,7 @@
     "commit": "",
     "pr": ""
   },
+  "model": "opusplan",
   "effortLevel": "xhigh",
   "viewMode": "verbose",
   "statusLine": {

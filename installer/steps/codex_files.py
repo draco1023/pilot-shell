@@ -55,7 +55,7 @@ def _label_mcp_servers(n: int) -> str | None:
 
 
 def _label_codex_rules(n: int) -> str | None:
-    return f"Merged {n} rule files into ~/.codex/AGENTS.md" if n else None
+    return f"Merged {n} rule files AGENTS.md" if n else None
 
 
 class _CodexReport:

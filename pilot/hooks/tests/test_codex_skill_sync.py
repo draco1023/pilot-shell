@@ -447,11 +447,13 @@ class TestSyncCodexEnvVars:
         with patch("codex_skill_sync.Path.home", return_value=tmp_path):
             count = _sync_codex_env_vars()
 
-        assert count == 8
+        assert count == 7
         content = codex_config.read_text()
         assert "[shell_environment_policy.set]" in content
         assert 'PILOT_PLAN_APPROVAL_ENABLED = "false"' in content
         assert 'PILOT_BRANCH_ISOLATION_ENABLED = "true"' in content
+        # Automated model switching is Claude-Code-only -- Codex never gets the var.
+        assert "PILOT_MODEL_SWITCH_ENABLED" not in content
         assert 'PILOT_PLAN_QUESTIONS_ENABLED = "true"' in content
 
     def test_writes_env_vars_to_codex_home_config(self, tmp_path: Path) -> None:
@@ -466,7 +468,7 @@ class TestSyncCodexEnvVars:
         ):
             count = _sync_codex_env_vars()
 
-        assert count == 8
+        assert count == 7
         assert 'PILOT_CHANGES_REVIEW_ENABLED = "true"' in codex_config.read_text()
         assert not (tmp_path / ".codex" / "config.toml").exists()
 

@@ -1623,6 +1623,92 @@ class TestBuildSkillMdFiles:
         assert (skill_dir / "SKILL.md").is_file()
         assert str(missing) in ctx.config.get("installed_files", [])
 
+    def test_urllib_fallback_retries_transient_5xx(self, tmp_path):
+        """A transient 502 on the urllib fallback retries and recovers (issue #158).
+
+        Regression: a single CDN 502 on a fragment download used to abort the
+        whole install with no retry, even though re-running succeeded.
+        """
+        import urllib.error
+        from unittest.mock import MagicMock, patch
+
+        from installer.steps.claude_files import ClaudeFilesStep
+
+        skills_dir = tmp_path / ".claude" / "skills"
+        skills_dir.mkdir(parents=True)
+        skill_dir = self._make_skill(skills_dir, "prd")
+        missing = skill_dir / "steps" / "01.md"
+        missing.unlink()
+
+        step = ClaudeFilesStep()
+        ui = MagicMock()
+        ctx = self._make_ctx(tmp_path)
+
+        ok_response = MagicMock()
+        ok_response.__enter__ = MagicMock(return_value=ok_response)
+        ok_response.__exit__ = MagicMock(return_value=False)
+        ok_response.status = 200
+        ok_response.read.return_value = b"## Step 1\n\nRecovered after 502."
+
+        # First attempt: transient CDN 502. Second attempt: succeeds.
+        urlopen_results = [
+            urllib.error.HTTPError("https://x/raw", 502, "Bad Gateway or Proxy Error", {}, None),  # type: ignore[arg-type]
+            ok_response,
+        ]
+
+        with (
+            patch("installer.steps.claude_files.Path.home", return_value=tmp_path),
+            patch(
+                "installer.steps.claude_files.get_claude_config_dir",
+                return_value=tmp_path / ".claude",
+            ),
+            patch("installer.steps.claude_files.download_file", return_value=False),
+            patch("installer.steps.claude_files.time.sleep"),
+            patch("urllib.request.urlopen", side_effect=urlopen_results) as mock_urlopen,
+        ):
+            step._build_skill_md_files(ctx, ui)
+
+        assert mock_urlopen.call_count == 2  # retried after the 502 instead of aborting
+        assert missing.is_file()
+        assert missing.read_bytes() == b"## Step 1\n\nRecovered after 502."
+        assert (skill_dir / "SKILL.md").is_file()
+        assert str(missing) in ctx.config.get("installed_files", [])
+
+    def test_urllib_fallback_fails_fast_on_4xx(self, tmp_path):
+        """A 404 means the file is genuinely missing — fail fast, never retry."""
+        import urllib.error
+        from unittest.mock import MagicMock, patch
+
+        import pytest
+
+        from installer.steps.claude_files import ClaudeFilesStep
+
+        skills_dir = tmp_path / ".claude" / "skills"
+        skills_dir.mkdir(parents=True)
+        skill_dir = self._make_skill(skills_dir, "prd")
+        (skill_dir / "steps" / "01.md").unlink()
+
+        step = ClaudeFilesStep()
+        ui = MagicMock()
+
+        not_found = urllib.error.HTTPError("https://x/raw", 404, "Not Found", {}, None)  # type: ignore[arg-type]
+
+        with (
+            patch("installer.steps.claude_files.Path.home", return_value=tmp_path),
+            patch(
+                "installer.steps.claude_files.get_claude_config_dir",
+                return_value=tmp_path / ".claude",
+            ),
+            patch("installer.steps.claude_files.download_file", return_value=False),
+            patch("installer.steps.claude_files.time.sleep") as mock_sleep,
+            patch("urllib.request.urlopen", side_effect=not_found) as mock_urlopen,
+        ):
+            with pytest.raises(RuntimeError):
+                step._build_skill_md_files(self._make_ctx(tmp_path), ui)
+
+        assert mock_urlopen.call_count == 1  # 4xx is not retried
+        mock_sleep.assert_not_called()
+
     def test_diagnostics_emitted_when_skill_build_fails(self, tmp_path):
         """After recovery cannot fix the skill, diagnostics print on-disk state and URLs."""
         from unittest.mock import MagicMock, patch

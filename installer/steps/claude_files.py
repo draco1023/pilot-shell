@@ -8,11 +8,14 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
 from installer.context import InstallContext
 from installer.downloads import (
+    MAX_RETRIES,
+    RETRY_BACKOFF,
     DownloadConfig,
     FileInfo,
     download_file,
@@ -815,22 +818,45 @@ class ClaudeFilesStep(BaseStep):
         file_url = f"{config.repo_url}/raw/{config.repo_branch}/{repo_path}"
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
-            request = urllib.request.Request(file_url)
-            with urllib.request.urlopen(request, timeout=60.0, context=_get_ssl_context()) as response:
-                status = getattr(response, "status", None)
-                if status != 200:
-                    if ui:
-                        ui.error(f"  diagnostic: {file_url} returned HTTP {status}")
-                    return False
-                body = response.read()
-        except urllib.error.HTTPError as e:
+        except OSError as e:
             if ui:
-                ui.error(f"  diagnostic: {file_url} HTTPError {e.code} {e.reason}")
+                ui.error(f"  diagnostic: mkdir {dest.parent} failed: {type(e).__name__}: {e}")
             return False
-        except (urllib.error.URLError, OSError, TimeoutError) as e:
-            if ui:
-                ui.error(f"  diagnostic: {file_url} {type(e).__name__}: {e}")
-            return False
+
+        # Retry transient failures (5xx CDN hiccups, network blips) before giving
+        # up — a single 502 here used to abort the whole install (issue #158).
+        # Mirrors download_file's backoff so the final recovery stage is at least
+        # as resilient as the parallel-install path it falls back from.
+        body = b""
+        for attempt in range(MAX_RETRIES):
+            try:
+                request = urllib.request.Request(file_url)
+                with urllib.request.urlopen(request, timeout=60.0, context=_get_ssl_context()) as response:
+                    status = getattr(response, "status", None)
+                    if status != 200:
+                        if attempt < MAX_RETRIES - 1:
+                            time.sleep(RETRY_BACKOFF[min(attempt, len(RETRY_BACKOFF) - 1)])
+                            continue
+                        if ui:
+                            ui.error(f"  diagnostic: {file_url} returned HTTP {status}")
+                        return False
+                    body = response.read()
+                break
+            except urllib.error.HTTPError as e:
+                # 4xx → file genuinely missing, fail fast. 5xx → CDN hiccup, retry.
+                if 500 <= e.code < 600 and attempt < MAX_RETRIES - 1:
+                    time.sleep(RETRY_BACKOFF[min(attempt, len(RETRY_BACKOFF) - 1)])
+                    continue
+                if ui:
+                    ui.error(f"  diagnostic: {file_url} HTTPError {e.code} {e.reason}")
+                return False
+            except (urllib.error.URLError, OSError, TimeoutError) as e:
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(RETRY_BACKOFF[min(attempt, len(RETRY_BACKOFF) - 1)])
+                    continue
+                if ui:
+                    ui.error(f"  diagnostic: {file_url} {type(e).__name__}: {e}")
+                return False
 
         if not body:
             if ui:

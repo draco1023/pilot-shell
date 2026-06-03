@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-CURRENT_CONFIG_VERSION = 12
+CURRENT_CONFIG_VERSION = 13
 
 _STALE_AGENT_KEYS = frozenset(
     {
@@ -112,6 +112,9 @@ def migrate_model_config(
 
     if version < 12:
         modified = _migration_v12(raw) or modified
+
+    if version < 13:
+        modified = _migration_v13(raw) or modified
 
     if raw.get("_configVersion") != CURRENT_CONFIG_VERSION:
         raw["_configVersion"] = CURRENT_CONFIG_VERSION
@@ -534,6 +537,41 @@ def _migration_v12(raw: dict[str, Any]) -> bool:
         raw["specWorkflow"] = spec_workflow
         modified = True
     if "modelSwitch" not in spec_workflow:
+        spec_workflow["modelSwitch"] = True
+        modified = True
+
+    return modified
+
+
+def _migration_v13(raw: dict[str, Any]) -> bool:
+    """v12 -> v13: force-enable automated model switching; strip dead isolated-impl keys.
+
+    Two changes:
+    1. Force-enables specWorkflow.modelSwitch=True for all users. The toggle now
+       drives AUTOMATED switching (Opus planning via plan mode, Sonnet for
+       implementation + verification), replacing the old manual /clear + /model
+       handoff. Force-on so users who disabled the old manual handoff get the new
+       automated flow. The accompanying one-time announcement explains how to turn
+       it off (Console -> Settings -> Automation) for users who want Opus everywhere.
+    2. Removes specWorkflow.isolatedImplementation and specWorkflow.implementationModel
+       -- dead keys left by the reverted "isolated implementation via context:fork"
+       plan (config schema v12 cycle). The validator flags them as unknown; this
+       migration cleans them up so existing installs stop emitting warnings.
+    """
+    modified = False
+
+    spec_workflow = raw.get("specWorkflow")
+    if not isinstance(spec_workflow, dict):
+        spec_workflow = {}
+        raw["specWorkflow"] = spec_workflow
+        modified = True
+
+    for dead_key in ("isolatedImplementation", "implementationModel"):
+        if dead_key in spec_workflow:
+            del spec_workflow[dead_key]
+            modified = True
+
+    if spec_workflow.get("modelSwitch") is not True:
         spec_workflow["modelSwitch"] = True
         modified = True
 
