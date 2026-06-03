@@ -8,7 +8,7 @@ description: Production-tested rules and standards loaded into every Claude Code
 
 Production-tested best practices loaded into every session.
 
-Rules load automatically at session start — enforced standards, not suggestions. Pilot ships 10 built-in rules plus 5 coding standards activated by file type.
+Rules load automatically at session start — enforced standards, not suggestions. Pilot ships 10 built-in rules plus 7 coding standards activated by file type.
 
 - **Claude Code:** rules in `~/.claude/rules/` (global) and `.claude/rules/` (project). Project rules take precedence.
 - **Codex:** rules delivered via `~/.codex/AGENTS.md`, adapted from the same source. Custom rules work the same way.
@@ -42,7 +42,9 @@ Run `/setup-rules` (or `$setup-rules` on Codex) to generate project-specific rul
 | Python | `*.py` | uv, pytest, ruff, basedpyright, type hints |
 | TypeScript | `*.ts, *.tsx, *.js, *.jsx` | npm/pnpm, Jest, ESLint, Prettier, React patterns |
 | Go | `*.go` | Modules, testing, formatting, error handling |
+| .NET | `*.cs, *.csproj, *.sln` | dotnet CLI, format gate, nullable, analyzers, test traits |
 | Frontend | `*.tsx, *.jsx, *.html, *.vue, *.css` | Components, CSS, accessibility, responsive design |
+| Blazor | `*.razor, *.razor.css, *.razor.cs` | Components, CSS isolation, render modes, lifecycle |
 | Backend | `**/models/**, **/routes/**, **/api/**` | API design, data models, query optimization, migrations |
 
 :::tip Custom rules

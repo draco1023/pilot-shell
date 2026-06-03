@@ -24,6 +24,7 @@ from _checkers.tdd import (
     has_python_test_file,
     has_related_failing_test,
     has_typescript_test_file,
+    is_dotnet_logic_free,
     is_test_file,
     is_trivial_edit,
     should_skip,
@@ -69,6 +70,8 @@ def _tdd_check(tool_name: str, tool_input: dict, file_path: str) -> str:
 
     if file_path.endswith((".cs", ".razor")):
         if has_dotnet_test_file(file_path):
+            return ""
+        if is_dotnet_logic_free(file_path):
             return ""
         class_name = Path(file_path).stem
         return f"TDD Reminder: No test file found for '{class_name}'\n    Consider creating {class_name}Tests.cs first."

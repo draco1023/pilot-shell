@@ -401,6 +401,128 @@ def has_test_importing_module_dotnet(impl_path: str) -> bool:
     return False
 
 
+def _strip_cs_comments_and_strings(src: str) -> str:
+    """Remove C# comments and string/char literals.
+
+    Braces, '=>', and keywords inside comments or string/char literals must not
+    drive logic detection. Verbatim (@"..."), interpolated ($"..."), and regular
+    strings are all reduced to empty content.
+    """
+    out: list[str] = []
+    i, n = 0, len(src)
+    while i < n:
+        c = src[i]
+        # Line comment // ... (also covers /// XML doc)
+        if c == "/" and i + 1 < n and src[i + 1] == "/":
+            j = src.find("\n", i)
+            if j == -1:
+                break
+            i = j
+            continue
+        # Block comment /* ... */
+        if c == "/" and i + 1 < n and src[i + 1] == "*":
+            j = src.find("*/", i + 2)
+            i = n if j == -1 else j + 2
+            continue
+        # Verbatim string @"..." with doubled "" escapes
+        if c == "@" and i + 1 < n and src[i + 1] == '"':
+            i += 2
+            while i < n:
+                if src[i] == '"':
+                    if i + 1 < n and src[i + 1] == '"':
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            continue
+        # Regular / interpolated string "..." (the $ before it falls through to here)
+        if c == '"':
+            i += 1
+            while i < n:
+                if src[i] == "\\":
+                    i += 2
+                    continue
+                if src[i] == '"':
+                    i += 1
+                    break
+                i += 1
+            continue
+        # Char literal '.'
+        if c == "'":
+            i += 1
+            while i < n:
+                if src[i] == "\\":
+                    i += 2
+                    continue
+                if src[i] == "'":
+                    i += 1
+                    break
+                i += 1
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+# Reserved statement keywords whose presence implies executable logic. All are
+# reserved (or contextual) C# keywords, so they cannot appear as PascalCase type
+# or member names — matching lowercase \b…\b is safe against identifiers.
+_CS_LOGIC_KEYWORDS = re.compile(r"\b(return|if|for|foreach|while|switch|try|throw|await|yield|goto|do)\b")
+_CS_TYPE_KEYWORDS = re.compile(r"\b(interface|enum|record|class|struct)\b")
+# A type header's own primary-constructor parameter list, so `record Foo(...) { props }`
+# and `class Foo(...)` are not misread as a method/constructor body.
+_CS_PRIMARY_CTOR = re.compile(r"\b(?:record|class|struct|interface)\s+\w+(?:\s*<[^>]*>)?\s*\([^)]*\)")
+
+
+def is_dotnet_logic_free(impl_path: str) -> bool:
+    """Conservatively report whether a C# file is provably free of testable logic.
+
+    True ⇒ the file is only interfaces (signatures), enums, positional records, or
+    POCO/DTO classes whose members are auto-properties/fields/constants — safe to
+    skip the TDD reminder. Any sign of executable logic, or any inability to read
+    the file, returns False (keep enforcing). `.razor` is never treated as logic-free.
+    """
+    # Only plain .cs. .razor (and components in general) carry logic in markup/@code.
+    if not impl_path.endswith(".cs"):
+        return False
+
+    try:
+        raw = Path(impl_path).read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
+
+    code = _strip_cs_comments_and_strings(raw)
+
+    # Must contain at least one type declaration; otherwise (e.g. assembly-info,
+    # top-level statements) treat as ambiguous and enforce.
+    if not _CS_TYPE_KEYWORDS.search(code):
+        return False
+
+    # Expression-bodied member / lambda.
+    if "=>" in code:
+        return False
+
+    # Statement keyword anywhere ⇒ executable logic.
+    if _CS_LOGIC_KEYWORDS.search(code):
+        return False
+
+    # Manual accessor body (get/set/init { … }) — also catches default interface
+    # methods written as accessors. Auto-properties use `get;` and never match.
+    if re.search(r"\b(?:get|set|init)\b\s*\{", code):
+        return False
+
+    # Method / constructor / control body: a ')' immediately followed by '{',
+    # after stripping the type header's primary-constructor parameter list.
+    # Note: field/property initializers (`= new()`, `= Factory()`) are deliberately
+    # NOT treated as own-logic — only method/accessor/ctor bodies are. Treating `= …(`
+    # as logic would false-enforce on idiomatic DTOs with collection initializers.
+    if re.search(r"\)\s*\{", _CS_PRIMARY_CTOR.sub(" ", code)):
+        return False
+
+    return True
+
+
 def _is_import_line(line: str) -> bool:
     """Check if a line is part of an import statement."""
     if line.startswith(("import ", "from ")):
@@ -541,6 +663,9 @@ def run_tdd_enforcer() -> int:
             return 0
 
         if has_test_importing_module_dotnet(file_path):
+            return 0
+
+        if is_dotnet_logic_free(file_path):
             return 0
 
         return warn(

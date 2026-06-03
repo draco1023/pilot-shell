@@ -5,81 +5,64 @@ paths:
   - "**/*.sln"
 ---
 
-## .NET Development Standards
+## .NET / C# Development Standards
 
-**Standards:** Always use dotnet CLI  | dotnet format for quality | Self-documenting code
+**Standards:** `dotnet` CLI for everything | quiet output | analyzers + nullable enforced | self-documenting code.
 
-### CLI Usage
-
-**MANDATORY: Use `dotnet` CLI for all operations.**
+### Tooling
 
 ```bash
-dotnet build
-dotnet run --project src/MyApp
-dotnet test
-dotnet add package PackageName
+dotnet build                                         # build
+dotnet run --project src/MyApp                       # run
+dotnet test -v q                                     # quiet (preferred); AVOID -v d/diag unless debugging
+dotnet test --filter "Category=Unit"                 # run a single category
+dotnet format                                        # format
+dotnet format --verify-no-changes                    # format check (CI)
+dotnet add package <Name>                            # add a dependency (never hand-edit version pins blindly)
 ```
 
-### Testing & Quality
+### Project Configuration (enforce in `.csproj` / `Directory.Build.props`)
 
-**Use minimal output flags to avoid context bloat.**
+- `<Nullable>enable</Nullable>` — fix nullable warnings, don't suppress with `null!`
+- `<ImplicitUsings>enable</ImplicitUsings>`
+- `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` — warnings fail the build
+- `<EnableNETAnalyzers>true</EnableNETAnalyzers>` with `<AnalysisLevel>latest-recommended</AnalysisLevel>`
+- Categorize tests (unit vs integration) using your test framework's category attribute
 
-```bash
-dotnet test -v q                                     # Quiet mode (preferred)
-# AVOID -v d, -v diag unless actively debugging
+### Reminders
 
-dotnet format                                        # Format
-dotnet format --verify-no-changes                    # Check formatting (CI)
-```
+- **Async:** `async Task` over `async void`; never block on async (`.Result` / `.Wait()` / `GetAwaiter().GetResult()`).
+- **HTTP:** `IHttpClientFactory` / typed clients — never `new HttpClient()` (socket exhaustion).
+- **Exceptions:** catch specific types; re-throw with `throw;` (preserves the stack), never `throw ex;`.
+- **Logging:** inject `ILogger<T>`; structured templates (`Log.Information("Order {OrderId}", id)`), not interpolation.
 
-### Code Style
+### ASP.NET
 
-- **XML docs:** One-line `<summary>` for most members. Multi-line only for complex logic. Skip when name is self-explanatory.
-- **Naming:** PascalCase for public members, `camelCase` for private fields, camelCase for locals/parameters.
-- **Usings:** `global using` for common namespaces. File-scoped namespaces preferred (`namespace MyApp;`).
-- **Comments:** Only for complex algorithms, non-obvious logic, or workarounds.
+- Minimal APIs for simple endpoints; controllers when you need shared filters/conventions.
+- Bind config to `IOptions<T>` instead of reading `IConfiguration` in services.
+- Return `ProblemDetails` for errors; configure `app.UseExceptionHandler()` (no stack traces in prod).
+- Policy-based authorization (`[Authorize(Policy = "...")]`); keep auth logic out of controllers.
 
-### Common Patterns
+### Testing & Mocking
 
-- **No bare `catch`:** Catch specific exceptions, log, and re-throw with `throw;` (not `throw ex;`)
-- **IDisposable:** `using var stream = new FileStream(...)` for resources
-- **Async all the way:** `async Task` over `async void`. Suffix async methods with `Async`. **Never block on async code** — no `.Result`, `.Wait()`, or `GetAwaiter().GetResult()` in application code. Use `await` instead.
-- **Null-safe patterns:** Enable `<Nullable>enable</Nullable>`. Use `string?` for nullable, never `null!` without justification. Prefer null-conditional (`?.`), null-coalescing (`??`, `??=`), and `is not null` checks. Avoid `== null` comparisons.
-- **Records for DTOs:** `public record OrderDto(string Name, decimal Price);`
-- **Pattern matching:** Prefer `is`, `switch` expressions over chains of `if`/`else`
+Use constructor injection + interfaces so dependencies can be substituted in tests:
 
-### Project Configuration
+| Dependency | Substitute with |
+|------------|-----------------|
+| HTTP | `IHttpClientFactory` (or a fake `HttpMessageHandler`) |
+| File I/O | `IFileSystem` (System.IO.Abstractions) |
+| Database | `DbContext` in-memory provider, or a mocked repository interface |
+| Time | `TimeProvider` (.NET 8+) or `IClock` — never `DateTime.Now` directly |
+| Config | `IOptions<T>` — `Options.Create(new MyOptions { ... })` |
 
-- .NET 8+ (`<TargetFramework>net8.0</TargetFramework>` or newer)
-- Dependencies in `.csproj`
-- Enable `<ImplicitUsings>enable</ImplicitUsings>`
-- Enable `<Nullable>enable</Nullable>`
-- Enable `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` — all warnings are build failures
-- Enable built-in analyzers: `<EnableNETAnalyzers>true</EnableNETAnalyzers>` with `<AnalysisLevel>latest-recommended</AnalysisLevel>`
-- Use `[Trait("Category", "Unit")]` and `[Trait("Category", "Integration")]` for test categorization
-
-### ASP.NET Best Practices
-
-- **Minimal APIs** for simple endpoints; controllers for complex domains with shared filters/conventions.
-- **Dependency injection:** Register services in `Program.cs`. Use `AddScoped` for request-scoped, `AddSingleton` for stateless services. Never resolve via `IServiceProvider` manually unless in a factory.
-- **Configuration:** Bind to strongly-typed options via `IOptions<T>` / `IOptionsSnapshot<T>`. Never read `IConfiguration` directly in services.
-- **Middleware order matters:** Authentication → Authorization → CORS → Routing → Endpoints. Place custom middleware deliberately.
-- **Validation:** Use `FluentValidation` or Data Annotations. Validate at the API boundary, not deep in domain logic.
-- **Error handling:** Use `ProblemDetails` for consistent error responses. Configure `app.UseExceptionHandler()` — never leak stack traces in production.
-- **Logging:** Inject `ILogger<T>`. Use structured logging with message templates (`Log.Information("Order {OrderId} placed", id)`). Never string-interpolate log messages.
-- **HTTP clients:** Use `IHttpClientFactory` / typed clients. Never `new HttpClient()` directly — causes socket exhaustion.
-- **Authentication/Authorization:** Use policy-based authorization (`[Authorize(Policy = "Admin")]`). Keep auth logic out of controllers.
-- **Response caching & compression:** Enable `ResponseCompression` middleware. Use `[ResponseCache]` or output caching where appropriate.
-- **Health checks:** Register `app.MapHealthChecks("/health")` for readiness/liveness probes.
-- **CORS:** Configure explicitly with named policies. Never use `AllowAnyOrigin` + `AllowCredentials` together.
+- ASP.NET integration tests: `WebApplicationFactory<Program>`.
+- Don't share mutable state across tests; use your framework's setup/teardown lifecycle for async init/cleanup and dispose fixtures (connections, temp files).
+- Prefer `TaskCompletionSource` over polling/`Task.Delay` when waiting on async results.
 
 ### Verification Checklist
 
-- [ ] `dotnet build` — compiles clean (zero warnings, TreatWarningsAsErrors enforced)
-- [ ] `dotnet test` — tests pass
-- [ ] No analyzer violations
+- [ ] `dotnet build` — clean (zero warnings; `TreatWarningsAsErrors`)
+- [ ] `dotnet test` — pass
 - [ ] `dotnet format --verify-no-changes` — formatted
-- [ ] No nullable warnings
-- [ ] Coverage ≥ 80%
-- [ ] No unused usings
+- [ ] No analyzer / nullable warnings
 - [ ] Production files ideally under 800 lines (1000+ = consider splitting)

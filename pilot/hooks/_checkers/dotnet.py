@@ -1,9 +1,8 @@
-"""Dotnet file checker — dotnet build, dotnet format."""
+"""Dotnet file checker — single-file dotnet format check (no per-edit build)."""
 
 from __future__ import annotations
 
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -49,7 +48,7 @@ def _find_nearest_csproj(file_path: Path) -> Path | None:
 
 
 def check_dotnet(file_path: Path) -> tuple[int, str]:
-    """Check .NET file with dotnet build and dotnet format. Returns (0, reason)."""
+    """Check .NET file with a single-file `dotnet format`. Returns (0, reason)."""
     if file_path.stem.endswith("Tests") or file_path.stem.endswith("Test"):
         return 0, ""
     if ".Tests" in str(file_path) or ".Test" in str(file_path):
@@ -70,8 +69,7 @@ def check_dotnet(file_path: Path) -> tuple[int, str]:
     results: dict[str, tuple] = {}
     has_issues = False
 
-    has_issues, results = _run_dotnet_build(dotnet_bin, csproj, project_root, has_issues, results)
-    has_issues, results = _run_dotnet_format(dotnet_bin, csproj, project_root, has_issues, results)
+    has_issues, results = _run_dotnet_format(dotnet_bin, csproj, project_root, file_path, has_issues, results)
 
     if has_issues:
         parts = []
@@ -88,62 +86,25 @@ def check_dotnet(file_path: Path) -> tuple[int, str]:
     return 0, length_warning
 
 
-def _run_dotnet_build(
-    dotnet_bin: str,
-    csproj: Path | None,
-    project_root: Path,
-    has_issues: bool,
-    results: dict[str, tuple],
-) -> tuple[bool, dict[str, tuple]]:
-    """Run dotnet build and collect errors/warnings."""
-    try:
-        cmd = [dotnet_bin, "build", "--no-restore", "--nologo", "-v", "q"]
-        if csproj:
-            cmd.append(str(csproj))
-
-        debug_log(f"Running: {' '.join(cmd)}")
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,
-            cwd=project_root,
-            timeout=120,
-        )
-        output = result.stdout + result.stderr
-        debug_log(f"Build exit code: {result.returncode}")
-
-        # Match lines like: File.cs(10,5): error CS1002: ; expected
-        error_pattern = re.compile(r": (error|warning) [A-Z]{1,5}\d+:")
-        issue_lines = [
-            line.strip()
-            for line in output.splitlines()
-            if error_pattern.search(line)
-        ]
-        if issue_lines:
-            has_issues = True
-            errors = len([l for l in issue_lines if ": error " in l])
-            warnings = len([l for l in issue_lines if ": warning " in l])
-            results["build"] = (errors + warnings, issue_lines)
-    except subprocess.TimeoutExpired:
-        debug_log("Build timed out")
-    except Exception:
-        pass
-    return has_issues, results
-
-
 def _run_dotnet_format(
     dotnet_bin: str,
     csproj: Path | None,
     project_root: Path,
+    file_path: Path,
     has_issues: bool,
     results: dict[str, tuple],
 ) -> tuple[bool, dict[str, tuple]]:
-    """Run dotnet format --verify-no-changes and collect results."""
+    """Run dotnet format --verify-no-changes scoped to the edited file and collect results."""
     try:
         cmd = [dotnet_bin, "format", "--verify-no-changes", "--no-restore", "--verbosity", "q"]
         if csproj:
             cmd.append(str(csproj))
+
+        try:
+            include_path = file_path.relative_to(project_root)
+        except ValueError:
+            include_path = file_path
+        cmd.extend(["--include", str(include_path)])
 
         debug_log(f"Running: {' '.join(cmd)}")
         result = subprocess.run(
@@ -186,17 +147,6 @@ def _format_dotnet_issues(file_path: Path, results: dict[str, tuple]) -> str:
     except ValueError:
         display_path = file_path
     lines.append(f".NET Issues found in: {display_path}")
-
-    if "build" in results:
-        count, issue_lines = results["build"]
-        errors = len([l for l in issue_lines if ": error " in l])
-        warnings = len([l for l in issue_lines if ": warning " in l])
-        plural = "issue" if count == 1 else "issues"
-        lines.append(f"Build: {count} {plural} ({errors} errors, {warnings} warnings)")
-        for line in issue_lines[:10]:
-            lines.append(f"  {line}")
-        if count > 10:
-            lines.append(f"  ... and {count - 10} more issues")
 
     if "format" in results:
         count, format_lines = results["format"]

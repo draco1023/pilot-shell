@@ -16,6 +16,7 @@ from _checkers.tdd import (
     has_test_importing_module,
     has_test_importing_module_ts,
     has_typescript_test_file,
+    is_dotnet_logic_free,
     is_test_file,
     is_trivial_edit,
     run_tdd_enforcer,
@@ -563,3 +564,149 @@ class TestSoftenedWarnText:
         data = json.loads(captured.out)
         assert "Consider creating test_" not in data["reason"]
         assert "Test Parsimony" in data["reason"]
+
+
+class TestIsDotnetLogicFree:
+    """Conservative detector: True only for provably logic-free C# (skip TDD); enforce on any doubt."""
+
+    def _write(self, tmp_path: Path, name: str, body: str) -> str:
+        f = tmp_path / name
+        f.write_text(body)
+        return str(f)
+
+    # --- True: provably logic-free (skip the TDD reminder) ---
+
+    def test_interface_signatures_only_is_logic_free(self, tmp_path: Path):
+        path = self._write(
+            tmp_path,
+            "IRepository.cs",
+            "namespace App;\npublic interface IRepository\n{\n    Task<int> CountAsync();\n    string Name { get; }\n}\n",
+        )
+        assert is_dotnet_logic_free(path) is True
+
+    def test_enum_only_is_logic_free(self, tmp_path: Path):
+        path = self._write(tmp_path, "Status.cs", "namespace App;\npublic enum Status { Active, Disabled, Pending }\n")
+        assert is_dotnet_logic_free(path) is True
+
+    def test_positional_record_is_logic_free(self, tmp_path: Path):
+        path = self._write(tmp_path, "PersonDto.cs", "namespace App;\npublic record PersonDto(string First, int Age);\n")
+        assert is_dotnet_logic_free(path) is True
+
+    def test_poco_auto_properties_and_fields_is_logic_free(self, tmp_path: Path):
+        body = (
+            "namespace App;\n"
+            "public class Order\n"
+            "{\n"
+            "    public const int MaxItems = 100;\n"
+            "    public int Id { get; set; }\n"
+            "    public string Name { get; init; }\n"
+            "    private readonly string _tag;\n"
+            "}\n"
+        )
+        path = self._write(tmp_path, "Order.cs", body)
+        assert is_dotnet_logic_free(path) is True
+
+    def test_poco_with_collection_initializer_is_logic_free(self, tmp_path: Path):
+        """Field/property initializers (`= new()`, `= Factory()`) are not own-logic — DTO stays logic-free."""
+        body = (
+            "namespace App;\n"
+            "public class Bag\n"
+            "{\n"
+            "    public List<string> Tags { get; set; } = new();\n"
+            "    private static readonly int _max = Compute();\n"
+            "}\n"
+        )
+        path = self._write(tmp_path, "Bag.cs", body)
+        assert is_dotnet_logic_free(path) is True
+
+    def test_xml_doc_comment_with_example_code_is_still_logic_free(self, tmp_path: Path):
+        """Comment stripping: example code in /// must not force enforcement on a pure DTO."""
+        body = (
+            "namespace App;\n"
+            "/// <summary>A point.</summary>\n"
+            "/// <example>if (x) { return Foo(); } => bar</example>\n"
+            "public record Point(int X, int Y);\n"
+        )
+        path = self._write(tmp_path, "Point.cs", body)
+        assert is_dotnet_logic_free(path) is True
+
+    def test_string_literal_does_not_force_skip_when_real_logic_present(self, tmp_path: Path):
+        """A method body is real logic even if a string literal contains '}' — enforce."""
+        body = (
+            'namespace App;\n'
+            'public class Greeter\n'
+            '{\n'
+            '    public string Hi() { return "}"; }\n'
+            '}\n'
+        )
+        path = self._write(tmp_path, "Greeter.cs", body)
+        assert is_dotnet_logic_free(path) is False
+
+    # --- False: any logic signal keeps enforcement ---
+
+    def test_class_with_method_body_enforces(self, tmp_path: Path):
+        body = "namespace App;\npublic class Calc\n{\n    public int Add(int a, int b)\n    {\n        return a + b;\n    }\n}\n"
+        path = self._write(tmp_path, "Calc.cs", body)
+        assert is_dotnet_logic_free(path) is False
+
+    def test_expression_bodied_property_over_backing_field_enforces(self, tmp_path: Path):
+        body = (
+            "namespace App;\n"
+            "public class Name\n"
+            "{\n"
+            "    private string _name;\n"
+            "    public string Value => _name;\n"
+            "}\n"
+        )
+        path = self._write(tmp_path, "Name.cs", body)
+        assert is_dotnet_logic_free(path) is False
+
+    def test_manual_get_accessor_body_enforces(self, tmp_path: Path):
+        body = (
+            "namespace App;\n"
+            "public class Temp\n"
+            "{\n"
+            "    private int _c;\n"
+            "    public int Celsius { get { return _c; } set { _c = value; } }\n"
+            "}\n"
+        )
+        path = self._write(tmp_path, "Temp.cs", body)
+        assert is_dotnet_logic_free(path) is False
+
+    def test_constructor_body_enforces(self, tmp_path: Path):
+        body = (
+            "namespace App;\n"
+            "public class Widget\n"
+            "{\n"
+            "    public int Id { get; set; }\n"
+            "    public Widget(int id)\n"
+            "    {\n"
+            "        Id = id;\n"
+            "    }\n"
+            "}\n"
+        )
+        path = self._write(tmp_path, "Widget.cs", body)
+        assert is_dotnet_logic_free(path) is False
+
+    def test_default_interface_method_with_body_enforces(self, tmp_path: Path):
+        body = (
+            "namespace App;\n"
+            "public interface IGreeter\n"
+            "{\n"
+            "    string Hello() => \"hi\";\n"
+            "}\n"
+        )
+        path = self._write(tmp_path, "IGreeter.cs", body)
+        assert is_dotnet_logic_free(path) is False
+
+    def test_razor_is_never_logic_free(self, tmp_path: Path):
+        path = self._write(tmp_path, "Counter.razor", "<h1>Count</h1>\n")
+        assert is_dotnet_logic_free(path) is False
+
+    def test_missing_file_enforces(self, tmp_path: Path):
+        assert is_dotnet_logic_free(str(tmp_path / "DoesNotExist.cs")) is False
+
+    def test_no_type_declaration_enforces(self, tmp_path: Path):
+        """A .cs file with only usings/attributes (no type) is ambiguous — enforce."""
+        path = self._write(tmp_path, "AssemblyInfo.cs", "using System;\n[assembly: System.Reflection.AssemblyVersion(\"1.0\")]\n")
+        assert is_dotnet_logic_free(path) is False

@@ -48,7 +48,7 @@ Blocking hooks reject actions or force fixes before they land. Non-blocking hook
 
 | Hook | Description |
 |------|-------------|
-| `file_checker.py` | Linting (ruff/ESLint/go vet) and TDD enforcement — warns when editing without a failing test |
+| `file_checker.py` | Linting (ruff/ESLint/go vet/dotnet format) and TDD enforcement — warns when editing without a failing test |
 | `context_monitor.py` | Tracks context usage 0–100%, warns as compaction approaches |
 | Memory observer | Saves decisions, discoveries, and bugfixes to persistent memory (async) |
 
