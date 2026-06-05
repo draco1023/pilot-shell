@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.3.2] - 2026-06-05
+
+### Bug Fixes
+
+- Bugfixes for Spec, Hooks and Statusline
+
 ## [9.3.1] - 2026-06-03
 
 ### Bug Fixes
