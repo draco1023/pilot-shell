@@ -6,17 +6,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/license_check.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/license_check.py\"",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/codegraph_init.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/codegraph_init.py\"",
             "timeout": 120
           },
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/codex_skill_sync.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/codex_skill_sync.py\"",
             "timeout": 30
           }
         ]
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/session_clear.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/session_clear.py\"",
             "timeout": 5
           }
         ]
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/post_compact_restore.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/post_compact_restore.py\"",
             "timeout": 5
           }
         ]
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/tool_token_saver.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/tool_token_saver.py\"",
             "timeout": 5
           }
         ]
@@ -81,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/file_checker.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/file_checker.py\"",
             "timeout": 5
           }
         ]
@@ -91,7 +91,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/context_monitor.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/context_monitor.py\"",
             "timeout": 3
           }
         ]
@@ -112,7 +112,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/spec_stop_guard.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/spec_stop_guard.py\"",
             "timeout": 5
           },
           {
@@ -122,7 +122,7 @@
           },
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/session_end.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/session_end.py\"",
             "timeout": 5
           }
         ]
@@ -133,7 +133,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project python \"$HOME/.pilot/hooks/pre_compact.py\"",
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/pre_compact.py\"",
             "timeout": 15
           }
         ]

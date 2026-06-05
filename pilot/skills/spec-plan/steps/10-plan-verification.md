@@ -29,6 +29,8 @@ If anything matches, fix it inline (no new round-trip needed). Then proceed to s
 
 **Auto-skip the Claude reviewer for small plans.** If the plan has **task count ≤ 2** AND it does NOT touch security, authentication, data integrity, or destructive operations, skip the Claude reviewer launch — reviewer overhead exceeds value for a change the implementer can audit by inspection. Continue to the Codex section below; Codex still runs **only** when the user has explicitly opted in via `PILOT_CODEX_SPEC_REVIEW_ENABLED`.
 
+⛔ **Auto-skip scope is the reviewer agent only.** Skipping the Claude reviewer does NOT skip Step 11 (annotation check) or Step 12 (user approval) — those steps always run regardless of plan size. After completing this step (reviewer skipped or not), you MUST continue to Step 11.
+
 For 3+ task plans, OR any plan touching sensitive surfaces regardless of task count, run the Claude reviewer below in full.
 
 **When running:** Run spec-review for every applicable feature spec. Missing edge cases and unclear DoD criteria are size-independent once the plan crosses the size gate.
@@ -110,7 +112,7 @@ CONTEXT_FILES=$(printf -- '- %s\n' \
 
 PLAN_PATH="$PLAN_PATH" PLAN_GOAL="$PLAN_GOAL" CONTEXT_FILES="$CONTEXT_FILES" \
 PROMPT_TEMPLATE="$PROMPT_TEMPLATE" PROMPT_FILE="$PROMPT_FILE" \
-uv run --no-project python -c '
+uv run --no-project --python python3 python -c '
 import os, pathlib
 text = pathlib.Path(os.environ["PROMPT_TEMPLATE"]).read_text()
 for key in ("PLAN_PATH", "PLAN_GOAL", "CONTEXT_FILES"):
@@ -179,7 +181,7 @@ The completion notification arrives automatically as a mid-turn tool-result-styl
 JOB_ID="<captured-task-id>"
 for i in $(seq 1 150); do
   STATE=$(node "$CODEX_COMPANION" status "$JOB_ID" --json 2>/dev/null \
-    | uv run --no-project python -c "import json,sys; print((json.load(sys.stdin).get('job') or {}).get('status') or '')")
+    | uv run --no-project --python python3 python -c "import json,sys; print((json.load(sys.stdin).get('job') or {}).get('status') or '')")
   case "$STATE" in
     completed) echo "READY"; break ;;
     failed)    echo "FAILED"; break ;;

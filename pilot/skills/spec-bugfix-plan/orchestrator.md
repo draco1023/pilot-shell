@@ -5,7 +5,7 @@ argument-hint: "<bug description> or <path/to/plan.md>"
 user-invocable: false
 hooks:
   Stop:
-    - command: uv run --no-project python "$HOME/.claude/hooks/spec_plan_validator.py"
+    - command: uv run --no-project --python python3 python "$HOME/.claude/hooks/spec_plan_validator.py"
 ---
 
 # /spec-bugfix-plan - Bugfix Planning Phase

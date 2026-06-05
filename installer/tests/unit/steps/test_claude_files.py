@@ -2310,7 +2310,7 @@ class TestMergeHooksIntoSettings:
         hooks_dir = pilot_home / "hooks"
         hooks_dir.mkdir(parents=True)
 
-        new_command = 'uv run --no-project python "$HOME/.pilot/hooks/spec_mode_guard.py"'
+        new_command = 'uv run --no-project --python python3 python "$HOME/.pilot/hooks/spec_mode_guard.py"'
         hooks_json = {"hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": new_command}]}]}}
         (hooks_dir / "hooks.json").write_text(json.dumps(hooks_json, indent=2) + "\n")
 
@@ -2353,3 +2353,35 @@ class TestMergeHooksIntoSettings:
         assert user_command in merged_commands
         # New entry installed
         assert new_command in merged_commands
+
+
+class TestHookCommandsPythonVersion:
+    """Hook command strings in source JSON must include --python python3 so uv
+    ignores a local .python-version pin (e.g. 2.7) in the user's repo."""
+
+    HOOKS_ROOT = Path(__file__).parents[4] / "pilot" / "hooks"
+
+    def _collect_commands(self, filename: str) -> list[str]:
+        path = self.HOOKS_ROOT / filename
+        data = json.loads(path.read_text())
+        commands = []
+        for hook_list in data.get("hooks", {}).values():
+            for entry in hook_list:
+                for hook in entry.get("hooks", []):
+                    if "command" in hook:
+                        commands.append(hook["command"])
+        return commands
+
+    def test_hooks_json_commands_include_python_version_flag(self):
+        """Every command in hooks.json must pass --python python3 to uv."""
+        commands = self._collect_commands("hooks.json")
+        assert commands, "hooks.json must contain at least one command"
+        bad = [c for c in commands if "uv run" in c and "--python python3" not in c]
+        assert not bad, f"Missing --python python3 in hooks.json:\n" + "\n".join(bad)
+
+    def test_codex_hooks_json_commands_include_python_version_flag(self):
+        """Every command in codex_hooks.json must pass --python python3 to uv."""
+        commands = self._collect_commands("codex_hooks.json")
+        assert commands, "codex_hooks.json must contain at least one command"
+        bad = [c for c in commands if "uv run" in c and "--python python3" not in c]
+        assert not bad, f"Missing --python python3 in codex_hooks.json:\n" + "\n".join(bad)

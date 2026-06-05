@@ -44,7 +44,7 @@ For each fix: implement → run relevant tests → log "Fixed: [title]"
 JOB_ID="<captured-task-id from Step 1>"
 for i in $(seq 1 250); do
   STATE=$(node "$CODEX_COMPANION" status "$JOB_ID" --json 2>/dev/null \
-    | uv run --no-project python -c "import json,sys
+    | uv run --no-project --python python3 python -c "import json,sys
 try: print((json.load(sys.stdin).get('job') or {}).get('status') or 'unknown')
 except Exception: print('parse_error')" 2>/dev/null)
   case "$STATE" in

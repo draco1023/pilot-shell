@@ -24,10 +24,10 @@ entries:
     name: "@colbymchenry/codegraph"
     source_type: npm
     source_url: "@colbymchenry/codegraph"
-    version: "0.9.8"
+    version: "0.9.9"
     # Highest-risk entry in this manifest per PRD: single-author npm package
     # with no public source repository declared. Manual audit only.
-    last_audited: "2026-06-01"
+    last_audited: "2026-06-05"
 
   - id: better-sqlite3
     name: better-sqlite3
@@ -89,7 +89,7 @@ entries:
   - id: uv-installer
     name: astral.sh/uv/install.sh (0.11.16)
     source_type: curl
-    # Per-version URL is immutable on astral.sh — picking a version pins the
+    # Per-version URL is immutable on astral.sh - picking a version pins the
     # installed uv release and removes the drift problem of the floating
     # /install.sh endpoint (see GH #147).
     source_url: https://astral.sh/uv/0.11.16/install.sh
@@ -105,7 +105,7 @@ entries:
     sha256: "bab8acfb046aac8c72407bdcce903957665d655d7acaa3e11c7c4616beae68dd"
     # Bun does not expose immutable per-version install URLs (version is
     # selected via shell arg, not URL path); soft_pin. Hash mismatch logs a
-    # re-pin warning instead of failing — same drift class as GH #147.
+    # re-pin warning instead of failing - same drift class as GH #147.
     soft_pin: true
     soft_pin_reason: "vendor-managed endpoint; bun.sh rewrites install script on every release with no per-version URL"
     last_audited: "2026-05-27"
@@ -123,11 +123,11 @@ entries:
   - id: rtk-installer
     name: rtk-ai/rtk install.sh
     source_type: curl
-    source_url: https://raw.githubusercontent.com/rtk-ai/rtk/5a149a7fdb92afe758a0c28d805873ce61d8259f/install.sh
-    version: "commit-5a149a7"
-    commit: "5a149a7fdb92afe758a0c28d805873ce61d8259f"
+    source_url: https://raw.githubusercontent.com/rtk-ai/rtk/f490ab7819de62dfeb53517861f34f9801d1d56d/install.sh
+    version: "0.42.1"
+    commit: "f490ab7819de62dfeb53517861f34f9801d1d56d"
     sha256: "ab22d109f920db7d931ef6aa97d9460d93f41d296981db8446afed96ea9661e5"
-    last_audited: "2026-05-27"
+    last_audited: "2026-06-05"
 
   - id: golangci-lint-installer
     name: golangci-lint install.sh
@@ -139,7 +139,7 @@ entries:
     last_audited: "2026-05-27"
 
   # ---- Homebrew formulas (Task 4) ----
-  # pin_kind: monitor — homebrew/core doesn't expose stable per-version installs;
+  # pin_kind: monitor - homebrew/core doesn't expose stable per-version installs;
   # the manifest records the version present at audit time and lets the gate
   # check tap origin. `brew_formula` is the formula name passed to
   # `brew install`; `auto_upgrade: false` opts the formula out of routine
@@ -275,11 +275,11 @@ entries:
     name: rtk (Homebrew install path)
     source_type: brew
     source_url: https://github.com/rtk-ai/rtk
-    version: "0.42.0"
+    version: "0.42.1"
     pin_kind: monitor
     brew_formula: rtk
     brew_tap: homebrew/core
-    last_audited: "2026-05-27"
+    last_audited: "2026-06-05"
 
   # ---- npx-launched MCP servers (Task 5) ----
   # Every entry MUST also be referenced from .mcp.json or pilot/.mcp.json

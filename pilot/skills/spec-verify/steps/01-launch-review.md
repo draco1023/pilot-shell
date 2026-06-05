@@ -106,7 +106,7 @@ CHANGED_FILES=$(printf -- '- %s\n' \
 
 PLAN_PATH="$PLAN_PATH" PLAN_GOAL="$PLAN_GOAL" BASE_REF="$BASE_REF" CHANGED_FILES="$CHANGED_FILES" \
 PROMPT_TEMPLATE="$PROMPT_TEMPLATE" PROMPT_FILE="$PROMPT_FILE" \
-uv run --no-project python -c '
+uv run --no-project --python python3 python -c '
 import os, pathlib
 text = pathlib.Path(os.environ["PROMPT_TEMPLATE"]).read_text()
 for key in ("PLAN_PATH", "PLAN_GOAL", "BASE_REF", "CHANGED_FILES"):

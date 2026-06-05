@@ -36,6 +36,8 @@ Pilot 8.4.0 (Solo) · CC 2.1.80 (Max) · sessions 2 · memories 12
 
 Shows plan name, type (feature/bugfix), phase (plan/implement/verify), task progress bar, and iteration count.
 
+During the **plan** phase (before tasks exist) the detail slot reads `model-switch: on` / `off`, reflecting whether automated model switching is enabled in your Console settings.
+
 ## Line 3 — Version Info
 
 `Pilot <version> (<tier>) · CC <version> (<subscription>) · sessions N · memories N`

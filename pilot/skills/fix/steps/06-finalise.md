@@ -94,7 +94,7 @@ CODEX_FLAG="$SESS_DIR/codex-changes-review-ran-fix.flag"
 
    PLAN_PATH="$FIX_PLAN_FILE" PLAN_GOAL="$PLAN_GOAL" BASE_REF="$BASE_REF" CHANGED_FILES="$CHANGED_FILES" \
    PROMPT_TEMPLATE="$PROMPT_TEMPLATE" PROMPT_FILE="$PROMPT_FILE" \
-   uv run --no-project python -c '
+   uv run --no-project --python python3 python -c '
    import os, pathlib
    text = pathlib.Path(os.environ["PROMPT_TEMPLATE"]).read_text()
    for key in ("PLAN_PATH", "PLAN_GOAL", "BASE_REF", "CHANGED_FILES"):
@@ -125,7 +125,7 @@ CODEX_FLAG="$SESS_DIR/codex-changes-review-ran-fix.flag"
    ```bash
    for i in $(seq 1 150); do
      STATE=$(node "$CODEX_COMPANION" status "$JOB_ID" --json 2>/dev/null \
-       | uv run --no-project python -c "import json,sys
+       | uv run --no-project --python python3 python -c "import json,sys
 try: print((json.load(sys.stdin).get('job') or {}).get('status') or 'unknown')
 except Exception: print('parse_error')" 2>/dev/null)
      case "$STATE" in
