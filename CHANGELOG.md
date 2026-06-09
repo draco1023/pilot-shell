@@ -2,6 +2,13 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.3.3] - 2026-06-09
+
+### Bug Fixes
+
+- Fixing CICD failure
+- Charset edit-scoping, reviewer subagent 1M fix, installer/console cleanups
+
 ## [9.3.2] - 2026-06-05
 
 ### Bug Fixes
