@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.4.0] - 2026-06-09
+
+### Features
+
+- Support for Mythos Class series with Fable 5 and Bugfixes
+
 ## [9.3.3] - 2026-06-09
 
 ### Bug Fixes
