@@ -15,11 +15,11 @@ echo "MODEL_SWITCH=${PILOT_MODEL_SWITCH_ENABLED:-true}"
 
 - **If `MODEL_SWITCH` is `true` (default):**
 
-  > ℹ️ Automated model switching is ON — planning runs on **Opus**, implementation & verification on **Sonnet**, automatically. This requires the **Opus Plan** model: if your status bar isn't already on it, run `/model opusplan` now (future sessions set this automatically). Prefer Opus for everything? Disable **Model Switching** in the Pilot Console → Settings → Automation.
+  > ℹ️ Automated model switching is ON — planning runs on **Opus**, implementation & verification on **Sonnet**, automatically. This requires the **Opus Plan** model: if your status bar isn't already on it, run `/model opusplan` now (future sessions set this automatically). On **Fable 5** (`/model fable`), ignore the opusplan reminder — `/spec` runs the whole workflow on Fable; model switching does not apply (there is no `fableplan`). Prefer Opus for everything? Disable **Model Switching** in the Pilot Console → Settings → Automation.
 
 - **If `MODEL_SWITCH` is `false`:**
 
-  > ℹ️ Model Switching is OFF — `/spec` runs entirely on **Opus**.
+  > ℹ️ Model Switching is OFF — `/spec` runs entirely on **Opus** (or on **Fable 5** when that is your active model).
 
 We can only see that the active model is "Sonnet" — not whether it's really Opus Plan — so this is guidance, not a hard check. After showing the message, continue with the workflow.
 <!-- /CC-ONLY -->

@@ -414,6 +414,22 @@ class TestCodexSkillsInstallation:
         assert "Use `codegraph_context` only when the bug is structural" in result
         assert "For docs, rules, markdown, config, UI copy, or a named local file/function" in result
 
+    def test_spec_plan_codex_skill_strips_fable_plan_mode_skip(self) -> None:
+        """Fable plan-mode skip is CC-ONLY (Codex has no model switching).
+
+        The sentinel-based skip in the planning skills must survive the CC
+        build and be stripped from the Codex build (skill-sync parity rule).
+        """
+        from installer.skill_builder import build_skill_md
+        from installer.steps.codex_files import build_codex_skill_md
+
+        for skill in ("spec-plan", "spec-bugfix-plan"):
+            codex_result = build_codex_skill_md(Path("pilot/skills") / skill)
+            assert "plan-mode-skipped-fable" not in codex_result, skill
+
+            cc_result = build_skill_md(Path("pilot/skills") / skill)
+            assert "plan-mode-skipped-fable" in cc_result, skill
+
 
 class TestCodexRulesInstallation:
     def test_creates_agents_md_with_markers(self, tmp_path: Path) -> None:

@@ -7,13 +7,19 @@
 <!-- CC-ONLY -->
 ```bash
 echo "QUESTIONS=$PILOT_PLAN_QUESTIONS_ENABLED REVIEWER=$PILOT_SPEC_REVIEW_ENABLED CODEX_SPEC=$PILOT_CODEX_SPEC_REVIEW_ENABLED APPROVAL=$PILOT_PLAN_APPROVAL_ENABLED MODEL_SWITCH=$PILOT_MODEL_SWITCH_ENABLED"
+SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-default}}"
+ON_FABLE=$(uv run --no-project --python python3 python -c "import sys,pathlib;h=pathlib.Path.home()/'.pilot'/'hooks';sys.path.insert(0,str(h));from spec_mode_guard import _is_fable,_read_active_model_from_cache;print('true' if _is_fable(_read_active_model_from_cache() or '') else 'false')" 2>/dev/null || echo false)
+case "$ON_FABLE" in true) mkdir -p "$HOME/.pilot/sessions/$SPEC_SESS" && touch "$HOME/.pilot/sessions/$SPEC_SESS/plan-mode-skipped-fable" ;; *) ON_FABLE=false; rm -f "$HOME/.pilot/sessions/$SPEC_SESS/plan-mode-skipped-fable" ;; esac
+echo "ON_FABLE=$ON_FABLE"
 ```
 
-Reference these values throughout: Steps 4/6 (questions), 10 (reviewer + Codex — Codex controlled by Console Settings), and 12 (approval + automated model switching).
+Reference these values throughout: Steps 4/6 (questions), 10 (reviewer + Codex — Codex controlled by Console Settings), and 12 (approval + automated model switching). The `ON_FABLE` check classifies the session with the SAME predicate the `spec_mode_guard` hook uses (`_is_fable` + `_read_active_model_from_cache`, imported from `~/.pilot/hooks` — one source of truth, no vendored glob). A missing cache or older installed hooks print `ON_FABLE=false` (fail-safe: degrades to today's behavior). The `plan-mode-skipped-fable` sentinel file persists the decision for the Step 12 handoff and the spec-implement exit guard — it survives compaction, unlike conversation memory.
 
 ### 0.1a Enter Plan Mode for Opus Planning (Automated Model Switching)
 
-**If `PILOT_MODEL_SWITCH_ENABLED` is `"true"` (the default), do this as your FIRST action, before any exploration:** load and call the `EnterPlanMode` tool so planning runs on Opus.
+**⛔ Fable exception first:** if Step 0.1 printed `ON_FABLE=true`, SKIP `EnterPlanMode` entirely even when `PILOT_MODEL_SWITCH_ENABLED` is `"true"` — Fable-class models have no plan/execute model split (there is no `fableplan`), so plan mode would toggle nothing. Planning continues on Fable; proceed directly to Step 0.2.
+
+**Otherwise, if `PILOT_MODEL_SWITCH_ENABLED` is `"true"` (the default), do this as your FIRST action, before any exploration:** load and call the `EnterPlanMode` tool so planning runs on Opus.
 
 ```
 ToolSearch(query="select:EnterPlanMode")   # EnterPlanMode is a deferred tool — load it first

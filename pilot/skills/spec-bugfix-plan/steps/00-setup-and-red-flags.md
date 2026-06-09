@@ -13,7 +13,18 @@ Reference these values throughout: Steps 2.1/2.5 (questions) and 6 (approval + a
 <!-- CC-ONLY -->
 ### 0.1a Enter Plan Mode for Opus Planning (Automated Model Switching)
 
-**If `PILOT_MODEL_SWITCH_ENABLED` is `"true"` (the default), do this as your FIRST action, before any investigation:** load and call the `EnterPlanMode` tool so investigation + planning run on Opus.
+**Fable check first** (pairs with the Step 0.1 toggle read above — kept as a separate CC-ONLY block because the 0.1 fence is shared with Codex; classifies with the SAME predicate the `spec_mode_guard` hook uses, imported from `~/.pilot/hooks` — one source of truth; missing cache or older hooks print `ON_FABLE=false`, fail-safe):
+
+```bash
+SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-default}}"
+ON_FABLE=$(uv run --no-project --python python3 python -c "import sys,pathlib;h=pathlib.Path.home()/'.pilot'/'hooks';sys.path.insert(0,str(h));from spec_mode_guard import _is_fable,_read_active_model_from_cache;print('true' if _is_fable(_read_active_model_from_cache() or '') else 'false')" 2>/dev/null || echo false)
+case "$ON_FABLE" in true) mkdir -p "$HOME/.pilot/sessions/$SPEC_SESS" && touch "$HOME/.pilot/sessions/$SPEC_SESS/plan-mode-skipped-fable" ;; *) ON_FABLE=false; rm -f "$HOME/.pilot/sessions/$SPEC_SESS/plan-mode-skipped-fable" ;; esac
+echo "ON_FABLE=$ON_FABLE"
+```
+
+**⛔ If `ON_FABLE=true`, SKIP `EnterPlanMode` entirely even when `PILOT_MODEL_SWITCH_ENABLED` is `"true"`** — Fable-class models have no plan/execute model split (there is no `fableplan`); investigation + planning continue on Fable. The `plan-mode-skipped-fable` sentinel persists the decision for the Step 6 handoff. Proceed to 0.2.
+
+**Otherwise, if `PILOT_MODEL_SWITCH_ENABLED` is `"true"` (the default), do this as your FIRST action, before any investigation:** load and call the `EnterPlanMode` tool so investigation + planning run on Opus.
 
 ```
 ToolSearch(query="select:EnterPlanMode")   # deferred tool — load first

@@ -8,7 +8,7 @@ import os
 from io import StringIO
 from unittest.mock import patch
 
-from spec_mode_guard import _is_opus, _is_sonnet, run_spec_mode_guard
+from spec_mode_guard import _is_fable, _is_opus, _is_sonnet, run_spec_mode_guard
 
 
 def _run_with_input(prompt: str, permission_mode: str, *, model_switch: str = "false") -> tuple[int, str]:
@@ -245,6 +245,79 @@ class TestIsSonnet:
 
     def test_rejects_non_string(self) -> None:
         assert _is_sonnet(None) is False  # type: ignore[arg-type]
+
+
+class TestIsFable:
+    """_is_fable helper accepts Fable model strings and rejects the rest."""
+
+    def test_accepts_bare_fable(self) -> None:
+        assert _is_fable("fable") is True
+        assert _is_fable("fable[1m]") is True
+        # Doubled / uppercase trailing suffixes occur in real cache values.
+        assert _is_fable("fable[1m][1m]") is True
+        assert _is_fable("fable[1M]") is True
+        assert _is_fable("best[1m]") is True
+
+    def test_strip_is_anchored_and_literal(self) -> None:
+        # No whitespace normalization, no mid-string stripping -- the
+        # normalizer must stay byte-identical to launcher _is_fable_family.
+        assert _is_fable(" fable ") is False
+        assert _is_fable("fa[1m]ble") is False
+
+    def test_accepts_explicit_fable_id(self) -> None:
+        assert _is_fable("claude-fable-5") is True
+        assert _is_fable("claude-fable-5[1m]") is True
+        # Real-world cache values can carry a doubled [1m] suffix.
+        assert _is_fable("claude-fable-5[1m][1m]") is True
+
+    def test_accepts_mythos_alias_and_id(self) -> None:
+        assert _is_fable("mythos") is True
+        assert _is_fable("claude-mythos-5") is True
+        assert _is_fable("claude-mythos-5[1m]") is True
+
+    def test_accepts_best_alias(self) -> None:
+        # `best` resolves to Fable where available -- a frontier choice the
+        # gate must not downgrade with a '/model opusplan' prompt.
+        assert _is_fable("best") is True
+
+    def test_rejects_opus_and_sonnet(self) -> None:
+        assert _is_fable("opus") is False
+        assert _is_fable("claude-opus-4-8[1m]") is False
+        assert _is_fable("sonnet") is False
+        assert _is_fable("claude-sonnet-4-6") is False
+
+    def test_rejects_lookalike_prefix(self) -> None:
+        assert _is_fable("claude-fabletastic-1") is False
+
+    def test_rejects_empty_and_non_string(self) -> None:
+        assert _is_fable("") is False
+        assert _is_fable(None) is False  # type: ignore[arg-type]
+
+
+class TestFableModelGate:
+    """Fable passes the model gate in BOTH toggle states.
+
+    A Fable session runs the whole workflow on one frontier model -- there is
+    no fableplan equivalent, so blocking with a '/model opusplan' (ON) or
+    '/model opus[1m]' (OFF) prompt would force a downgrade.
+    """
+
+    # The two toggle states are the only behavioral axes of the gate's
+    # or-branch; per-input variants live in TestIsFable (predicate unit tests).
+
+    def test_on_allows_spec_on_explicit_fable_id(self) -> None:
+        code, output = _run_with_model_cache(
+            "/spec build a feature", "bypassPermissions", "claude-fable-5[1m]", model_switch="true"
+        )
+        assert code == 0
+        assert output == ""
+
+    def test_off_allows_spec_on_explicit_fable_id(self) -> None:
+        code, output = _run_with_model_cache(
+            "/spec build a feature", "bypassPermissions", "claude-fable-5[1m]", model_switch="false"
+        )
+        assert code == 0
+        assert output == ""
 
 
 class TestOpusModelBlocking:

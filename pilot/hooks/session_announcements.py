@@ -50,6 +50,22 @@ ANNOUNCEMENTS: list[dict[str, str]] = [
             "Docs: https://pilot-shell.com/docs/features/model-routing"
         ),
     },
+    {
+        "id": "fable-5-support",
+        "message": (
+            "Pilot Shell -- Claude Fable 5 is fully supported.\n\n"
+            "What this means:\n"
+            "  - Run `/model fable` (or `fable[1m]`) and Pilot preserves your choice: settings syncs\n"
+            "    and startups no longer overwrite a saved Fable model with opusplan/opus.\n"
+            "  - /spec runs the WHOLE workflow on Fable in both Model Switching states -- there is\n"
+            "    no 'fableplan' (yet), so plan/implement/verify stay on one frontier model and the\n"
+            "    skills skip plan-mode model toggling automatically.\n"
+            "  - Statusline and Console Usage show Fable 5 / Mythos 5 names and costs.\n\n"
+            "Note: Fable's 1M context stays available -- Pilot never leaves\n"
+            "CLAUDE_CODE_DISABLE_1M_CONTEXT=true while a Fable model is selected.\n\n"
+            "Docs: https://pilot-shell.com/docs/features/model-routing"
+        ),
+    },
 ]
 
 

@@ -12,6 +12,9 @@
       allowed (accepted false-negative, avoids false-blocking correct users).
     * Switching OFF: the whole workflow runs on Opus and only Opus may enter plan
       mode, so a non-Opus model is blocked with a `/model opus[1m]` prompt.
+    * Fable-family models (e.g. `claude-fable-5`, `claude-mythos-5`, `best`)
+      pass the gate in BOTH states: they run the whole workflow single-model,
+      so neither prompt applies.
 
 Reads:
   - `permission_mode` from hook stdin (plan-mode block, bypassPermissions warn)
@@ -35,11 +38,20 @@ from _lib.util import resolve_session_id
 
 _CLAUDE_OPUS_PREFIX_RE = re.compile(r"^claude-opus(-|$)")
 _CLAUDE_SONNET_PREFIX_RE = re.compile(r"^claude-sonnet(-|$)")
+_CLAUDE_FABLE_MYTHOS_PREFIX_RE = re.compile(r"^claude-(fable|mythos)(-|$)")
+
+
+_TRAILING_1M_RE = re.compile(r"(?:\[1[mM]\])+$")
 
 
 def _strip_1m(model: str) -> str:
-    """Strip a single trailing ``[1m]`` alias suffix from a model id."""
-    return model[:-4] if model.endswith("[1m]") else model
+    """Strip trailing ``[1m]``/``[1M]`` alias suffixes (including doubled ones).
+
+    Real-world cache values can carry a doubled suffix (env var + model name
+    concatenation) and statusline renders may uppercase it. Anchored at the end
+    so mid-string occurrences are never touched.
+    """
+    return _TRAILING_1M_RE.sub("", model)
 
 
 def _is_opus(model: str) -> bool:
@@ -73,6 +85,28 @@ def _is_sonnet(model: str) -> bool:
     if base == "sonnet":
         return True
     return bool(_CLAUDE_SONNET_PREFIX_RE.match(base))
+
+
+def _is_fable(model: str) -> bool:
+    """Return True iff ``model`` is a Fable-family alias or explicit ID.
+
+    Mirror of :func:`_is_opus`. Fable-class models (Fable 5, Mythos 5) run the
+    whole /spec workflow single-model -- there is no fableplan split -- so they
+    pass the model gate in BOTH toggle states. Accepts the bare ``fable``,
+    ``mythos``, and ``best`` aliases (``best`` resolves to Fable where
+    available) and any explicit ID matching ``claude-(fable|mythos)(-|$)``
+    (e.g. ``claude-fable-5``); rejects lookalikes like ``claude-fabletastic-1``.
+
+    Accepted set is kept byte-identical to
+    ``launcher/model_config.py::_is_fable_family`` (vendored mirror -- the
+    package boundary forbids imports between hooks and launcher).
+    """
+    if not isinstance(model, str) or not model:
+        return False
+    base = _strip_1m(model)
+    if base in ("fable", "mythos", "best"):
+        return True
+    return bool(_CLAUDE_FABLE_MYTHOS_PREFIX_RE.match(base))
 
 
 def _read_active_model_from_cache() -> str | None:
@@ -184,6 +218,9 @@ def run_spec_mode_guard() -> int:
     #     accepted to avoid false-blocking every correct user.
     #   * Switching OFF: the whole workflow runs on Opus, and only Opus may enter
     #     plan mode (planning on Sonnet is pointless) -- require Opus, block else.
+    #   * Fable passes in BOTH states: a Fable session runs the whole workflow on
+    #     one frontier model (no fableplan split), so prompting '/model opusplan'
+    #     or '/model opus[1m]' would force a downgrade.
     #
     # Unset env defaults to ON.
     model_switch_on = os.environ.get("PILOT_MODEL_SWITCH_ENABLED", "true").strip().lower() != "false"
@@ -230,7 +267,7 @@ def run_spec_mode_guard() -> int:
         # session, or a transient render that omitted model_id). Fall open but
         # warn so the user knows the model check did not run.
         sys.stderr.write(cache_warn)
-    elif not model_is_correct(active_model):
+    elif not (model_is_correct(active_model) or _is_fable(active_model)):
         print(json.dumps({"decision": "block", "reason": block_reason}))
         sys.stderr.write(block_stderr)
         return 2

@@ -2,13 +2,13 @@
 
 ### 12.0 Toggle interaction matrix
 
-Pull `$PILOT_PLAN_APPROVAL_ENABLED` and `$PILOT_MODEL_SWITCH_ENABLED` from Step 0 and follow the matching row. Model switching is now AUTOMATED — there is no manual handoff, no sentinel, no "switch models" message. When `modelSwitch` is ON, the only difference is a `ExitPlanMode` call (Opus → Sonnet) before implementation.
+Pull `$PILOT_PLAN_APPROVAL_ENABLED` and `$PILOT_MODEL_SWITCH_ENABLED` from Step 0 and follow the matching row. Model switching is now AUTOMATED — there is no manual handoff, no "switch models" message. When `modelSwitch` is ON, the only difference is a `ExitPlanMode` call (Opus → Sonnet) before implementation — UNLESS the Fable sentinel from Step 0.1 exists (every `ExitPlanMode` below is gated by the sentinel check in 12.3).
 
 | `planApproval` | `modelSwitch` | What this step does |
 |----------------|---------------|----------------------|
-| true | true | AskUserQuestion → on Yes: set Approved, **call `ExitPlanMode` (Opus → Sonnet), then auto-invoke `Skill('spec-implement')`** |
+| true | true | AskUserQuestion → on Yes: set Approved, **call `ExitPlanMode` (Opus → Sonnet) unless the 12.3 Fable check says skip, then auto-invoke `Skill('spec-implement')`** |
 | true | false | AskUserQuestion → on Yes: set Approved, **auto-invoke `Skill('spec-implement')`** (stays on Opus) |
-| false | true | Silently set `Approved: Yes`, call `ExitPlanMode`, auto-invoke `Skill('spec-implement')` |
+| false | true | Silently set `Approved: Yes`, run the 12.3 Fable check, call `ExitPlanMode` unless it says skip, auto-invoke `Skill('spec-implement')` |
 | false | false | Silently set `Approved: Yes`, auto-invoke `Skill('spec-implement')` (stays on Opus) |
 
 ### 12.1 Notify (always)
@@ -58,9 +58,18 @@ CODEX-END -->
 ### 12.3 Model switch + implementation handoff (automated)
 
 <!-- CC-ONLY -->
-**If `PILOT_MODEL_SWITCH_ENABLED` is `"true"` (default):**
+**Fable exception first:** check the sentinel from Step 0.1 — sentinel presence, NOT conversation memory, decides (it survives compaction and pauses). The check is read-only: do NOT delete the sentinel here (a re-run after an interruption must see it again, and the spec-implement exit guard reads it too; Step 0.1 of the next planning run owns cleanup):
 
-⛔ **`ExitPlanMode` MUST be the next tool call after approval. No exploration, no file reads, no Bash between approval and `ExitPlanMode`. Skipping it leaves the entire implementation leg running on Opus.**
+```bash
+SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-default}}"
+if [ -f "$HOME/.pilot/sessions/$SPEC_SESS/plan-mode-skipped-fable" ]; then echo "SKIP_EXIT_PLAN_MODE=true"; else echo "SKIP_EXIT_PLAN_MODE=false"; fi
+```
+
+**If `SKIP_EXIT_PLAN_MODE=true`:** the planning leg ran on a Fable-class model and `EnterPlanMode` was never called — do NOT call `ExitPlanMode`. Invoke `Skill(skill='spec-implement', args='<plan-path>')` directly (the whole workflow runs single-model on Fable).
+
+**Otherwise, if `PILOT_MODEL_SWITCH_ENABLED` is `"true"` (default):**
+
+⛔ **`ExitPlanMode` MUST be the next tool call after the sentinel check above. No exploration, no file reads, no other Bash between approval and `ExitPlanMode`. Skipping it leaves the entire implementation leg running on Opus.**
 
 ```
 ToolSearch(query="select:ExitPlanMode")   # deferred tool — load first

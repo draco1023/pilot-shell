@@ -136,8 +136,12 @@ check_uv() {
 }
 
 install_uv() {
-	local UV_INSTALL_URL="https://astral.sh/uv/install.sh"
-	local UV_INSTALL_SHA256="3a020f8d69019caca567c9038999d130b0ea85866483caf2042c386cb685aef4"
+	# Per-version URL is immutable on astral.sh (the floating /install.sh
+	# endpoint is rewritten on every uv release and breaks the pin - GH #147).
+	# URL + sha256 MUST match the uv-installer entry in installer/upstreams.yaml;
+	# scripts/check_manifest_drift.py gates this in CI.
+	local UV_INSTALL_URL="https://astral.sh/uv/0.11.16/install.sh"
+	local UV_INSTALL_SHA256="b9f925505899533f36a3acfdf8684c661ff2d5c8735f759fca768367b5996123"
 	local tmp_uv
 	tmp_uv="$(mktemp -t pilot-uv-install.XXXXXX.sh)" || tmp_uv=/tmp/pilot-uv-install.sh
 	trap "rm -f \"$tmp_uv\"" EXIT

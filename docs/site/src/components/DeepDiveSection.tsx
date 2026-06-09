@@ -366,7 +366,10 @@ const DeepDiveSection = () => {
               One model, set once — no per-phase dropdowns to manage. The opt-out{" "}
               <strong>Model Switching</strong> automation flips Opus → Sonnet
               between planning and implementation for you; turn it off in Console
-              Settings → Automation to run the whole workflow on Opus.
+              Settings → Automation to run the whole workflow on Opus. Prefer{" "}
+              <strong>Claude Fable 5</strong>? Pilot preserves your{" "}
+              <code>/model fable</code> choice and runs the whole workflow
+              single-model on it, no <code>fableplan</code> needed.
             </p>
           </div>
         </div>

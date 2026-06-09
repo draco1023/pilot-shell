@@ -150,6 +150,53 @@ class TestDriftDetection:
         assert "bare" in findings[0].message.lower()
 
 
+class TestUvBootstrapCrossRef:
+    """install.sh's pinned uv installer must match the manifest's uv-installer entry."""
+
+    @pytest.fixture
+    def manifest_path(self, tmp_path: Path) -> Path:
+        p = tmp_path / "upstreams.yaml"
+        p.write_text(
+            "version: 1\n"
+            "entries:\n"
+            "  - id: uv-installer\n"
+            "    name: astral.sh/uv/install.sh (1.2.3)\n"
+            "    source_type: curl\n"
+            "    source_url: https://astral.sh/uv/1.2.3/install.sh\n"
+            '    version: "1.2.3"\n'
+            f'    sha256: "{"a" * 64}"\n'
+            '    last_audited: "2026-06-09"\n'
+        )
+        return p
+
+    @staticmethod
+    def _write_install_sh(tmp_path: Path, url: str, sha: str) -> Path:
+        sh = tmp_path / "install.sh"
+        sh.write_text(
+            f'#!/bin/sh\ninstall_uv() {{\n\tlocal UV_INSTALL_URL="{url}"\n\tlocal UV_INSTALL_SHA256="{sha}"\n}}\n'
+        )
+        return sh
+
+    def test_drifted_url_and_sha_fail(self, drift_module, tmp_path: Path, manifest_path: Path) -> None:
+        """Floating URL + stale hash (the GH install-failure shape) must both be flagged."""
+        sh = self._write_install_sh(tmp_path, "https://astral.sh/uv/install.sh", "b" * 64)
+        findings = drift_module.cross_reference_uv_bootstrap(sh, manifest_path=manifest_path)
+        assert any("source_url" in f.message for f in findings)
+        assert any("sha256" in f.message for f in findings)
+
+    def test_matching_pin_passes(self, drift_module, tmp_path: Path, manifest_path: Path) -> None:
+        sh = self._write_install_sh(tmp_path, "https://astral.sh/uv/1.2.3/install.sh", "a" * 64)
+        findings = drift_module.cross_reference_uv_bootstrap(sh, manifest_path=manifest_path)
+        assert not findings, [f.message for f in findings]
+
+    def test_missing_literals_fail(self, drift_module, tmp_path: Path, manifest_path: Path) -> None:
+        """A refactor that renames the literals must not silently disable the check."""
+        sh = tmp_path / "install.sh"
+        sh.write_text("#!/bin/sh\necho no uv pin here\n")
+        findings = drift_module.cross_reference_uv_bootstrap(sh, manifest_path=manifest_path)
+        assert any("not found" in f.message for f in findings)
+
+
 class TestManifestSchemaGate:
     """Drift checker validates the manifest schema before running pattern checks."""
 
@@ -198,6 +245,13 @@ class TestCleanRepository:
             path = repo_root / rel
             findings = drift_module.scan_file(path)
             assert not findings, f"{rel} drift: {[f.message for f in findings]}"
+
+    def test_bootstrap_uv_pin_matches_manifest(self, drift_module) -> None:
+        """Reproduces the reported install failure: install.sh's uv pin drifted from
+        the manifest's uv-installer entry (floating astral.sh URL + stale sha256)."""
+        repo_root = Path(__file__).resolve().parents[3]
+        findings = drift_module.cross_reference_uv_bootstrap(repo_root / "install.sh")
+        assert not findings, f"install.sh uv bootstrap drift: {[f.message for f in findings]}"
 
     def test_mcp_json_clean(self, drift_module) -> None:
         """Per Task 5: both MCP files have only pinned, manifest-monitored npx packages."""

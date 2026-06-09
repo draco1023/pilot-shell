@@ -30,7 +30,7 @@ Blocking hooks reject actions or force fixes before they land. Non-blocking hook
 
 | Hook | Description |
 |------|-------------|
-| `spec_mode_guard.py` | Warns outside bypassPermissions; blocks manual plan mode; gates the `/spec` planning model — requires `opusplan` (shows as Sonnet) when Model Switching is ON, Opus when OFF |
+| `spec_mode_guard.py` | Warns outside bypassPermissions; blocks manual plan mode; gates the `/spec` planning model — requires `opusplan` (shows as Sonnet) when Model Switching is ON, Opus when OFF; Fable-family models (Fable 5 / Mythos 5) pass in both states |
 | Session initializer | Registers session with the Console worker (async) |
 
 ## PreToolUse

@@ -18,6 +18,10 @@ class TestRegistry:
         ids = [a["id"] for a in ANNOUNCEMENTS]
         assert "automated-model-switching" in ids
 
+    def test_has_fable_5_support_announcement(self) -> None:
+        ids = [a["id"] for a in ANNOUNCEMENTS]
+        assert "fable-5-support" in ids
+
     def test_every_announcement_has_id_and_message(self) -> None:
         for a in ANNOUNCEMENTS:
             assert a["id"] and isinstance(a["id"], str)

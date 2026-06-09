@@ -134,7 +134,7 @@ Four toggles control user interaction points during `/spec`. Disable all four fo
 | **Branch Isolation** | On | Asks how to isolate `/spec` changes (new branch or worktree) | Always works on the current branch |
 | **Ask Questions** | On | Asks clarifying questions during planning | Planning makes autonomous default choices |
 | **Plan Approval** | On | Requires your approval before implementation starts | Implementation begins automatically after planning |
-| **Model Switching** *(Claude Code only)* | On | Automatically runs `/spec` planning on Opus and implementation + verification on Sonnet (requires the `opusplan` model - see [Model Routing](model-routing)). No manual `/model` step. | The whole `/spec` workflow runs on Opus |
+| **Model Switching** *(Claude Code only)* | On | Automatically runs `/spec` planning on Opus and implementation + verification on Sonnet (requires the `opusplan` model - see [Model Routing](model-routing)). No manual `/model` step. Not applicable on Fable 5, which runs the whole workflow single-model. | The whole `/spec` workflow runs on Opus (or on Fable 5 when that is the active model) |
 | **Context Window** *(Claude Code only)* | Opus: 1M / Sonnet: 200K | Per-model context window (1M or 200K). Sonnet 1M requires API/Team/Enterprise (some Max accounts also work). If you see "model not available", set that model to 200K. | |
 
 With all four workflow toggles off, `/spec add user authentication` plans, implements, and verifies the feature end-to-end without checkpoints, entirely on Opus.

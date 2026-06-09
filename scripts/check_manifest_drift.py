@@ -6,7 +6,10 @@ Forbidden patterns (per source-type):
 - `*.py`:        `@latest`, `master/install.sh`, `HEAD/install.sh`,
                  unversioned `npm install -g <pkg>`,
                  hardcoded `\\d+\\.\\d+\\.\\d+` literals not in manifest.
-- `install.sh`:  same Python set + unversioned `uv run --with <pkg>`.
+- `install.sh`:  same Python set + unversioned `uv run --with <pkg>`, plus
+                 cross-reference: the bootstrap `UV_INSTALL_URL` /
+                 `UV_INSTALL_SHA256` literals MUST match the manifest's
+                 `uv-installer` entry (same drift class as GH #147).
 - `*.mcp.json`:  unversioned `npx <pkg>` args, plus cross-reference: every
                  pinned `npx <pkg>@<version>` MUST resolve to a manifest
                  entry by id (derived from the package name without the
@@ -56,6 +59,11 @@ UV_RUN_WITH_PATTERN = re.compile(r"--with\s+([a-zA-Z][\w-]*)(?!\S*==)")
 # Strict semver — exactly `\d+.\d+.\d+` with optional pre-release/build, no
 # range operators or dist-tags (`@beta`, `@^1.2.3`, `@~1.2`, `@latest`).
 _EXACT_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][\w.+-]+)?$")
+
+# install.sh bootstrap pin for the uv installer (runs before the manifest is
+# readable, so the literals live in the script - same class as the PyPI set):
+UV_BOOTSTRAP_URL_RE = re.compile(r'^\s*local UV_INSTALL_URL="([^"]+)"')
+UV_BOOTSTRAP_SHA_RE = re.compile(r'^\s*local UV_INSTALL_SHA256="([0-9a-f]{64})"')
 
 NOQA_PATTERN = re.compile(r"#\s*noqa:\s*drift-check\b\s*(?:#\s*(.*))?")
 
@@ -252,6 +260,46 @@ def cross_reference_mcp(path: Path) -> list[Finding]:
     return findings
 
 
+def cross_reference_uv_bootstrap(path: Path, manifest_path: Path | None = None) -> list[Finding]:
+    """install.sh's pinned uv installer MUST match the manifest's uv-installer entry."""
+    from installer.manifest import load
+
+    lines, read_finding = _iter_lines(path)
+    if read_finding is not None:
+        return [read_finding]
+    entry = next((e for e in load(path=manifest_path).entries if e.id == "uv-installer"), None)
+    if entry is None:
+        return [Finding(file=path, line=0, message="manifest has no uv-installer entry to cross-reference")]
+
+    findings: list[Finding] = []
+    url_match: tuple[_LineCtx, str] | None = None
+    sha_match: tuple[_LineCtx, str] | None = None
+    for ctx in lines:
+        if url_match is None and (m := UV_BOOTSTRAP_URL_RE.match(ctx.text)):
+            url_match = (ctx, m.group(1))
+        if sha_match is None and (m := UV_BOOTSTRAP_SHA_RE.match(ctx.text)):
+            sha_match = (ctx, m.group(1))
+    if url_match is None or sha_match is None:
+        return [
+            Finding(
+                file=path,
+                line=0,
+                message="UV_INSTALL_URL / UV_INSTALL_SHA256 literals not found (uv bootstrap pin check would be disabled)",
+            )
+        ]
+    ctx, url = url_match
+    if url != entry.source_url:
+        _add_finding(
+            findings, path, ctx, f"uv bootstrap URL {url!r} != manifest uv-installer source_url {entry.source_url!r}"
+        )
+    ctx, sha = sha_match
+    if sha != entry.sha256:
+        _add_finding(
+            findings, path, ctx, f"uv bootstrap sha256 {sha!r} != manifest uv-installer sha256 {entry.sha256!r}"
+        )
+    return findings
+
+
 def scan_file(path: Path) -> list[Finding]:
     """Run the appropriate pattern set for `path`. Returns all findings."""
     if not path.exists():
@@ -285,15 +333,16 @@ def main(repo_root: Path = REPO_ROOT_DEFAULT, json_mode: bool = False) -> int:
         findings.extend(scan_file(path))
         if path.suffix == ".json":
             findings.extend(cross_reference_mcp(path))
+        if path.name == "install.sh" and path.exists():
+            findings.extend(cross_reference_uv_bootstrap(path))
 
     if json_mode:
-        print(json.dumps(
-            [
-                {"file": str(f.file.relative_to(repo_root)), "line": f.line, "message": f.message}
-                for f in findings
-            ],
-            indent=2,
-        ))
+        print(
+            json.dumps(
+                [{"file": str(f.file.relative_to(repo_root)), "line": f.line, "message": f.message} for f in findings],
+                indent=2,
+            )
+        )
     else:
         for f in findings:
             try:
@@ -316,7 +365,14 @@ def _cli() -> int:
 
 
 # Re-export Finding so tests can introspect findings collections.
-__all__ = ["Finding", "scan_file", "cross_reference_mcp", "validate_manifest", "main"]
+__all__ = [
+    "Finding",
+    "scan_file",
+    "cross_reference_mcp",
+    "cross_reference_uv_bootstrap",
+    "validate_manifest",
+    "main",
+]
 
 
 if __name__ == "__main__":

@@ -89,12 +89,17 @@ def test_install_sh_runs_installer():
 
 def test_install_sh_ensures_uv_available():
     """Verify install.sh ensures uv is available."""
+    import re
+
     install_sh = Path(__file__).parent.parent.parent.parent / "install.sh"
     content = install_sh.read_text()
 
     assert "check_uv" in content, "install.sh must have check_uv function"
     assert "install_uv" in content, "install.sh must have install_uv function"
-    assert "astral.sh/uv/install.sh" in content, "Must use official uv installer"
+    # Per-version URL only: the floating astral.sh/uv/install.sh endpoint is
+    # rewritten on every uv release and breaks the sha256 pin (GH #147).
+    assert re.search(r"astral\.sh/uv/\d[\w.]*/install\.sh", content), "Must use official per-version uv installer URL"
+    assert "astral.sh/uv/install.sh" not in content, "Floating uv installer URL is forbidden (GH #147)"
 
 
 def test_install_sh_is_executable_bash_script():

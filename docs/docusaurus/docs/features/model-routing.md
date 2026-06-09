@@ -36,8 +36,20 @@ Pilot writes this into `~/.claude/settings.json` during install and whenever Con
 
 - **On a wrong, identifiable model** (e.g. plain **Opus**): `/spec` **hard-blocks** and tells you to run `/model opusplan`. Before plan mode, `opusplan` resolves to Sonnet -- so being on Opus means you never switched.
 - **On Sonnet**: allowed. Pilot can't tell `opusplan`'s Sonnet leg from plain Sonnet, so it presumes you're correct rather than false-block every valid user.
+- **On Fable 5 / Mythos 5** (`fable`, `mythos`, `claude-fable-5`, `claude-mythos-5`, `best`): allowed in BOTH toggle states -- see [Fable 5](#fable-5) below.
 
-With **Model Switching OFF**, the check flips: `/spec` requires **Opus** (only Opus may enter plan mode) and hard-blocks any other model. Resuming an existing plan (`/spec <path/to/plan.md>`) skips the check on any model.
+With **Model Switching OFF**, the check flips: `/spec` requires **Opus** (only Opus may enter plan mode; Fable-family models also pass) and hard-blocks any other model. Resuming an existing plan (`/spec <path/to/plan.md>`) skips the check on any model.
+
+## Fable 5
+
+[Claude Fable 5](https://www.anthropic.com/news/claude-fable-5-mythos-5) is Anthropic's frontier model (`/model fable`, or `fable[1m]` for the 1M window). There is **no `fableplan`** -- no Fable equivalent of `opusplan` exists (for now), so automated model switching does not apply. Pilot is fully Fable-aware instead:
+
+- **`/spec` runs single-model on Fable**, in both Model Switching states. The planning skills detect a Fable session and skip `EnterPlanMode`/`ExitPlanMode` entirely -- plan, implement, and verify all run on Fable with no model toggling and no `/model opusplan` block.
+- **Your saved Fable model is preserved.** `ANTHROPIC_MODEL` (env) outranks the saved `model` field in `~/.claude/settings.json`, so Pilot removes its own `ANTHROPIC_MODEL` override instead of writing it when your saved model is Fable-family -- on installs, on Console settings changes (`pilot sync-env`), and healed on every `pilot` startup.
+- **1M context stays available.** `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` removes 1M variants from the model picker, which would break `fable[1m]` -- Pilot forces it to `false` whenever a Fable-family model is selected, regardless of the Context Window settings below.
+- **Statusline and Console Usage** display "Fable 5" / "Mythos 5" with the announced $10/$50 per-MTok pricing.
+
+Note: Fable 5 ships with safety classifiers; flagged requests (mostly cybersecurity/biology) are re-run on Opus 4.8 by Claude Code itself with a transcript notice -- that fallback is Claude Code behavior, not Pilot's (see the [model configuration docs](https://code.claude.com/docs/en/model-config), "Automatic model fallback").
 
 ## Quick Mode (Outside /spec) -- Default is Sonnet
 
@@ -79,7 +91,7 @@ Pilot manages three env vars in `~/.claude/settings.json` based on your choice:
 
 - `ANTHROPIC_DEFAULT_OPUS_MODEL` -- `claude-opus-4-8[1m]` (1M) or `claude-opus-4-8` (200K)
 - `ANTHROPIC_DEFAULT_SONNET_MODEL` -- `claude-sonnet-4-6[1m]` (1M) or `claude-sonnet-4-6` (200K)
-- `CLAUDE_CODE_DISABLE_1M_CONTEXT` -- `true` only when **both** models are set to 200K
+- `CLAUDE_CODE_DISABLE_1M_CONTEXT` -- `true` only when **both** models are set to 200K (and never while a Fable-family model is your saved default -- see [Fable 5](#fable-5))
 
 **To change the context window:** Console Settings -> Automation -> Context Window. Click Save -- the change propagates immediately via `pilot sync-env`.
 
