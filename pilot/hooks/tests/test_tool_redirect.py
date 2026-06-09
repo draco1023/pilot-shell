@@ -171,47 +171,15 @@ class TestAllowedSpecReviewerAgents:
         assert output == ""
 
 
-class TestAllowedWebSearchAgents:
-    """web-search-agent passes through silently — used by /prd deep research."""
+class TestAllowedReviewerAgents:
+    """Whitelisted reviewer agents pass through silently even when their
+    description matches the Research/Explore block patterns."""
 
-    def test_allows_web_search_agent(self):
+    def test_changes_review_bypasses_research_pattern(self):
+        """A whitelisted reviewer with a 'Research' description must NOT be blocked."""
         code, output = _run_with_input(
             "Agent",
-            {"subagent_type": "web-search-agent", "description": "Research competitor landscape", "prompt": "search"},
-        )
-        assert code == 0
-        assert output == ""
-
-    def test_allows_pilot_web_search_agent(self):
-        code, output = _run_with_input(
-            "Agent",
-            {
-                "subagent_type": "web-search-agent",
-                "description": "Research technical approaches",
-                "prompt": "search",
-            },
-        )
-        assert code == 0
-        assert output == ""
-
-    def test_web_search_agent_bypasses_research_pattern(self):
-        """web-search-agent with 'Research' description must NOT be blocked."""
-        code, output = _run_with_input(
-            "Agent",
-            {
-                "subagent_type": "web-search-agent",
-                "description": "Research UX patterns for onboarding",
-                "prompt": "search",
-            },
-        )
-        assert code == 0
-        assert output == ""
-
-    def test_web_search_agent_bypasses_explore_pattern(self):
-        """web-search-agent with 'Explore' description must NOT be blocked."""
-        code, output = _run_with_input(
-            "Agent",
-            {"subagent_type": "web-search-agent", "description": "Explore competitor landscape", "prompt": "search"},
+            {"subagent_type": "changes-review", "description": "Research competitor landscape", "prompt": "review"},
         )
         assert code == 0
         assert output == ""
@@ -379,16 +347,16 @@ class TestSubprocessIntegration:
         assert _is_denied(stdout)
         assert "Semble" in stdout
 
-    def test_web_search_agent_allowed_with_research_description(self):
+    def test_whitelisted_reviewer_allowed_with_research_description(self):
         exit_code, stdout, _ = _run_subprocess(
-            "Agent", {"subagent_type": "web-search-agent", "description": "Research competitor landscape"}
+            "Agent", {"subagent_type": "changes-review", "description": "Research competitor landscape"}
         )
         assert exit_code == 0
         assert not _is_denied(stdout)
 
-    def test_web_search_agent_allowed_with_explore_description(self):
+    def test_whitelisted_reviewer_allowed_with_explore_description(self):
         exit_code, stdout, _ = _run_subprocess(
-            "Agent", {"subagent_type": "web-search-agent", "description": "Explore alternatives"}
+            "Agent", {"subagent_type": "spec-review", "description": "Explore alternatives"}
         )
         assert exit_code == 0
         assert not _is_denied(stdout)

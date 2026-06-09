@@ -85,7 +85,7 @@ Pilot manages three env vars in `~/.claude/settings.json` based on your choice:
 
 **If a session errors with "model not available":** lower that model's context window to 200K in Console Settings.
 
-**Sub-agents** (`spec-review`, `changes-review`, `web-search-agent`) always run on Sonnet and do not support 1M context regardless of this setting.
+**Sub-agents** (`spec-review`, `changes-review`) are pinned to the base Sonnet model and do not use the 1M context window regardless of this setting.
 
 ## Default-On
 

@@ -137,7 +137,7 @@ For tighter isolation when working with untrusted code, combine the dev containe
 <details>
 <summary><b>What the installer does</b></summary>
 
-9-step installer with progress tracking, rollback on failure, and idempotent re-runs. Steps 3 and 4 are agent-conditional — they skip cleanly when the matching agent CLI is not detected. The installer **does not install Claude Code or Codex CLI itself**; install at least one yourself per the prerequisites above.
+8-step installer with progress tracking, rollback on failure, and idempotent re-runs. Steps 3 and 4 are agent-conditional — they skip cleanly when the matching agent CLI is not detected. The installer **does not install Claude Code or Codex CLI itself**; install at least one yourself per the prerequisites above.
 
 1. **Prerequisites** — Checks/installs Homebrew, Node.js, Python 3.12+, uv, git, jq. Verifies at least one supported agent (Claude Code or Codex CLI) is on the system; aborts with a clear error otherwise.
 2. **Pilot files** — Agent-neutral Pilot Shell-managed assets. Hooks → `~/.pilot/hooks/`, Console scripts/UI → `~/.pilot/`, MCP server template → `~/.pilot/.mcp.json`, raw rule sources → `~/.pilot/rules/` (read by Codex's adapter), plus the canonical skill source at `~/.claude/skills/` (Claude reads natively; Codex adapts in step 4). Always runs.
@@ -146,8 +146,7 @@ For tighter isolation when working with untrusted code, combine the dev containe
 5. **Config files** — Creates `.nvmrc` and project config.
 6. **Dependencies** — Installs Semble, RTK, CodeGraph, [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp), [playwright-cli](https://github.com/microsoft/playwright-cli), [agent-browser](https://agent-browser.dev/), language servers, and the `codex@openai-codex` Claude marketplace plugin (skipped on Codex-only systems alongside Chrome DevTools MCP and LSP plugins).
 7. **Shell integration** — Auto-configures bash, fish, and zsh with the `pilot` admin alias.
-8. **VS Code extensions** — Installs recommended extensions for your stack.
-9. **Finalize** — Success message with next steps.
+8. **Finalize** — Success message with next steps.
 
 </details>
 

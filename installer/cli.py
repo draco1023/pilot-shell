@@ -21,7 +21,6 @@ from installer.steps.finalize import FinalizeStep
 from installer.steps.pilot_files import PilotFilesStep
 from installer.steps.prerequisites import PrerequisitesStep
 from installer.steps.shell_config import ShellConfigStep
-from installer.steps.vscode_extensions import VSCodeExtensionsStep
 from installer.ui import Console
 
 
@@ -42,7 +41,6 @@ def get_all_steps() -> list[BaseStep]:
         ConfigFilesStep(),
         DependenciesStep(),
         ShellConfigStep(),
-        VSCodeExtensionsStep(),
         FinalizeStep(),
     ]
 

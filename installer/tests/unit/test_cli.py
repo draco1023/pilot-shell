@@ -36,6 +36,13 @@ class TestRunInstallation:
 
         assert callable(run_installation)
 
+    def test_get_all_steps_excludes_vscode_extensions(self):
+        """Installer must not run a VSCode extensions step (removed per user feedback)."""
+        from installer.cli import get_all_steps
+
+        names = [step.name for step in get_all_steps()]
+        assert "vscode_extensions" not in names
+
     @patch("installer.cli.get_all_steps")
     def test_run_installation_executes_steps(self, mock_get_all_steps):
         """run_installation executes steps in order."""

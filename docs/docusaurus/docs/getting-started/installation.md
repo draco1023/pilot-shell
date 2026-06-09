@@ -18,7 +18,7 @@ Run from any directory — it installs globally to `~/.pilot/` and `~/.claude/` 
 
 ## What the Installer Does
 
-9 steps with progress tracking and rollback on failure. Steps 3 and 4 are agent-conditional — they skip cleanly when the matching agent CLI is not detected on your system. The installer **does not install Claude Code or Codex CLI itself**; you install at least one of them yourself per [Prerequisites](./prerequisites).
+8 steps with progress tracking and rollback on failure. Steps 3 and 4 are agent-conditional — they skip cleanly when the matching agent CLI is not detected on your system. The installer **does not install Claude Code or Codex CLI itself**; you install at least one of them yourself per [Prerequisites](./prerequisites).
 
 | Step | Title | Description |
 |------|-------|-------------|
@@ -29,8 +29,7 @@ Run from any directory — it installs globally to `~/.pilot/` and `~/.claude/` 
 | 5 | Config files | Creates `.nvmrc` and project config |
 | 6 | Dependencies | Installs Semble, RTK, CodeGraph, Chrome DevTools MCP, playwright-cli, agent-browser, language servers, plus the `codex@openai-codex` Claude marketplace plugin. Claude-side plugins (Codex companion plugin, Chrome DevTools MCP plugin, LSP plugins) are skipped on Codex-only systems. |
 | 7 | Shell integration | Auto-configures bash, fish, and zsh with the `pilot` alias. Add `# pilot-shell:managed-elsewhere` to a config file to opt out (for framework-managed shells) |
-| 8 | VS Code extensions | Installs recommended extensions for your language stack |
-| 9 | Finalize | Success message with next steps |
+| 8 | Finalize | Success message with next steps |
 
 ## Browser Automation
 

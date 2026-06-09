@@ -60,3 +60,12 @@ class TestCheckCharset:
         reason = check_charset(f)
         assert "12 decorative non-ASCII chars" in reason
         assert "... and 2 more" in reason
+
+    def test_added_text_scopes_scan_to_the_edit(self, tmp_path: Path) -> None:
+        """With added_text, only the edit's text is scanned; the file body is ignored."""
+        f = tmp_path / "deploy.sh"
+        f.write_text(f"# old {EM_DASH} comment\necho clean\n")  # file already has an em-dash
+        # The edit only introduced an ASCII line -> no warning for the old em-dash.
+        assert check_charset(f, added_text="echo clean") == ""
+        # A decorative char in the added text is still flagged.
+        assert "U+2014" in check_charset(f, added_text=f"echo {EM_DASH}")

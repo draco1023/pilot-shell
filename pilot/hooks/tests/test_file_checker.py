@@ -8,6 +8,8 @@ from unittest.mock import patch
 
 from file_checker import main
 
+EM_DASH = "\u2014"
+
 
 def _make_stdin(tool_name: str, file_path: str) -> io.StringIO:
     """Create a stdin mock with hook JSON data."""
@@ -18,6 +20,19 @@ def _make_stdin(tool_name: str, file_path: str) -> io.StringIO:
 def _make_apply_patch_stdin(command: str) -> io.StringIO:
     """Create a stdin mock with apply_patch hook JSON data (Codex format)."""
     data = {"tool_name": "apply_patch", "tool_input": {"command": command}}
+    return io.StringIO(json.dumps(data))
+
+
+def _make_edit_stdin(file_path: str, old_string: str, new_string: str) -> io.StringIO:
+    """Create a stdin mock for an Edit, including the old/new strings CC sends."""
+    data = {
+        "tool_name": "Edit",
+        "tool_input": {
+            "file_path": file_path,
+            "old_string": old_string,
+            "new_string": new_string,
+        },
+    }
     return io.StringIO(json.dumps(data))
 
 
@@ -154,6 +169,38 @@ class TestCharsetEnforcement:
         captured = capsys.readouterr()
         assert captured.out == ""
 
+    def test_preexisting_decorative_char_in_untouched_code_not_flagged(self, tmp_path, capsys):
+        """An edit that does not touch a pre-existing em-dash must not surface it.
+
+        Reproduces the user report: editing one line should not flag decorative
+        chars sitting in unrelated old code (which CC then 'fixes' and pushes).
+        """
+        sh_file = tmp_path / "deploy.sh"
+        # Line 2 has a legacy em-dash; the edit only changes line 3.
+        sh_file.write_text(f"#!/bin/sh\n# legacy note {EM_DASH} keep me\necho old\n")
+
+        with patch("sys.stdin", _make_edit_stdin(str(sh_file), "echo old", "echo new")):
+            main()
+
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    def test_newly_introduced_decorative_char_still_flagged(self, tmp_path, capsys):
+        """A decorative char the edit actually adds is still surfaced."""
+        sh_file = tmp_path / "deploy.sh"
+        sh_file.write_text(f"#!/bin/sh\necho 'start {EM_DASH} done'\n")
+
+        with patch(
+            "sys.stdin",
+            _make_edit_stdin(str(sh_file), "echo 'start done'", f"echo 'start {EM_DASH} done'"),
+        ):
+            result = main()
+
+        captured = capsys.readouterr()
+        output = json.loads(captured.out)
+        assert "U+2014" in output["hookSpecificOutput"]["additionalContext"]
+        assert result == 0
+
 
 class TestApplyPatchFormat:
     """Test Codex apply_patch tool_input format (command field instead of file_path)."""
@@ -214,3 +261,25 @@ class TestApplyPatchFormat:
         with patch("sys.stdin", io.StringIO(json.dumps(data))):
             result = main()
             assert result == 0
+
+    def test_apply_patch_decorative_char_scoped_to_its_own_file(self, tmp_path, capsys):
+        """A decorative char added to one file in a multi-file patch must not be
+        attributed to the other, clean file in the same patch."""
+        dirty = tmp_path / "dirty.sh"
+        clean = tmp_path / "clean.sh"
+        dirty.write_text("echo old\n")
+        clean.write_text("echo foo\n")
+
+        command = (
+            f"*** Begin Patch\n*** Update File: {dirty}\n@@ -1 +1 @@\n"
+            f"-echo old\n+echo new {EM_DASH} done\n"
+            f"*** Update File: {clean}\n@@ -1 +1 @@\n-echo foo\n+echo bar\n*** End Patch"
+        )
+
+        with patch("sys.stdin", _make_apply_patch_stdin(command)):
+            main()
+
+        context = capsys.readouterr().out
+        assert "U+2014" in context  # the dirty file's added em-dash is flagged
+        assert "dirty.sh" in context
+        assert "clean.sh" not in context  # the clean file is NOT falsely flagged

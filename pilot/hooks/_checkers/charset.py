@@ -28,19 +28,26 @@ _SKIP_SUFFIXES = frozenset({".md", ".markdown", ".csv", ".tsv"})
 _MAX_REPORTED = 10
 
 
-def check_charset(file_path: Path) -> str:
-    """Scan a text file for decorative non-ASCII. Returns a warning or empty string."""
+def check_charset(file_path: Path, added_text: str | None = None) -> str:
+    """Scan for decorative non-ASCII. Returns a warning or empty string.
+
+    When ``added_text`` is given (the text the current edit introduced), only
+    that text is scanned, so pre-existing decorative chars in untouched code are
+    left alone -- the edit hook must not nag about, or rewrite, old comments it
+    never changed. When ``added_text`` is None the whole file is scanned.
+    """
     if file_path.suffix.lower() in _SKIP_SUFFIXES:
         return ""
 
-    try:
-        content = file_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        # Unreadable or binary (non-UTF-8) -- nothing to enforce.
-        return ""
+    if added_text is None:
+        try:
+            added_text = file_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            # Unreadable or binary (non-UTF-8) -- nothing to enforce.
+            return ""
 
     hits: list[tuple[int, str]] = []
-    for lineno, line in enumerate(content.splitlines(), start=1):
+    for lineno, line in enumerate(added_text.splitlines(), start=1):
         for match in _DECORATIVE_PATTERN.finditer(line):
             hits.append((lineno, match.group()))
 
