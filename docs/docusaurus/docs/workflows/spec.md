@@ -67,7 +67,7 @@ For a bugfix workflow without a plan file, use [`/fix`](/docs/workflows/fix). Wh
 ### Verify Phase
 
 - Full test suite + type checking + lint + build verification
-- Features: changes-review agent in Claude Code or Codex (optional, enabled by default)
+- Features: code review — Claude Code runs the built-in `/code-review` skill at xhigh effort plus an inline plan-compliance & goal-truth audit; Codex runs the native changes-review agent (optional, enabled by default)
 - Bugfixes: regression test + full suite — no sub-agents needed
 - For UI features: executes the plan's **E2E test scenarios** step-by-step via browser automation — tracks pass/fail per scenario, auto-fixes failures (up to 2 attempts), escalates persistent failures to known issues; results written back to the plan file. Claude Code prefers its Chrome extension; Codex uses the Chrome DevTools MCP. Both fall back to playwright-cli / agent-browser.
 - Auto-fixes findings, loops back until all checks pass
@@ -92,9 +92,9 @@ When all three are disabled, `/spec` runs end-to-end without any user interactio
 | Toggle          | Default | What it does                                                                                  |
 | --------------- | ------- | --------------------------------------------------------------------------------------------- |
 | **Spec Review** | On      | Validates the plan before implementation — checks alignment and flags risky assumptions       |
-| **Changes Review** | On   | Reviews code after implementation — compliance, security, test coverage, and goal achievement |
+| **Changes Review** | On   | Reviews code after implementation — bugs, security, and cleanups; plan compliance and goal achievement stay covered on both agents (inline workflow audit on Claude Code, the native agent's own pass on Codex) |
 
-Both reviewers run outside the main session context: Claude Code uses sub-agents, and Codex uses custom agents installed under `~/.codex/agents/`. Optional **Codex Companion Reviewers** (off by default) provide a Claude Code plugin second opinion using OpenAI Codex. The **Changes Review** and **Codex Companion Changes Review** toggles also govern [`/fix`](/docs/workflows/fix), which runs the same reviewers at finalise.
+**Spec Review** runs outside the main session context on both agents: Claude Code uses a sub-agent, Codex uses a custom agent installed under `~/.codex/agents/`. **Changes Review** runs as the built-in `/code-review` skill (xhigh effort) inline in the Claude Code session, and as a custom agent under `~/.codex/agents/` on Codex. Optional **Codex Companion Reviewers** (off by default) provide a Claude Code plugin second opinion using OpenAI Codex. Since the built-in `/code-review` is itself a multi-agent review, enabling the companion double-reviews the same diff — best reserved for high-risk or security-sensitive specs. The **Changes Review** and **Codex Companion Changes Review** toggles also govern [`/fix`](/docs/workflows/fix), which runs the same reviews at finalise.
 
 **Codex runs at most once per `/spec` invocation.** Plan iterations (annotation feedback, verify re-runs, fixing prior findings) reuse the result of the first Codex review instead of re-launching — a sentinel file in the session directory enforces this. The bugfix planning phase no longer runs Codex at all; adversarial review is most valuable on real code, not on a plan.
 

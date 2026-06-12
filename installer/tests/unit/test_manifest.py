@@ -327,27 +327,24 @@ class TestShippedManifest:
                 "Set soft_pin: true with a reason."
             )
 
-    def test_uv_installer_pinned_to_immutable_versioned_url(self) -> None:
-        """uv-installer must pin a per-version URL, not the floating live endpoint.
+    def test_uv_installer_soft_pins_floating_endpoint(self) -> None:
+        """uv-installer deliberately tracks the latest uv via the floating endpoint.
 
-        Regression: https://github.com/maxritter/pilot-shell/issues/147 — every uv
-        release rewrites https://astral.sh/uv/install.sh, drifting the hash and
-        bricking the installer. astral.sh exposes immutable per-version URLs
-        (https://astral.sh/uv/<X.Y.Z>/install.sh); using one keeps the hard-pin
-        guarantee without manual re-audit on every upstream release.
+        Decision (2026-06-12): always install the latest uv. The floating
+        https://astral.sh/uv/install.sh is rewritten on every release, so a
+        hard pin against it bricks the installer (GH #147) - the entry must be
+        soft-pinned (hash is a monitoring snapshot, not an execution gate).
         """
         uv = get("uv-installer", manifest=load())
         assert uv.source_type == "curl"
-        assert uv.soft_pin is False, (
-            "uv-installer must remain hard-pinned; this invariant relies on a versioned URL, not soft-pin tolerance."
+        assert uv.source_url == "https://astral.sh/uv/install.sh", (
+            "uv-installer must point at the floating live endpoint so installs always get the latest uv."
         )
-        assert uv.source_url != "https://astral.sh/uv/install.sh", (
-            "uv-installer points at the floating live endpoint, which astral "
-            "rewrites on every release. Use https://astral.sh/uv/<version>/install.sh."
+        assert uv.soft_pin is True, (
+            "uv-installer pins a vendor-managed live endpoint; hard-pinning it drifts on every uv release (GH #147)."
         )
-        assert not uv.version.startswith("live-"), (
-            f"uv-installer version {uv.version!r} still uses the 'live-*' label; "
-            "a versioned URL pins to a real upstream version."
+        assert uv.version.startswith("live-"), (
+            f"uv-installer version {uv.version!r} must use the 'live-*' label for the vendor-managed endpoint."
         )
 
 

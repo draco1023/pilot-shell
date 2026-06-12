@@ -27,6 +27,7 @@ Naming: `test_<function>_<bug>_<expected>` (Python) or `it("should <expected> wh
 - **Fails with the expected error** → RED proven, proceed to Step 3.
 - **Passes** → the test does not encode the bug, OR the bug is already fixed. STOP. Re-read Step 1.5 — did you trace the actual root cause? Re-investigate. Do NOT write fix code.
 - **Errors for an unrelated reason** (import error, missing fixture) → fix the test setup first, re-run. Don't proceed until RED is genuine.
+- **Cannot run at all** (environment blocker: registry auth, missing services, broken install) → Step 1.1's environment blocker protocol applies: stop, ask the user to unblock, re-run after. Do NOT proceed to Step 3 without an observed RED.
 
 ### 2.4 No commit yet
 

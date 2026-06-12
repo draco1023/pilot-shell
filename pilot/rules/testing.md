@@ -26,7 +26,7 @@ The structure of tests should be **contra-variant** with the structure of code (
 
 **Skip RED when:**
 - Docs, config, dep version bumps, formatting-only changes.
-- The plan task carries a `Trivial:` justification naming the existing covering test or verification command (≤ 5 net new lines of production code, no new branch/loop/try with a non-trivial body, no new public symbol, no new error path). The reviewer agent and the verify step audit the claim against the actual diff — the planner's claim is NOT authoritative.
+- The plan task carries a `Trivial:` justification naming the existing covering test or verification command (≤ 5 net new lines of production code, no new branch/loop/try with a non-trivial body, no new public symbol, no new error path). The changes review and the verify step audit the claim against the actual diff — the planner's claim is NOT authoritative.
 - **Bugfixes never qualify for the `Trivial:` escape.** A bugfix without a reproducing test is a rubber-stamp fix; the reproducing test is the regression-prevention guarantee.
 
 **Recovery (code before test):** don't revert — write the test now, verify it catches regressions. Goal is coverage of behaviour that matters, not ritual.
@@ -45,7 +45,7 @@ The structure of tests should be **contra-variant** with the structure of code (
 
 External deps? No → unit. Yes → integration. Complete user workflow? Yes → E2E.
 
-**Coverage rule:** Coverage is a diagnostic, not a quota. Critical paths (business logic, security, data integrity, error handling) must have explicit behaviour coverage and no obvious coverage regressions. For glue code, configuration plumbing, simple CRUD, and trivial UI bindings, no numeric coverage gate — the parsimony audit (verify Step 5) and the reviewer agent replace the gate. Padding tests purely to push a coverage number above a threshold is a parsimony anti-pattern.
+**Coverage rule:** Coverage is a diagnostic, not a quota. Critical paths (business logic, security, data integrity, error handling) must have explicit behaviour coverage and no obvious coverage regressions. For glue code, configuration plumbing, simple CRUD, and trivial UI bindings, no numeric coverage gate — the parsimony audit (verify Step 5) and the changes review replace the gate. Padding tests purely to push a coverage number above a threshold is a parsimony anti-pattern.
 
 ### Property-Based Testing (PBT)
 

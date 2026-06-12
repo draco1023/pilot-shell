@@ -136,18 +136,18 @@ check_uv() {
 }
 
 install_uv() {
-	# Per-version URL is immutable on astral.sh (the floating /install.sh
-	# endpoint is rewritten on every uv release and breaks the pin - GH #147).
-	# URL + sha256 MUST match the uv-installer entry in installer/upstreams.yaml;
+	# Vendor-managed floating endpoint - always installs the latest uv.
+	# Deliberately unpinned (soft_pin): astral.sh rewrites this script on
+	# every uv release, so a hard sha256 pin breaks each release (GH #147).
+	# URL MUST match the uv-installer entry in installer/upstreams.yaml;
 	# scripts/check_manifest_drift.py gates this in CI.
-	local UV_INSTALL_URL="https://astral.sh/uv/0.11.16/install.sh"
-	local UV_INSTALL_SHA256="b9f925505899533f36a3acfdf8684c661ff2d5c8735f759fca768367b5996123"
+	local UV_INSTALL_URL="https://astral.sh/uv/install.sh"
 	local tmp_uv
 	tmp_uv="$(mktemp -t pilot-uv-install.XXXXXX.sh)" || tmp_uv=/tmp/pilot-uv-install.sh
 	trap "rm -f \"$tmp_uv\"" EXIT
 	chmod 600 "$tmp_uv" 2>/dev/null || true
 
-	echo "  [..] Installing uv (pinned)..."
+	echo "  [..] Installing uv..."
 	if command -v curl >/dev/null 2>&1; then
 		curl -fsSL "$UV_INSTALL_URL" -o "$tmp_uv" || {
 			echo "  [!!] curl failed"
@@ -160,23 +160,6 @@ install_uv() {
 		}
 	else
 		echo "  [!!] Need curl or wget"
-		exit 1
-	fi
-
-	local actual_sha
-	if command -v shasum >/dev/null 2>&1; then
-		actual_sha="$(shasum -a 256 "$tmp_uv" | awk '{print $1}')"
-	elif command -v sha256sum >/dev/null 2>&1; then
-		actual_sha="$(sha256sum "$tmp_uv" | awk '{print $1}')"
-	else
-		echo "  [!!] Neither shasum nor sha256sum available — cannot verify uv installer"
-		exit 1
-	fi
-	if [ "$actual_sha" != "$UV_INSTALL_SHA256" ]; then
-		echo "  [!!] uv install.sh sha256 mismatch:"
-		echo "       expected: $UV_INSTALL_SHA256"
-		echo "       actual:   $actual_sha"
-		echo "       refusing to execute. Audit upstream and update installer/upstreams.yaml."
 		exit 1
 	fi
 	sh "$tmp_uv"

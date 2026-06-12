@@ -123,6 +123,8 @@ pathlib.Path(os.environ["PROMPT_FILE"]).write_text(text)
 
 3. Launch the task in background. **For `task`, the companion's `--background` flag IS supported** (unlike `review`/`adversarial-review`, where only Claude Code's `Bash(run_in_background=true)` detaches). Use the companion's own background mode here — the launch command returns the job ID immediately on stdout. Capture the job ID for collection.
 
+   ⛔ **Launch the companion via Bash from the MAIN conversation — NEVER through a subagent** (`codex:codex-rescue` included): a subagent-launched job's ID is unreachable afterwards (no findings file, no `TaskOutput`, no `SendMessage`).
+
    ```
    Bash(
      command="cd $PROJECT_ROOT && node $CODEX_COMPANION task --background --prompt-file \"$PROMPT_FILE\"",

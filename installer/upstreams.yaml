@@ -87,15 +87,18 @@ entries:
   # ---- curl-pipe installers (Task 3) ----
 
   - id: uv-installer
-    name: astral.sh/uv/install.sh (0.11.16)
+    name: astral.sh/uv/install.sh
     source_type: curl
-    # Per-version URL is immutable on astral.sh - picking a version pins the
-    # installed uv release and removes the drift problem of the floating
-    # /install.sh endpoint (see GH #147).
-    source_url: https://astral.sh/uv/0.11.16/install.sh
-    version: "0.11.16"
-    sha256: "b9f925505899533f36a3acfdf8684c661ff2d5c8735f759fca768367b5996123"
-    last_audited: "2026-05-27"
+    source_url: https://astral.sh/uv/install.sh
+    version: "live-2026-06-12"
+    sha256: "053045e1e69ec77358fd44f2ef2cacb768a22d50f433e213624f0157ffbbc883"
+    # astral.sh does expose immutable per-version URLs, but Pilot deliberately
+    # tracks the latest uv (decision 2026-06-12). The floating endpoint is
+    # rewritten on every release, so the bootstrap runs it unpinned and this
+    # hash is a monitoring snapshot, not an execution gate.
+    soft_pin: true
+    soft_pin_reason: "vendor-managed endpoint; deliberate decision to always install latest uv - script rewritten on every release"
+    last_audited: "2026-06-12"
 
   - id: bun-installer
     name: bun.sh/install

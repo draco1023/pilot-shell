@@ -7,9 +7,11 @@ Forbidden patterns (per source-type):
                  unversioned `npm install -g <pkg>`,
                  hardcoded `\\d+\\.\\d+\\.\\d+` literals not in manifest.
 - `install.sh`:  same Python set + unversioned `uv run --with <pkg>`, plus
-                 cross-reference: the bootstrap `UV_INSTALL_URL` /
-                 `UV_INSTALL_SHA256` literals MUST match the manifest's
-                 `uv-installer` entry (same drift class as GH #147).
+                 cross-reference: the bootstrap `UV_INSTALL_URL` literal MUST
+                 match the manifest's `uv-installer` entry. Hard-pinned entry:
+                 `UV_INSTALL_SHA256` must match too. Soft-pinned entry
+                 (vendor-managed floating endpoint): a hard sha literal is
+                 forbidden - it breaks on every uv release (GH #147).
 - `*.mcp.json`:  unversioned `npx <pkg>` args, plus cross-reference: every
                  pinned `npx <pkg>@<version>` MUST resolve to a manifest
                  entry by id (derived from the package name without the
@@ -261,7 +263,12 @@ def cross_reference_mcp(path: Path) -> list[Finding]:
 
 
 def cross_reference_uv_bootstrap(path: Path, manifest_path: Path | None = None) -> list[Finding]:
-    """install.sh's pinned uv installer MUST match the manifest's uv-installer entry."""
+    """install.sh's uv bootstrap URL MUST match the manifest's uv-installer entry.
+
+    Hard-pinned entry: the UV_INSTALL_SHA256 literal must match the manifest.
+    Soft-pinned entry (vendor-managed floating endpoint): a hard sha literal is
+    forbidden - it would break on every uv release (GH #147).
+    """
     from installer.manifest import load
 
     lines, read_finding = _iter_lines(path)
@@ -279,12 +286,12 @@ def cross_reference_uv_bootstrap(path: Path, manifest_path: Path | None = None) 
             url_match = (ctx, m.group(1))
         if sha_match is None and (m := UV_BOOTSTRAP_SHA_RE.match(ctx.text)):
             sha_match = (ctx, m.group(1))
-    if url_match is None or sha_match is None:
+    if url_match is None:
         return [
             Finding(
                 file=path,
                 line=0,
-                message="UV_INSTALL_URL / UV_INSTALL_SHA256 literals not found (uv bootstrap pin check would be disabled)",
+                message="UV_INSTALL_URL literal not found (uv bootstrap check would be disabled)",
             )
         ]
     ctx, url = url_match
@@ -292,11 +299,30 @@ def cross_reference_uv_bootstrap(path: Path, manifest_path: Path | None = None) 
         _add_finding(
             findings, path, ctx, f"uv bootstrap URL {url!r} != manifest uv-installer source_url {entry.source_url!r}"
         )
-    ctx, sha = sha_match
-    if sha != entry.sha256:
-        _add_finding(
-            findings, path, ctx, f"uv bootstrap sha256 {sha!r} != manifest uv-installer sha256 {entry.sha256!r}"
+    if entry.soft_pin:
+        if sha_match is not None:
+            ctx, sha = sha_match
+            _add_finding(
+                findings,
+                path,
+                ctx,
+                "hard UV_INSTALL_SHA256 pin against soft-pinned vendor-managed endpoint "
+                "(drifts on every uv release - GH #147); remove the sha literal",
+            )
+    elif sha_match is None:
+        findings.append(
+            Finding(
+                file=path,
+                line=0,
+                message="UV_INSTALL_SHA256 literal not found (uv bootstrap pin check would be disabled)",
+            )
         )
+    else:
+        ctx, sha = sha_match
+        if sha != entry.sha256:
+            _add_finding(
+                findings, path, ctx, f"uv bootstrap sha256 {sha!r} != manifest uv-installer sha256 {entry.sha256!r}"
+            )
     return findings
 
 

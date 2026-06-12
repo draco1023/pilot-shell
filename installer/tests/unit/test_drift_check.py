@@ -151,7 +151,11 @@ class TestDriftDetection:
 
 
 class TestUvBootstrapCrossRef:
-    """install.sh's pinned uv installer must match the manifest's uv-installer entry."""
+    """install.sh's uv bootstrap URL must match the manifest's uv-installer entry.
+
+    Hard-pinned entry: the sha256 literal must match too. Soft-pinned entry
+    (vendor-managed floating endpoint): a hard sha literal is forbidden.
+    """
 
     @pytest.fixture
     def manifest_path(self, tmp_path: Path) -> Path:
@@ -169,12 +173,32 @@ class TestUvBootstrapCrossRef:
         )
         return p
 
-    @staticmethod
-    def _write_install_sh(tmp_path: Path, url: str, sha: str) -> Path:
-        sh = tmp_path / "install.sh"
-        sh.write_text(
-            f'#!/bin/sh\ninstall_uv() {{\n\tlocal UV_INSTALL_URL="{url}"\n\tlocal UV_INSTALL_SHA256="{sha}"\n}}\n'
+    @pytest.fixture
+    def soft_pin_manifest_path(self, tmp_path: Path) -> Path:
+        p = tmp_path / "upstreams.yaml"
+        p.write_text(
+            "version: 1\n"
+            "entries:\n"
+            "  - id: uv-installer\n"
+            "    name: astral.sh/uv/install.sh\n"
+            "    source_type: curl\n"
+            "    source_url: https://astral.sh/uv/install.sh\n"
+            '    version: "live-2026-06-12"\n'
+            f'    sha256: "{"a" * 64}"\n'
+            "    soft_pin: true\n"
+            '    soft_pin_reason: "vendor-managed endpoint; tracks latest uv"\n'
+            '    last_audited: "2026-06-12"\n'
         )
+        return p
+
+    @staticmethod
+    def _write_install_sh(tmp_path: Path, url: str, sha: str | None = None) -> Path:
+        sh = tmp_path / "install.sh"
+        body = f'#!/bin/sh\ninstall_uv() {{\n\tlocal UV_INSTALL_URL="{url}"\n'
+        if sha is not None:
+            body += f'\tlocal UV_INSTALL_SHA256="{sha}"\n'
+        body += "}\n"
+        sh.write_text(body)
         return sh
 
     def test_drifted_url_and_sha_fail(self, drift_module, tmp_path: Path, manifest_path: Path) -> None:
@@ -195,6 +219,27 @@ class TestUvBootstrapCrossRef:
         sh.write_text("#!/bin/sh\necho no uv pin here\n")
         findings = drift_module.cross_reference_uv_bootstrap(sh, manifest_path=manifest_path)
         assert any("not found" in f.message for f in findings)
+
+    def test_soft_pin_floating_url_without_sha_passes(
+        self, drift_module, tmp_path: Path, soft_pin_manifest_path: Path
+    ) -> None:
+        sh = self._write_install_sh(tmp_path, "https://astral.sh/uv/install.sh")
+        findings = drift_module.cross_reference_uv_bootstrap(sh, manifest_path=soft_pin_manifest_path)
+        assert not findings, [f.message for f in findings]
+
+    def test_soft_pin_with_hard_sha_literal_fails(
+        self, drift_module, tmp_path: Path, soft_pin_manifest_path: Path
+    ) -> None:
+        """Re-introducing a hard sha pin against the floating endpoint is the GH #147 failure shape."""
+        sh = self._write_install_sh(tmp_path, "https://astral.sh/uv/install.sh", "b" * 64)
+        findings = drift_module.cross_reference_uv_bootstrap(sh, manifest_path=soft_pin_manifest_path)
+        assert any("soft-pinned" in f.message for f in findings)
+
+    def test_soft_pin_url_mismatch_fails(self, drift_module, tmp_path: Path, soft_pin_manifest_path: Path) -> None:
+        """Re-pinning install.sh to a versioned URL while the manifest stays floating must be flagged."""
+        sh = self._write_install_sh(tmp_path, "https://astral.sh/uv/1.2.3/install.sh")
+        findings = drift_module.cross_reference_uv_bootstrap(sh, manifest_path=soft_pin_manifest_path)
+        assert any("source_url" in f.message for f in findings)
 
 
 class TestManifestSchemaGate:

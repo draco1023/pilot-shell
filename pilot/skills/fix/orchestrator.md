@@ -23,10 +23,11 @@ Bugfix workflow with TDD. Investigate the bug, write the failing test, fix at th
 
 ```
 1. NO FIXES WITHOUT ROOT CAUSE — traced to file:line, explained WHY.
-2. NO CODE WITHOUT A FAILING REPRODUCING TEST — TDD.
-3. FIX AT THE SOURCE — not where the error appears.
-4. END-TO-END VERIFICATION IS MANDATORY — Step 4 runs the actual program (UI: Claude Code Chrome / Chrome DevTools MCP / playwright-cli / agent-browser; CLI/API/library: real invocation) and captures concrete evidence. Unit tests alone are never accepted as proof.
-5. STOP WHEN OVER YOUR HEAD — multi-component / architectural bugs need /spec.
+2. RUN THE REPRO BEFORE THEORIZING — a runnable reproduction (failing test, crashing command) is executed FIRST and its COMPLETE output read: warnings, stderr, and log lines above the failure, not just the assertion. If the environment blocks the run, ask the user to unblock it — speculation is never a substitute for a run.
+3. NO CODE WITHOUT A FAILING REPRODUCING TEST — TDD.
+4. FIX AT THE SOURCE — not where the error appears.
+5. END-TO-END VERIFICATION IS MANDATORY — Step 4 runs the actual program (UI: Claude Code Chrome / Chrome DevTools MCP / playwright-cli / agent-browser; CLI/API/library: real invocation) and captures concrete evidence. Unit tests alone are never accepted as proof.
+6. STOP WHEN OVER YOUR HEAD — multi-component / architectural bugs need /spec.
 ```
 
 ### Common rationalizations
@@ -39,6 +40,8 @@ Bugfix workflow with TDD. Investigate the bug, write the failing test, fix at th
 | "One more fix attempt" (after 2 failures) | Two failed quick-lane attempts means the lane is wrong. Bail to /spec. |
 | "Looks fixed, tests pass" | E2E evidence required. Unit-pass is not user-pass. |
 | "Quick patch now, investigate later" | This IS the quick lane. If you can't trace it now, bail to /spec — don't patch blind. |
+| "I can find it by reading the code — no need to run the test" | The failing run's output (warnings, stderr, swallowed-exception notices) often names the root cause directly. Run it first and read ALL of it — Step 1.1. |
+| "The repro can't run here, I'll reason it out instead" | An environment blocker (expired auth, private registry) is a user-involvement point, not a license to speculate. Ask for the unblock, then run — Step 1.1 blocker protocol. |
 
 ---
 

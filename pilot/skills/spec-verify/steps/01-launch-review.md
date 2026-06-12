@@ -1,74 +1,29 @@
 ## Phase A — Finalize the Code
 
-## Step 1: Launch Code Review Agent (Early)
+## Step 1: Early Background Review Launch
 
-### 1a: Clean Up Stale Spec-Review Findings (always run, before any launch)
+### 1a: Clean Up Stale Review Findings (always run, before any launch)
 
-**Always run this first** — regardless of whether changes-review is enabled. Spec-review findings are stale artifacts from the planning phase that were already addressed during implementation.
+**Always run this first** — regardless of whether changes-review is enabled. Spec-review findings are stale artifacts from the planning phase that were already addressed during implementation; changes-review findings files are legacy artifacts from older Pilot versions (transitional cleanup — remove the second line once pre-migration installs are gone):
 
 ```bash
 SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
 test -d "$SESS_DIR" && find "$SESS_DIR" -maxdepth 1 -name 'findings-spec-review-*.json' -delete
+test -d "$SESS_DIR" && find "$SESS_DIR" -maxdepth 1 -name 'findings-changes-review-*.json' -delete
 ```
 
 ---
 
 <!-- CC-ONLY -->
-**If `PILOT_CHANGES_REVIEW_ENABLED` is `"false"` (from Step 0),** skip the rest of this step and proceed to Step 2. (Automated checks in Step 2 still run; only the agent-based review is skipped.)
+**No native reviewer launch on Claude Code.** The code review runs INLINE in Step 3 via the built-in `/code-review` skill (`Skill(skill='code-review', args='xhigh')`) — there is no subagent to launch early and no findings file to derive. The only launch in this step is the optional Codex companion below.
 
-**When enabled:** Launch the reviewer IMMEDIATELY — it works in the background while you run automated checks.
-
-#### 1b: Gather Context
-
-```bash
-git status --short  # Changed files
-echo $PILOT_SESSION_ID
-```
-
-**Validate session ID:** If `$PILOT_SESSION_ID` is empty, fall back to `"default"` to avoid writing to `~/.pilot/sessions//`.
-
-Collect: changed files list, test framework constraints, runtime environment info, plan risks section.
-
-**Derive plan slug** from the plan filename: strip the date prefix (`YYYY-MM-DD-`) and `.md` extension. Example: `2026-03-02-sku-builder-modal-cleanup.md` → `sku-builder-modal-cleanup`.
-
-Output path: `~/.pilot/sessions/<session-id>/findings-changes-review-<plan-slug>.json`
-
-#### 1c: Launch
-
-**Delete stale changes-review findings before launching** (previous run may have left a file):
-
-```bash
-SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
-test -d "$SESS_DIR" && find "$SESS_DIR" -maxdepth 1 -name 'findings-changes-review-*.json' -delete
-```
-
-```
-Task(
-  subagent_type="changes-review",
-  run_in_background=true,
-  prompt="""
-  **Plan file:** <plan-path>
-  **User request:** <original task description that invoked /spec>
-  **Changed files:** [file list]
-  **Output path:** <absolute path to findings JSON>
-  **Runtime environment:** [how to start, port, deploy path]
-  **Test framework constraints:** [what it can/cannot test]
-
-  Review implementation: compliance (plan match + user request match), quality (security, bugs, tests, performance), goal (achievement, artifacts, wiring).
-  Performance: check for expensive uncached work on hot paths, heavy dependency imports with lighter alternatives, and repeated invocations that redo work when input hasn't changed.
-  Write findings JSON to output_path using Write tool.
-  IMPORTANT: Include the plan file path in your output JSON as the "plan_file" field.
-  """
-)
-```
-
-**Do NOT wait.** Proceed to Codex launch (if enabled) or Step 2 immediately.
-
-#### Codex Adversarial Review (Optional — launch immediately after Claude reviewer)
+#### Codex Adversarial Review (Optional — launch NOW, in the background)
 
 **If `PILOT_CODEX_CHANGES_REVIEW_ENABLED` is `"true"` (from Step 0):**
 
-Launch Codex review NOW — it runs in parallel with the Claude reviewer above.
+Launch Codex review NOW — it works in the background while you run the Step 2 automated checks and the Step 3 inline review.
+
+**Derive plan slug** from the plan filename: strip the date prefix (`YYYY-MM-DD-`) and `.md` extension. Example: `2026-03-02-sku-builder-modal-cleanup.md` → `sku-builder-modal-cleanup`.
 
 **Codex-once rule.** Codex runs at most once per `/spec` invocation. Before launching, check the sentinel file. If it exists, the review already ran in this session — skip the launch and the collection sub-step in Step 3. Verify-phase iterations (re-verify after fixing findings, code-review-gate annotation fixes) do NOT trigger another Codex run.
 
@@ -117,6 +72,8 @@ pathlib.Path(os.environ["PROMPT_FILE"]).write_text(text)
 
 3. Launch the task in background. **For `task`, the companion's `--background` flag IS supported** (unlike `review`/`adversarial-review`). Use the companion's own background mode — the launch command returns the job ID immediately on stdout. Capture the job ID for collection in Step 3.
 
+   ⛔ **Launch the companion via Bash from the MAIN conversation — NEVER through a subagent** (`codex:codex-rescue` included): a subagent-launched job's ID is unreachable afterwards (no findings file, no `TaskOutput`, no `SendMessage`).
+
    ```
    Bash(
      command="cd $PROJECT_ROOT && node $CODEX_COMPANION task --background --prompt-file \"$PROMPT_FILE\"",
@@ -134,7 +91,7 @@ pathlib.Path(os.environ["PROMPT_FILE"]).write_text(text)
      || { echo "Codex launch did not register with broker — JOB_ID is synthetic. Skipping Codex this run."; JOB_ID=""; }
    ```
 
-   If `$JOB_ID` is empty after this check, skip Step 3 polling and proceed with Claude reviewer only.
+   If `$JOB_ID` is empty after this check, skip Step 3's Codex collection and rely on the inline `/code-review` (Step 3) alone. If Changes Review is disabled too, no automated review runs this iteration — record that gap explicitly in the verification report.
 
 **Do NOT wait** — proceed to Step 2 immediately. You'll be notified when the polling bash (Step 3) completes.
 <!-- /CC-ONLY -->

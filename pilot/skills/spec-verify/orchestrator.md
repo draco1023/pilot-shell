@@ -17,8 +17,8 @@ user-invocable: false
 ## ⛔ KEY CONSTRAINTS
 
 <!-- CC-ONLY -->
-1. **Run code review when enabled** — Step 1 launches `changes-review` via `Task(subagent_type="changes-review")` when `PILOT_CHANGES_REVIEW_ENABLED` is not `"false"` (read in Step 0). To disable, use Console Settings → Reviewers → Changes Review toggle.
-2. **Only changes-review — NEVER spec-review** — Do NOT launch `spec-review` during verification. Do NOT read or reference `findings-spec-review-*.json` files — they are stale artifacts from the planning phase that were already addressed during implementation. If you encounter a spec-review findings file, **ignore it completely**.
+1. **Run code review when enabled** — Step 3 runs the built-in `/code-review` skill at xhigh effort via `Skill(skill='code-review', args='xhigh')` when `PILOT_CHANGES_REVIEW_ENABLED` is not `"false"` (read in Step 0). It runs inline in the main session AFTER the Step 2 automated checks; the optional Codex companion (Step 1) is the only early background launch. To disable, use Console Settings → Reviewers → Changes Review toggle.
+2. **NEVER launch reviewer sub-agents during verification** — Do NOT launch `spec-review` or `changes-review` via the Agent tool; on Claude Code the review mechanism is the inline `/code-review` skill. Do NOT read or reference `findings-spec-review-*.json` or `findings-changes-review-*.json` files — they are stale artifacts (planning phase / older Pilot versions). If you encounter one, **ignore it completely**.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 1. **Run native Codex changes review when enabled** — Step 1 launches the managed `changes-review` custom agent via `multi_agent_v1.spawn_agent` when `PILOT_CHANGES_REVIEW_ENABLED` is not `"false"` (read in Step 0). Step 3 waits for and applies its findings.

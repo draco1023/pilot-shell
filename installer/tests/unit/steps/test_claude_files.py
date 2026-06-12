@@ -60,6 +60,29 @@ class TestPatchClaudePaths:
         assert "CC-ONLY" not in result
         assert "CODEX-START" not in result
 
+    def test_real_task_and_workflow_rule_has_codex_companion_guard(self):
+        """The installed CC rules must scope the sub-agent findings-file contract
+        to Pilot reviewer agents and document the direct-Bash Codex companion
+        contract. Without this, Codex reviews get delegated to a backgrounded
+        subagent whose broker job is unreachable afterwards (no findings file,
+        TaskOutput banned, SendMessage absent) - the model then abandons the
+        job and re-runs the review itself."""
+        from installer.steps.claude_files import adapt_claude_rule_content
+
+        source = Path("pilot/rules/task-and-workflow.md").read_text()
+        content = adapt_claude_rule_content(source)
+
+        subagents_section = content.split("### Sub-agents", 1)[1].split("###", 1)[0]
+        assert "spec-review" in subagents_section
+        # changes-review is no longer a CC sub-agent: code review runs as the
+        # built-in /code-review skill inline (see 2026-06-12 migration plan).
+        assert "code-review" in subagents_section
+
+        assert "codex:codex-rescue" in content
+        assert "codex-companion.mjs" in content
+        assert "status <job-id> --json" in content
+        assert "result <job-id> --json" in content
+
     def test_patch_claude_paths_leaves_non_bin_tilde_paths_unchanged(self):
         """patch_claude_paths only expands ~/.pilot/bin/. Other tilde paths
         (~/.claude/, ~/.pilot/scripts/, …) round-trip untouched — the shell

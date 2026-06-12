@@ -5,8 +5,42 @@
 ### 1.1 Reproduce & understand
 
 - Restate **symptom**, **trigger**, **expected behaviour**.
-- If too vague: one focused `AskUserQuestion` (only when `PILOT_PLAN_QUESTIONS_ENABLED` is not `"false"`).
-- If you can't trigger it after 2 attempts: bail out. Tell the user the bug isn't reproducible from the description alone, ask them to either provide more detail or re-invoke with `/spec` for the full investigation workflow. The quick lane is for reproducible bugs.
+- **Runnable reproduction? Execute it NOW — before reading any code.** When the report names a failing test, a CI failure, or a crashing command, running it locally is the FIRST investigative action — before `git log` (1.2), before tracing (1.3), before forming any hypothesis. Capture everything:
+
+  ```bash
+  set -o pipefail; <repro command> 2>&1 | tee /tmp/fix-repro.log
+  ```
+
+  (`pipefail` keeps the test's failing exit status visible through the pipe — without it, `tee` reports exit 0 and a failing run looks like a pass.)
+
+- **Read the COMPLETE output, not just the failing assertion.** Warning lines, stderr, "exception caught/swallowed/ignored" notices, and log output *above* the failure frequently name the root cause directly — one warning line read here can replace the entire tracing phase. Skim the whole capture, then sweep it as a completeness check:
+
+  ```bash
+  grep -niE "warn|error|exception|traceback|ignored|swallowed" /tmp/fix-repro.log
+  ```
+
+- **CI-only failure?** Still run the test locally first. A local pass against a CI fail is itself a finding (environment or mocking drift), and the local output is your baseline either way.
+- If the description is too vague to reproduce: one focused `AskUserQuestion` (only when `PILOT_PLAN_QUESTIONS_ENABLED` is not `"false"`).
+- If you can't trigger it after 2 attempts because you don't understand the bug (unknown input, steps, or data): bail out. Tell the user the bug isn't reproducible from the description alone, ask them to either provide more detail or re-invoke with `/spec` for the full investigation workflow. The quick lane is for reproducible bugs. A reproduction blocked by the *environment* is NOT this case — `/spec` would hit the same wall; use the blocker protocol below instead.
+
+**Environment blocker protocol — involve the user, NEVER speculate around it.** When the reproduction cannot run because the environment blocks it — expired cloud auth (`gcloud` / `aws` / `az`), dependencies behind a private registry, a credential or service only the user has:
+
+1. Make at most ONE quick attempt at a workaround (an already-provisioned `.venv` / `.tox`, a cached environment). One. Not a research project.
+2. Then STOP and ask the user to unblock — name the exact blocker and the exact unblock command (e.g. "dependency install needs Google Artifact Registry auth — run `gcloud auth application-default login`"). Ask via `AskUserQuestion` with two options: **"Unblocked — re-run the repro"** and **"Continue without running (static investigation, degraded confidence)"**.
+3. This question is **exempt from the `PILOT_PLAN_QUESTIONS_ENABLED` toggle** — a blocked reproduction is a hard stop, not a planning preference.
+<!-- CC-ONLY -->
+4. For interactive logins, tell the user they can type `! <command>` (e.g. `! gcloud auth application-default login`) to run it inline in this session so the output lands in the conversation.
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+4. For interactive logins, ask the user to run the command in a separate terminal and reply here when it's done.
+CODEX-END -->
+5. Once unblocked, re-run the reproduction and continue from the top of 1.1.
+
+⛔ Forbidden moves when the repro is blocked:
+
+- "I might not need to run the test at all" — you do. The run's output is primary evidence; this exact rationalization is the documented derail the protocol exists to prevent.
+- Pivoting to recent diffs or unrelated code as a *substitute* for the run. (Reading code while you WAIT for the user is fine; concluding from it without ever running is not.)
+- Silently choosing the degraded static path. Only the USER may choose it, and if they do, the Step 6 report must state that the reproduction was never executed.
 
 ### 1.2 Recent changes (one bash call, then move on)
 

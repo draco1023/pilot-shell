@@ -414,6 +414,23 @@ class TestCodexSkillsInstallation:
         assert "Use `codegraph_context` only when the bug is structural" in result
         assert "For docs, rules, markdown, config, UI copy, or a named local file/function" in result
 
+    def test_fix_skill_env_blocker_protocol_diverges_per_agent(self) -> None:
+        """Run-the-repro-first + blocker protocol: shared content in both builds,
+        the inline `!` login hint is CC-only, the separate-terminal hint Codex-only."""
+        from installer.skill_builder import build_skill_md
+        from installer.steps.codex_files import build_codex_skill_md
+
+        codex_result = build_codex_skill_md(Path("pilot/skills/fix"))
+        assert "Read the COMPLETE output" in codex_result
+        assert "Environment blocker protocol" in codex_result
+        assert "separate terminal" in codex_result
+        assert "! <command>" not in codex_result
+
+        cc_result = build_skill_md(Path("pilot/skills/fix"))
+        assert "Read the COMPLETE output" in cc_result
+        assert "Environment blocker protocol" in cc_result
+        assert "! <command>" in cc_result
+
     def test_spec_plan_codex_skill_strips_fable_plan_mode_skip(self) -> None:
         """Fable plan-mode skip is CC-ONLY (Codex has no model switching).
 
@@ -565,6 +582,9 @@ class TestCodexRulesInstallation:
             "plain-text numbered options tool",
             "/fix",
             "/prd",
+            "SendMessage",
+            "codex-companion.mjs",
+            "codex:codex-rescue",
         ):
             assert forbidden not in rules_body
         assert re.search(r"(^|[^A-Za-z0-9_`])/(spec|fix|prd)([^A-Za-z0-9_/]|$)", rules_body) is None
@@ -770,6 +790,20 @@ class TestAdaptInvocationSyntax:
         assert "PILOT_CHANGES_REVIEW_ENABLED" in result
         assert "PILOT_CODEX_CHANGES_REVIEW_ENABLED" not in result
 
+    def test_real_spec_verify_codex_strips_inline_code_review_blocks(self) -> None:
+        """The CC-only inline /code-review flow (Skill invocation + Plan
+        Compliance & Goal-Truth Audit) must be fully stripped from the Codex
+        build, and stripping the indented CC-ONLY block inside the Step 2
+        checklist must not corrupt the numbered list (item 6 stays at
+        column 0)."""
+        from installer.steps.codex_files import build_codex_skill_md
+
+        result = build_codex_skill_md(Path("pilot/skills/spec-verify"))
+        assert "code-review" not in result.replace("changes-review", "")
+        assert "Plan Compliance & Goal-Truth Audit" not in result
+        assert "\n6. **Build**" in result
+        assert "\n   6. **Build**" not in result
+
     @pytest.mark.parametrize(
         "skill_name",
         [
@@ -814,6 +848,9 @@ class TestAdaptInvocationSyntax:
             "Edit(",
             "plain-text numbered options(",
             "plain-text numbered options tool",
+            "SendMessage",
+            "codex-companion.mjs",
+            "codex:codex-rescue",
         ):
             assert forbidden not in result
         assert (

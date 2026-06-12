@@ -100,7 +100,7 @@ Hook blocks `subagent_type` of `Explore`/`Plan`, AND any description starting wi
 
 Use direct tools instead — see `development-practices.md` and `mcp-servers.md` for CodeGraph + Semble workflow.
 
-**Whitelisted (pass through silently):** `changes-review`, `spec-review`.
+**Whitelisted (pass through silently):** `changes-review`, `spec-review`. (The `changes-review` entry is hook back-compat for older installed skills — do NOT launch it yourself; on Claude Code the changes review is the built-in `/code-review` skill, per the Sub-agents section below.)
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 ### Agent Tools
@@ -127,8 +127,17 @@ CODEX-END -->
 ### Sub-agents
 
 - Launch with `run_in_background=true`
-- ⛔ NEVER use `TaskOutput` — agents write JSON files; poll with bash file-existence loop, then Read once.
+- ⛔ NEVER use `TaskOutput` to retrieve results.
+- **Pilot reviewer agents** (`spec-review`) write findings JSON files — poll with bash file-existence loop, then Read once. Other agent types do NOT write files; their only output is the final message of a foreground call. Never plan on `SendMessage` to follow up — it may not exist in the running Claude Code version. (Code review in `/spec`/`/fix` is NOT a sub-agent on Claude Code — it is the built-in `/code-review` skill, invoked inline via `Skill(skill='code-review', args='xhigh')`.)
 - Sub-agents do NOT inherit rules; they can read `~/.claude/rules/*.md` and `.claude/rules/*.md`.
+
+### Codex Companion (Reviews & Tasks)
+
+- ⛔ NEVER delegate a Codex companion run to a subagent (`codex:codex-rescue` included) when you need its output — the subagent backgrounds the broker job, writes no findings file, and there is no recovery path (`TaskOutput` banned, `SendMessage` unavailable). The rescue agent exists for user-typed `/codex:rescue` handoffs only.
+- Run the companion directly via Bash in the main conversation, exactly as the /spec and /fix steps specify:
+  `CODEX_COMPANION=$(ls ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null | sort -V | tail -1)`
+- A background job is never lost while you hold its `task-…` ID: `node "$CODEX_COMPANION" status <job-id> --json` polls it, `node "$CODEX_COMPANION" result <job-id> --json` fetches the finished result. Do NOT abandon a launched job and redo the review yourself.
+- If the job ID is unrecoverable (it was launched inside a subagent), re-launch once directly via Bash and continue.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 ### Sub-agents
@@ -178,7 +187,7 @@ Existing plans (`.md`): read `Type:` header.
 | COMPLETE | * | Bugfix | `spec-bugfix-verify` |
 | VERIFIED | * | * | Done |
 
-`spec-implement` is identical for both types (the plan file is the interface). Verification differs: features get review agent + optional Codex + structured E2E (TS-NNN); bugfixes get Behavior Contract audit + revert-test proof.
+`spec-implement` is identical for both types (the plan file is the interface). Verification differs: features get a code review (built-in `/code-review` at xhigh on Claude Code; native `changes-review` agent on Codex) + inline plan-compliance/goal audit + optional Codex companion + structured E2E (TS-NNN); bugfixes get Behavior Contract audit + revert-test proof.
 
 **Status values:** `PENDING` (awaiting impl) → `COMPLETE` (ready to verify) → `VERIFIED` (done).
 

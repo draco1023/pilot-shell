@@ -28,4 +28,4 @@ The unit test is at the wrong layer — it sits below the user's interaction poi
 
 ### When the running program is unavailable
 
-Build broken, infra missing, integration env down? Stop and tell the user. Do not finalise the fix without E2E verification — that is the failure mode this step prevents.
+Build broken, infra missing, integration env down? Stop and tell the user — name the exact blocker and the unblock command, same as Step 1.1's environment blocker protocol. Do not finalise the fix without E2E verification — that is the failure mode this step prevents.

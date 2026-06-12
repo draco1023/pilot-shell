@@ -48,7 +48,7 @@ One responsibility per file. Files that change together live together. In existi
 - **DoD must be verifiable.** ✅ "GET /api/users?role=admin returns only admin users" ❌ "Feature works correctly".
 - **Tests-pass and no-diagnostics are implicit** — every task must end with those. Do NOT add them as DoD bullets; only list task-specific behaviors.
 - **The last DoD bullet IS the verify command.** No separate `Verify:` block.
-- **`Trivial:` is a per-task annotation, not a section** — the reviewer agent and `spec-verify` Step 2.1 audit it against the diff regardless of where it sits, as long as it's the literal token `Trivial:` somewhere in the task body.
+- **`Trivial:` is a per-task annotation, not a section** — the changes review and `spec-verify` Step 2.1 audit it against the diff regardless of where it sits, as long as it's the literal token `Trivial:` somewhere in the task body.
 - **Key Decisions: aim for ≤5 bullets per task.** Prefer `file:line` refs over prose. Multi-paragraph explanations belong in a comment in the code, not in the plan — the plan should point the implementer at WHERE to look and WHAT pattern to follow, not re-explain the existing system.
 
 #### Test plan parsimony
@@ -62,7 +62,7 @@ When listing files for a task, do not auto-create a new `tests/.../test_<file>.p
 3. Otherwise, plan **at most 1 new unit test class + at most 1 new functional/integration test class** for this production class. More than that requires an explicit `Why >2 test classes:` note in `Key Decisions`.
 4. Never plan a test file per method or per branch. The test class is the unit; methods inside it cover branches.
 
-The reviewer agent and `spec-verify` Step 2 audit these rules against the actual diff — they are not advisory.
+The changes review and `spec-verify` Step 2 audit these rules against the actual diff — they are not advisory.
 
 **Performance considerations:** When a task processes data on a hot path (render loops, request handlers, polling callbacks), note it in Key Decisions. Flag: expensive computations that should be cached/memoized, heavy dependencies that have lighter alternatives, and repeated work that can be avoided when input hasn't changed.
 

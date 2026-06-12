@@ -34,7 +34,9 @@ Investigate  →  RED  →  Fix  →  Verify End-to-End  →  Quality Gate  → 
 
 ### Investigate
 
-Trace the bug to `file:lineN — function() does X but should do Y` with **High** or **Medium** confidence. For UI / async / race / timing bugs that don't surface from a static read, add temporary `SPEC-DEBUG:`-marked logs at component boundaries before tracing. Low confidence bails out.
+When the report names a failing test, a CI failure, or a crashing command, `/fix` runs it locally **first** — before reading any code — and reads the complete output, not just the assertion: warning logs, stderr, and swallowed-exception notices often name the root cause directly. If the environment blocks the run (expired cloud auth, dependencies behind a private registry), `/fix` names the blocker and the exact unblock command and asks you to unblock it instead of speculating around the missing run.
+
+Then trace the bug to `file:lineN — function() does X but should do Y` with **High** or **Medium** confidence. For UI / async / race / timing bugs that don't surface from a static read, add temporary `SPEC-DEBUG:`-marked logs at component boundaries before tracing. Low confidence bails out.
 
 ### RED — Write the Reproducing Test
 
@@ -66,7 +68,7 @@ Lint + types + build (when applicable), then the full anti-regression suite, onc
 
 ### Finalise
 
-If the **Changes Review** or **Codex Companion Changes Review** toggle is on, the corresponding reviewer audits the fix first — the same reviewers `/spec` runs after implementation. Findings are auto-fixed by severity before the commit and the approval gate, so review-driven changes land in the single bundled commit. Worktree mode: bundle test + fix into one `fix:` commit. Approval gate fires only if **Plan Approval** is enabled. The completion report includes a mandatory **E2E** line documenting what was actually run.
+If the **Changes Review** or **Codex Companion Changes Review** toggle is on, the corresponding review audits the fix first — the same review mechanisms `/spec` runs after implementation (Changes Review: built-in `/code-review` skill at xhigh effort on Claude Code, native agent on Codex). Findings are auto-fixed by severity before the commit and the approval gate, so review-driven changes land in the single bundled commit. Worktree mode: bundle test + fix into one `fix:` commit. Approval gate fires only if **Plan Approval** is enabled. The completion report includes a mandatory **E2E** line documenting what was actually run.
 
 ## When to bail out — use `/spec` instead
 
@@ -86,6 +88,7 @@ The full lane (`/spec`) adds: Behavior Contract, three-task structure, plan file
 | Symptom | What it means | What to do |
 | --- | --- | --- |
 | Can't reproduce | Description too vague or environment-dependent | Ask for exact steps, env, stack trace. Don't write a speculative fix. |
+| Repro blocked by environment | Expired cloud auth, private package registry, missing credentials | `/fix` names the blocker and the unblock command (e.g. `gcloud auth application-default login`) and waits for you — it never substitutes speculation for a run. |
 | Test passes without the fix | Test doesn't encode the bug | Tighten the assertion or pick a more specific input. |
 | Fix breaks far-away tests | Cross-coupling beyond the quick lane | Bail out. Re-invoke with `/spec`. |
 | Reproducing test green but user still hits the bug | Test sits below the user's layer | Move the assertion up and re-run RED → Fix → Verify End-to-End. |
@@ -99,7 +102,7 @@ The full lane (`/spec`) adds: Behavior Contract, three-task structure, plan file
 | --- | --- | --- |
 | **Ask Questions** | On | Investigation skips clarifying questions and uses defaults. |
 | **Plan Approval** | On | The end-of-flow approval gate is skipped. |
-| **Changes Review** | On | The native `changes-review` agent does not audit the fix at finalise. |
+| **Changes Review** | On | The code review (built-in `/code-review` on Claude Code, native agent on Codex) does not audit the fix at finalise. |
 | **Codex Companion Changes Review** | Off | No second-opinion Codex review of the fix (Claude Code only; needs the Codex plugin). |
 
 When **Ask Questions** and **Plan Approval** are both off, `/fix` runs end-to-end with no user interaction. Worktree isolation is not honoured — use `/spec` if you want a worktree.

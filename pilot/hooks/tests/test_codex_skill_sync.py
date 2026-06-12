@@ -167,6 +167,14 @@ class TestBuildCodexSkill:
         assert "Use `codegraph_context` only when the bug is structural" in result
         assert "For docs, rules, markdown, config, UI copy, or a named local file/function" in result
 
+    def test_real_fix_codex_skill_env_blocker_uses_terminal_hint(self) -> None:
+        result = _build_codex_skill(Path("pilot/skills/fix"))
+        assert result is not None
+        assert "Read the COMPLETE output" in result
+        assert "Environment blocker protocol" in result
+        assert "separate terminal" in result
+        assert "! <command>" not in result
+
     @pytest.mark.parametrize(
         "skill_name",
         [
@@ -210,6 +218,9 @@ class TestBuildCodexSkill:
             "Edit(",
             "plain-text numbered options(",
             "plain-text numbered options tool",
+            "SendMessage",
+            "codex-companion.mjs",
+            "codex:codex-rescue",
         ):
             assert forbidden not in result
         assert (
@@ -492,6 +503,63 @@ class TestSyncCodexEnvVars:
         content = codex_config.read_text()
         assert content.count("shell_environment_policy") == 1
         assert 'PILOT_PLAN_APPROVAL_ENABLED = "true"' in content
+        tomllib.loads(content)
+
+    def test_preexisting_user_env_section_keeps_single_header_and_valid_toml(self, tmp_path: Path) -> None:
+        """A config that already declares [shell_environment_policy.set] must not gain a duplicate header (fatal TOML error), and PILOT_* vars must land inside that table even when it is not the last one."""
+        codex_config = tmp_path / ".codex" / "config.toml"
+        codex_config.parent.mkdir(parents=True)
+        codex_config.write_text(
+            'approval_policy = "never"\n'
+            "\n"
+            "[shell_environment_policy]\n"
+            'inherit = "all"\n'
+            "\n"
+            "[shell_environment_policy.set]\n"
+            'SOME_EXISTING_VAR = "1"\n'
+            "\n"
+            '[projects."/tmp/repo"]\n'
+            'trust_level = "trusted"\n'
+        )
+
+        with patch("codex_skill_sync.Path.home", return_value=tmp_path):
+            count = _sync_codex_env_vars()
+
+        assert count == 7
+        content = codex_config.read_text()
+        assert content.count("[shell_environment_policy.set]") == 1
+        parsed = tomllib.loads(content)
+        env_set = parsed["shell_environment_policy"]["set"]
+        assert env_set["SOME_EXISTING_VAR"] == "1"
+        assert env_set["PILOT_PLAN_APPROVAL_ENABLED"] == "true"
+        assert parsed["projects"]["/tmp/repo"]["trust_level"] == "trusted"
+
+        # Second sync is a no-op (idempotent).
+        with patch("codex_skill_sync.Path.home", return_value=tmp_path):
+            assert _sync_codex_env_vars() == 0
+        assert codex_config.read_text() == content
+
+    def test_heals_duplicate_header_left_by_previous_sync(self, tmp_path: Path) -> None:
+        """Configs already broken by the duplicate-header bug get repaired to a single header."""
+        codex_config = tmp_path / ".codex" / "config.toml"
+        codex_config.parent.mkdir(parents=True)
+        codex_config.write_text(
+            "[shell_environment_policy.set]\n"
+            'SOME_EXISTING_VAR = "1"\n'
+            "\n# --- pilot-shell managed env vars ---\n"
+            "[shell_environment_policy.set]\n"
+            'PILOT_PLAN_APPROVAL_ENABLED = "false"\n'
+            "# --- end pilot-shell managed env vars ---\n"
+        )
+
+        with patch("codex_skill_sync.Path.home", return_value=tmp_path):
+            _sync_codex_env_vars()
+
+        content = codex_config.read_text()
+        assert content.count("[shell_environment_policy.set]") == 1
+        parsed = tomllib.loads(content)
+        assert parsed["shell_environment_policy"]["set"]["SOME_EXISTING_VAR"] == "1"
+        assert parsed["shell_environment_policy"]["set"]["PILOT_PLAN_APPROVAL_ENABLED"] == "true"
 
     def test_defaults_branch_isolation_to_true_when_config_missing(self, tmp_path: Path) -> None:
         """When config.json is absent, branchIsolation should default to true (matching Console)."""

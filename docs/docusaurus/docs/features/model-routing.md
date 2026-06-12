@@ -97,8 +97,8 @@ Pilot manages three env vars in `~/.claude/settings.json` based on your choice:
 
 **If a session errors with "model not available":** lower that model's context window to 200K in Console Settings.
 
-**Sub-agents** (`spec-review`, `changes-review`) are pinned to the base Sonnet model and do not use the 1M context window regardless of this setting.
+**Sub-agents** (`spec-review`) are pinned to the base Sonnet model and do not use the 1M context window regardless of this setting. The changes review runs as the built-in `/code-review` skill on the session model (xhigh effort), so it follows the active model and context window.
 
 ## Default-On
 
-Automated model switching is **ON for every install** (a one-time migration enables it for existing users too). The first time you launch after upgrading, Pilot shows a one-time announcement explaining the change and how to disable it. Reviewer sub-agents (`spec-review`, `changes-review`) always run on Sonnet -- sub-agents do not support the 1M context window.
+Automated model switching is **ON for every install** (a one-time migration enables it for existing users too). The first time you launch after upgrading, Pilot shows a one-time announcement explaining the change and how to disable it. The reviewer sub-agent (`spec-review`) always runs on Sonnet -- sub-agents do not support the 1M context window; the changes review runs as the built-in `/code-review` skill on the session model.

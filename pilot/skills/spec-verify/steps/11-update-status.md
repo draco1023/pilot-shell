@@ -17,7 +17,7 @@ If any of the three is false → return to Step 10 and re-ask. Common traps that
    ## Verification Complete
    **Issues Found:** X
    ### Goal Achievement: N/M truths verified
-   ### Must Fix (N) | Should Fix (N) | Suggestions (N)
+   ### Must Fix (N) | Should Fix (N) | Suggestions (N) | Out-of-lineage mentions (N)
    ### Not Verified: [list items from Step 6.2, or "None"]
    ```
 

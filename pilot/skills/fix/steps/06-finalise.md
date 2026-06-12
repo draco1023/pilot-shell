@@ -4,19 +4,19 @@
 
 ⛔ **Before running any reviewer, you MUST have completed Step 4 (Verify End-to-End) with concrete evidence.** Reviewers audit the fix; they are not a substitute for running the program.
 
-The same two Console Settings toggles that drive `/spec`'s post-implementation review also govern `/fix`. Run whichever are enabled, in parallel, and **auto-fix findings before** the worktree commit (6.2) and the approval gate (6.3) — so any review-driven change lands in the single bundled commit.
+The same two Console Settings toggles that drive `/spec`'s post-implementation review also govern `/fix`. Run whichever are enabled, and **auto-fix findings before** the worktree commit (6.2) and the approval gate (6.3) — so any review-driven change lands in the single bundled commit.
 
 ```bash
-echo "CHANGES_REVIEW=$PILOT_CHANGES_REVIEW_ENABLED"          # native changes-review agent
+echo "CHANGES_REVIEW=$PILOT_CHANGES_REVIEW_ENABLED"          # changes review (CC: built-in /code-review skill; Codex: native agent)
 echo "CODEX_REVIEW=$PILOT_CODEX_CHANGES_REVIEW_ENABLED"      # Codex companion review
 ```
 
 **If BOTH are `"false"` or unset → skip this sub-step entirely and proceed to 6.2.**
 
 <!-- CC-ONLY -->
-#### 6.1.0 Shared bugfix summary
+#### 6.1.0 Shared bugfix summary (Codex companion only)
 
-For `/fix` the "plan" is the conversation, not a file. Inline a one-page summary into a temp file so each reviewer has a concrete artifact to anchor on (both reviewers reuse it):
+For `/fix` the "plan" is the conversation, not a file. When the Codex companion is enabled, inline a one-page summary into a temp file so the Codex reviewer has a concrete artifact to anchor on (skip this sub-step when only the inline `/code-review` runs — it reviews the diff directly and needs no plan artifact):
 
 ```bash
 SESS_ID="${PILOT_SESSION_ID:-default}"
@@ -31,51 +31,18 @@ PLAN_EOF
 CHANGED_FILES=$(git status --short --untracked-files=all | awk '{print "- " $2}')
 ```
 
-#### 6.1.a Native changes-review (only when `PILOT_CHANGES_REVIEW_ENABLED == "true"`)
-
-Delete stale findings, then launch the reviewer in the background — it works while you launch Codex (6.1.b) and runs other finalise prep:
-
-```bash
-SESS_DIR="$HOME/.pilot/sessions/$SESS_ID"
-mkdir -p "$SESS_DIR"
-FINDINGS_PATH="$SESS_DIR/findings-changes-review-fix.json"
-rm -f "$FINDINGS_PATH"
-```
-
-```
-Task(
-  subagent_type="changes-review",
-  run_in_background=true,
-  prompt="""
-  **Plan file:** <FIX_PLAN_FILE absolute path>
-  **User request:** Bugfix — <one-line bug>
-  **Changed files:** <CHANGED_FILES list>
-  **Output path:** <FINDINGS_PATH>
-  **Runtime environment:** <how you ran the program in Step 4 E2E>
-  **Test framework constraints:** <what the suite can / cannot exercise>
-
-  Review the bugfix diff: quality (security, bugs, test quality, performance) and goal achievement
-  (the reproducing test encodes the bug; the fix is at the root cause, not a symptom patch).
-  The "plan" is a one-page bugfix summary, not a multi-task spec — judge compliance against the
-  bug being fixed, NOT against absent feature tasks. Do not flag "missing tasks".
-  Write findings JSON to output_path using the Write tool.
-  IMPORTANT: Include the plan file path in your output JSON as the "plan_file" field.
-  """
-)
-```
-
-**Do NOT wait** — proceed to 6.1.b (if Codex enabled), then collect in 6.1.c.
-
-#### 6.1.b Codex companion changes review (only when `PILOT_CODEX_CHANGES_REVIEW_ENABLED == "true"`)
+#### 6.1.a Codex companion changes review (only when `PILOT_CODEX_CHANGES_REVIEW_ENABLED == "true"`) — launch FIRST
 
 Independent second opinion via the Codex plugin companion. **Codex-once rule:** Codex runs at most once per `/fix` invocation. Before launching, check the sentinel; if it exists (a prior approval-gate loop already ran it), skip the launch and the Codex part of 6.1.c.
 
 ```bash
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
+mkdir -p "$SESS_DIR"
 CODEX_FLAG="$SESS_DIR/codex-changes-review-ran-fix.flag"
 [ -f "$CODEX_FLAG" ] && echo "Codex already reviewed this fix in this session — skipping (codex-once)."
 ```
 
-1. **Locate the companion.** If missing, tell the user "Codex companion not found — install the openai-codex plugin or disable Codex Companion Changes Review in Console Settings" and continue with the native reviewer (6.1.a) results only.
+1. **Locate the companion.** If missing, tell the user "Codex companion not found — install the openai-codex plugin or disable Codex Companion Changes Review in Console Settings" and continue with the inline `/code-review` (6.1.b) results when Changes Review is enabled — otherwise proceed without automated review and say so in the 6.6 report.
 
    ```bash
    CODEX_COMPANION=$(ls ~/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null | sort -V | tail -1)
@@ -104,6 +71,8 @@ CODEX_FLAG="$SESS_DIR/codex-changes-review-ran-fix.flag"
    ```
 
 3. **Launch the task in background.** Use `task --background --prompt-file` (the companion's own background mode is supported for `task` — unlike `review`/`adversarial-review`).
+
+   ⛔ **Launch the companion via Bash from the MAIN conversation — NEVER through a subagent** (`codex:codex-rescue` included): a subagent-launched job's ID is unreachable afterwards (no findings file, no `TaskOutput`, no `SendMessage`).
 
    ```
    Bash(
@@ -136,19 +105,33 @@ except Exception: print('parse_error')" 2>/dev/null)
    done
    ```
 
-   Run the poll loop as `Bash(run_in_background=true, timeout=600000)`. Treat `parse_error` / `unknown` as failure (the job vanished or the broker is unreachable). ⛔ **Wait for the completion notification** — do NOT read the result file before the `<task-notification>` with `<status>completed</status>` arrives.
+   Run the poll loop as `Bash(run_in_background=true, timeout=600000)`. Treat `parse_error` / `unknown` as failure (the job vanished or the broker is unreachable). ⛔ **Wait for the completion notification** — do NOT read the result file before the `<task-notification>` with `<status>completed</status>` arrives. The inline review below runs while Codex churns.
 
-#### 6.1.c Collect findings + auto-fix
+#### 6.1.b Inline /code-review (only when `PILOT_CHANGES_REVIEW_ENABLED == "true"`)
 
-**Native reviewer (if launched in 6.1.a):** poll for the findings file (bash, not a Read loop), then Read it once:
+Run AFTER launching Codex (6.1.a) so the companion works in parallel. Invoke the built-in code review skill at xhigh effort:
 
-```bash
-for i in $(seq 1 150); do [ -f "$FINDINGS_PATH" ] && echo "READY" && break; sleep 2; done
+```
+Skill(skill='code-review', args='xhigh')
 ```
 
-If not READY after 5 min, re-launch synchronously. Validate the `plan_file` field matches `$FIX_PLAN_FILE`; if it doesn't, the findings are stale — delete and re-launch.
+- Execute the loaded review protocol fully. Do NOT pass `--fix` — findings are applied by this orchestrator (6.1.c), not by the review.
+- The default scope (uncommitted working-tree changes + commits ahead of upstream) covers the `/fix` diff in a clean tree. **If the tree carries unrelated dirty files, pass the bugfix lineage AS THE TARGET in the Skill args** — `Skill(skill='code-review', args='xhigh <fix file> <test file>')` — covering BOTH the fix AND the Step 2 reproducing test (never review the fix without its test, or weak test assertions go unaudited); prose-level scoping outside the args does not bind the review. A ref-range target only covers committed work and misses the uncommitted fix.
+- `/code-review` does not know the bug — root-cause-vs-symptom judgment stays with this orchestrator (Step 1.3 trace + 6.5 checklist), and the Codex companion (6.1.a, when enabled) is the reviewer that receives the bug summary.
+- Output: a ranked JSON array of findings `{file, line, summary, failure_scenario}` — most severe first, no severity labels.
 
-**Codex reviewer (if launched in 6.1.b):** on the completion notification, fetch via the public interface:
+#### 6.1.c Apply findings + collect Codex
+
+**Inline /code-review findings (if run in 6.1.b):** classify each finding and act. **Lineage is evaluated FIRST:** a finding on a file outside the bug's lineage (the fix file, its test, and files the fix legitimately touched) is mention-only regardless of severity — out-of-lineage crashes are reported to the user, never auto-fixed. Only in-lineage findings are classified by the remaining rows:
+
+| Finding class | Action |
+|---------------|--------|
+| Finding on a file outside the bug's lineage (CHECK FIRST — overrides all rows below) | Mention in one line; do not auto-apply |
+| `failure_scenario` names a concrete crash, wrong output, security, or data-integrity problem | **must_fix** — fix immediately, then re-run the targeted test from Step 3.4 + the full suite from Step 5.2 |
+| Cleanup / efficiency finding, single-site and within the bug's lineage | **should_fix** — fix |
+| Finding that would expand scope (3+ files, architectural) | Summarise to the user; let them decide whether to fix here or open a `/spec` follow-up |
+
+**Codex reviewer (if launched in 6.1.a):** on the completion notification, fetch via the public interface:
 
 ```bash
 node "$CODEX_COMPANION" result "$JOB_ID" --json > /tmp/codex-fix-result-$$.json
@@ -156,15 +139,9 @@ node "$CODEX_COMPANION" result "$JOB_ID" --json > /tmp/codex-fix-result-$$.json
 
 Read `/tmp/codex-fix-result-$$.json`. Verify `storedJob.status === "completed"`, then parse `storedJob.result.rawOutput` as JSON (`{verdict, summary, findings, next_steps}`). If JSON parse fails, fall back to `storedJob.rendered` and surface as a suggestion-level finding.
 
-**Act on findings from both reviewers — same severity → action map as `/spec-verify`:**
+**Act on Codex findings — same action map as the inline table above, keyed by Codex severity:** `critical`/`high` → must_fix; `medium`/`low` → should_fix (single-site, in-lineage) or summarise; `info` → mention only.
 
-| Severity | Action |
-|----------|--------|
-| `must_fix` / `critical` / `high` | Fix immediately, then re-run the targeted test from Step 3.4 + the full suite from Step 5.2 |
-| `should_fix` / `medium` / `low` | Fix if it's a single-site change consistent with the original bug's lineage; if it would expand scope (3+ files, architectural), summarise to the user and let them decide whether to fix here or open a `/spec` follow-up |
-| `suggestion` / `info` | Mention in one line; do not auto-apply |
-
-If a reviewer returns no blocking findings (Codex verdict `approve`, native reviewer empty `issues`): report "Review: no blocking findings" in one line and proceed.
+If a reviewer returns no blocking findings (Codex verdict `approve`, `/code-review` empty findings array): report "Review: no blocking findings" in one line and proceed.
 
 #### 6.1.d Mark + cleanup
 
@@ -173,7 +150,7 @@ If a reviewer returns no blocking findings (Codex verdict `approve`, native revi
 rm -f "$PROMPT_FILE" "$FIX_PLAN_FILE" /tmp/codex-fix-result-$$.json
 ```
 
-**Launch failure handling.** If the Codex job ended `failed` (genuine launch failure, not timeout): surface the captured stderr to the user, do **not** silently mark the bugfix done. Continue with the native reviewer's results.
+**Launch failure handling.** If the Codex job ended `failed` (genuine launch failure, not timeout): surface the captured stderr to the user, do **not** silently mark the bugfix done. Continue with the inline `/code-review` results.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 When `PILOT_CHANGES_REVIEW_ENABLED == "true"`, run the managed Codex `changes-review` custom agent on the bugfix diff before finalising. (The Codex *companion* review — `PILOT_CODEX_CHANGES_REVIEW_ENABLED` — is a Claude-Code-only plugin path and does not run here.)
@@ -239,7 +216,7 @@ When approval is enabled, summarise + ask:
 
 ```
 AskUserQuestion(
-  question="Bugfix complete.\n\nBug: <one line>\nRoot cause: <file>:<line> — <what>\nFix: <one-line description of the change>\nTests: reproducing test added (<test_name>), full suite green.\nReview: <none | native changes-review: N findings, all resolved | Codex: approve | ...>\nE2E: <command/URL you ran and the concrete observation that proves the fix — e.g. 'curl /search -d {} → 200 with [results]', 'opened /tasks page, saved end_date=2026-05-15, list shows 2026-05-15', 'ran pilot register-plan ./foo.md PENDING → exit 0, plan visible in console'>\n\nReview the diff in the Console's Changes tab. Approve when ready.",
+  question="Bugfix complete.\n\nBug: <one line>\nRoot cause: <file>:<line> — <what>\nFix: <one-line description of the change>\nTests: reproducing test added (<test_name>), full suite green.\nReview: <none | /code-review (xhigh) or native changes-review: N findings, all resolved | Codex: approve | ...>\nE2E: <command/URL you ran and the concrete observation that proves the fix — e.g. 'curl /search -d {} → 200 with [results]', 'opened /tasks page, saved end_date=2026-05-15, list shows 2026-05-15', 'ran pilot register-plan ./foo.md PENDING → exit 0, plan visible in console'>\n\nReview the diff in the Console's Changes tab. Approve when ready.",
   options=[<see list above>]
 )
 ```
@@ -247,7 +224,7 @@ AskUserQuestion(
 Handle:
 
 - **Approve** → done.
-- **Request changes** → user describes problem in free-form. Treat as a new investigation: re-run Step 1.3 (re-trace) → Step 2 onward (6.1 reviews re-run on the new fix; the codex-once flag keeps Codex to a single run per invocation).
+- **Request changes** → user describes problem in free-form. Treat as a new investigation: re-run Step 1.3 (re-trace) → Step 2 onward (6.1 reviews re-run on the new fix; the codex-once flag keeps Codex to a single run per invocation, and the inline `/code-review` re-run is scoped to the files changed since the previous review by passing them as the target — `Skill(skill='code-review', args='xhigh <changed files>')` — not the whole diff again).
 - **Explain the fix in more detail** → write a fuller walkthrough (causal chain from trigger → root cause; why the boundary you fixed at is correct; line-by-line meaning of the diff; alternatives considered and rejected). Do NOT modify code. Then re-ask 6.3 — drop the "Explain" option from the new list to avoid loops.
 
 ### 6.4 Console notification (always, when binary present)
@@ -278,7 +255,7 @@ If any box is unchecked, do not write the report and do not ask for approval —
 Bugfix complete — <bug>.
 Root cause: <file>:<line>.
 Tests: 1 new reproducing test, full suite green.
-Review: <none enabled | native changes-review + Codex, no blocking findings | N findings resolved>.
+Review: <none enabled | /code-review (xhigh) / native changes-review + Codex, no blocking findings | N findings resolved>.
 E2E: <command/URL run> → <observation that proves the symptom is gone>.
 
 Run /clear before starting new work — this resets context while keeping project rules loaded.

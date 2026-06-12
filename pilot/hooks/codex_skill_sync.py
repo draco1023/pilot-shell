@@ -397,6 +397,38 @@ def _sync_codex_review_agents() -> tuple[int, int]:
 
 _ENV_MARKER_START = "# --- pilot-shell managed env vars ---"
 _ENV_MARKER_END = "# --- end pilot-shell managed env vars ---"
+_ENV_SECTION_HEADER = "[shell_environment_policy.set]"
+
+
+def _merge_env_block(existing: str, env_lines: list[str]) -> str:
+    """Merge the pilot-managed env block into config.toml content.
+
+    A TOML table may only be declared once, so when the config already has a
+    [shell_environment_policy.set] header the managed lines are inserted inside
+    that table; only otherwise is a self-contained block (header inside the
+    markers) appended.
+    """
+    lines = existing.splitlines()
+
+    # Drop any previous managed region; older formats kept the section header
+    # inside the markers, so it is removed together with the region.
+    if _ENV_MARKER_START in lines and _ENV_MARKER_END in lines:
+        start = lines.index(_ENV_MARKER_START)
+        end = lines.index(_ENV_MARKER_END)
+        if start < end:
+            del lines[start : end + 1]
+
+    header_idx = next(
+        (i for i, line in enumerate(lines) if line.split("#", 1)[0].strip() == _ENV_SECTION_HEADER),
+        None,
+    )
+    if header_idx is not None:
+        lines[header_idx + 1 : header_idx + 1] = [_ENV_MARKER_START, *env_lines, _ENV_MARKER_END]
+    else:
+        while lines and not lines[-1].strip():
+            lines.pop()
+        lines += ["", _ENV_MARKER_START, _ENV_SECTION_HEADER, *env_lines, _ENV_MARKER_END]
+    return "\n".join(lines) + "\n"
 
 
 def _sync_codex_env_vars() -> int:
@@ -430,21 +462,13 @@ def _sync_codex_env_vars() -> int:
     }
 
     env_lines = [f'{k} = "{v}"' for k, v in sorted(env_vars.items())]
-    managed_block = (
-        f"\n{_ENV_MARKER_START}\n[shell_environment_policy.set]\n" + "\n".join(env_lines) + f"\n{_ENV_MARKER_END}\n"
-    )
 
     try:
         existing = codex_config.read_text(encoding="utf-8")
     except OSError:
         return 0
 
-    if _ENV_MARKER_START in existing and _ENV_MARKER_END in existing:
-        start = existing.index(_ENV_MARKER_START)
-        end = existing.index(_ENV_MARKER_END) + len(_ENV_MARKER_END)
-        new_content = existing[:start].rstrip("\n") + managed_block + existing[end:].lstrip("\n")
-    else:
-        new_content = existing.rstrip("\n") + managed_block
+    new_content = _merge_env_block(existing, env_lines)
 
     if new_content != existing:
         tmp = codex_config.with_suffix(".toml.tmp")

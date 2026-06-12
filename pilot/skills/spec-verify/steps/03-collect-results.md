@@ -1,34 +1,35 @@
-## Step 3: Collect Review Results & Re-Verify
+## Step 3: Code Review & Re-Verify
 
 <!-- CC-ONLY -->
-**If `PILOT_CHANGES_REVIEW_ENABLED` is `"false"` (from Step 0 — Step 1 was skipped),** skip this step entirely and proceed to Step 4 (Phase B). There are no findings to collect.
-<!-- /CC-ONLY -->
+**If `PILOT_CHANGES_REVIEW_ENABLED` is `"false"` (from Step 0),** skip the inline `/code-review` below. If the Codex companion was launched in Step 1, still run its collection sub-step — then proceed to Step 4 (Phase B). If neither reviewer is enabled, skip this step entirely.
 
-<!-- CC-ONLY -->
 **When enabled — mandatory. Never skip** — even if you're confident, context is high, or tests pass.
 
-**⛔ NEVER use `TaskOutput`** to retrieve results — it dumps the full agent transcript into context, wasting thousands of tokens.
+#### Run /code-review (inline — AFTER the Step 2 automated checks are green)
 
-**Wait for Claude reviewer results (bash polling — NOT Read loop):**
+Invoke the built-in code review skill at xhigh effort:
 
-```bash
-OUTPUT_PATH="<findings-path>"
-for i in $(seq 1 250); do [ -f "$OUTPUT_PATH" ] && echo "READY" && break; sleep 2; done
+```
+Skill(skill='code-review', args='xhigh')
 ```
 
-Then Read the file once. If not READY after ~8 min, re-launch synchronously.
+- Execute the loaded review protocol fully (finder angles → verify → sweep). Do NOT pass `--fix` — findings are applied by this orchestrator (below), not by the review.
+- The default scope (branch commits ahead of upstream + uncommitted changes) is correct for a clean worktree or branch. **If the working tree carries unrelated dirty files, pass the plan's files AS THE TARGET in the Skill args** — `Skill(skill='code-review', args='xhigh <file1> <file2> …')` with the paths from the plan's `Files:` blocks — so the review protocol itself scopes its diff (`git diff HEAD -- <those paths>`); prose-level scoping outside the args does NOT bind the review and risks spending the capped findings on unrelated files. ⛔ Do NOT use a bare ref-range like `main...HEAD` to narrow a dirty tree — ref-ranges cover committed work only and would scope AWAY the spec's uncommitted changes.
+- Output: a ranked JSON array of findings `{file, line, summary, failure_scenario}` — most severe first, no severity labels.
+- **If the `code-review` skill is unavailable (older Claude Code version) or the invocation errors:** do NOT silently proceed as if reviewed. Record the gap explicitly in the Step 3 report and the Step 6.2 Not-Verified table, and rely on the Step 2.2 audit results for this iteration.
 
-**Validate findings:** After reading the JSON, verify that the `plan_file` field matches the current plan path. If it doesn't match, the findings are stale from a previous `/spec` — delete the file, re-launch the reviewer, and wait again.
+#### Apply /code-review Findings (severity → action)
 
-#### Fix Claude Reviewer Findings
+**Fix automatically — no user permission needed.** **Lineage is evaluated FIRST:** a finding on a file outside the spec's lineage — the plan's `Files:` blocks plus files legitimately touched as documented deviations — is mention-only regardless of severity (out-of-lineage crashes are reported, never auto-fixed). Only in-lineage findings are classified by the remaining rows:
 
-**Fix automatically — no user permission needed.**
+| Finding class | Action |
+|---------------|--------|
+| Finding on a file OUTSIDE the spec's lineage (CHECK FIRST — overrides all rows below) | **Mention-only — do NOT fix** (mirrors the pre-existing-issue rule) |
+| `failure_scenario` names a concrete crash, wrong output, security, or data-integrity problem | **must_fix** — fix immediately |
+| Cleanup / efficiency / altitude finding (duplication, wasted work, maintainability), single-site | **should_fix** — fix immediately |
+| Cleanup finding that would expand scope (3+ files, architectural) | **suggestion** — implement if quick, else mention in the report |
 
-1. **must_fix** → Fix immediately (security, crashes, TDD violations)
-2. **should_fix** → Fix immediately (spec deviations, missing tests, error handling)
-3. **suggestions** → Implement if quick
-
-For each fix: implement → run relevant tests → log "Fixed: [title]"
+Rank order is the tiebreaker within a class. For each fix: implement → run relevant tests → log "Fixed: [title]"
 
 #### Collect Codex Results (if launched)
 
@@ -71,7 +72,7 @@ Run this as `Bash(run_in_background=true, timeout=600000)`. Code reviews typical
 
 2. **Parse `rawOutput` as JSON.** Extract `verdict`, `summary`, `findings`, and `next_steps`. If `JSON.parse` fails (Codex deviated from the schema), fall back to `storedJob.rendered` — surface the rendered text to the user as a suggestion-level finding and continue. Do NOT re-launch on a parse failure; one Codex run per `/spec` is the rule.
 
-   Severity → action map for the parsed findings:
+   Severity → action map for the parsed findings (the same lineage-first rule as the inline table above applies — out-of-lineage Codex findings are mention-only regardless of severity):
    - `critical` / `high` → must_fix — fix immediately
    - `medium` / `low` → should_fix — fix immediately
    - `info` → suggestion — implement if quick
@@ -94,15 +95,15 @@ rm -f "/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md"
 ```
 ## Code Verification Complete
 **Issues Found:** X
-### Goal Achievement: N/M truths verified
-### Must Fix (N) | Should Fix (N) | Suggestions (N)
+### Goal Achievement: N/M truths verified   (from the Step 2.2 Plan Compliance & Goal-Truth Audit)
+### Must Fix (N) | Should Fix (N) | Suggestions (N) | Out-of-lineage mentions (N)
 ```
 
 #### Re-verification (Only for Structural Fixes)
 
 **Skip** when fixes were localized (terminology, error handling, test updates, minor bugs). Run tests + lint to confirm, proceed to Phase B.
 
-**Re-verify** when fixes required new functionality, changed APIs, or significant new code paths: re-launch changes-review, fix new findings. Max 2 iterations before adding remaining issues to plan.
+**Re-verify** when fixes required new functionality, changed APIs, or significant new code paths: re-run the Step 2.2 Plan Compliance & Goal-Truth Audit on the post-fix diff (fixes can break mitigations or truths), then re-run the inline review SCOPED to the files the fixes touched — pass them as the target: `Skill(skill='code-review', args='xhigh <fixed files>')` — rather than the whole spec diff. Max 2 iterations before adding remaining issues to plan.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 **If `PILOT_CHANGES_REVIEW_ENABLED` is `"false"` (from Step 0 — Step 1 was skipped),** skip this step entirely and proceed to Step 4 (Phase B).
