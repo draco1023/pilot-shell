@@ -18,7 +18,7 @@ From requirement to production-grade code — planned, tested, verified.</br>
   <a href="https://pilot-shell.com/docs">Docs</a> •
   <a href="https://pilot-shell.com/blog">Blog</a> •
   <a href="https://pilot-shell.com">Website</a> •
-  <a href="https://pilot.openchangelog.com/">Changelog</a>
+  <a href="https://github.com/maxritter/pilot-shell/releases">Changelog</a>
 </p>
 
 ```bash
@@ -228,7 +228,7 @@ Discuss  →  Plan  →  Approve  →  Implement (TDD)  →  Verify  →  Done
 
 **Implement:** Creates an isolated git worktree → implements each task with strict TDD (RED → GREEN → REFACTOR) → quality hooks auto-lint, format, and type-check every edit → full test suite after each task.
 
-**Verify:** Full test suite + actual program execution → **code review** (built-in `/code-review` skill at xhigh effort plus an inline plan-compliance & goal-truth audit in Claude Code; native changes-review agent in Codex) → for UI features, executes each E2E scenario step-by-step via browser automation (pass/fail tracked, results written to plan) → auto-fixes findings → squash merges to main on success.
+**Verify:** Full test suite + actual program execution → **code review** (built-in `/code-review` skill at a configurable effort, default `xhigh`, plus an inline plan-compliance & goal-truth audit in Claude Code; native changes-review agent in Codex) → for UI features, executes each E2E scenario step-by-step via browser automation (pass/fail tracked, results written to plan) → auto-fixes findings → squash merges to main on success.
 
 **Model:** With [Model Switching](https://pilot-shell.com/docs/features/model-routing) on (default), planning runs on **Opus** and implementation + verification on **Sonnet**, automatically — no manual `/model` step. `/spec` checks your model first and blocks with a reminder to run `/model opusplan` if you're on the wrong one (it requires Opus when Model Switching is off). On **Claude Fable 5** (`/model fable`) the whole workflow runs single-model — there is no `fableplan` — and Pilot preserves your saved Fable model instead of overwriting it.
 
@@ -430,7 +430,7 @@ For full details on every component, see the **[Documentation](https://pilot-she
 
 ## Changelog
 
-See the full changelog at [pilot.openchangelog.com](https://pilot.openchangelog.com/).
+See the full changelog at [GitHub Releases](https://github.com/maxritter/pilot-shell/releases).
 
 ---
 

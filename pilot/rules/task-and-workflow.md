@@ -128,7 +128,7 @@ CODEX-END -->
 
 - Launch with `run_in_background=true`
 - ⛔ NEVER use `TaskOutput` to retrieve results.
-- **Pilot reviewer agents** (`spec-review`) write findings JSON files — poll with bash file-existence loop, then Read once. Other agent types do NOT write files; their only output is the final message of a foreground call. Never plan on `SendMessage` to follow up — it may not exist in the running Claude Code version. (Code review in `/spec`/`/fix` is NOT a sub-agent on Claude Code — it is the built-in `/code-review` skill, invoked inline via `Skill(skill='code-review', args='xhigh')`.)
+- **Pilot reviewer agents** (`spec-review`) write findings JSON files — poll with bash file-existence loop, then Read once. Other agent types do NOT write files; their only output is the final message of a foreground call. Never plan on `SendMessage` to follow up — it may not exist in the running Claude Code version. (Code review in `/spec`/`/fix` is NOT a sub-agent on Claude Code — it is the built-in `/code-review` skill, invoked inline via `Skill(skill='code-review', args='<effort>')` where `<effort>` is the configured effort, `$PILOT_CODE_REVIEW_EFFORT`, default `xhigh`.)
 - Sub-agents do NOT inherit rules; they can read `~/.claude/rules/*.md` and `.claude/rules/*.md`.
 
 ### Codex Companion (Reviews & Tasks)
@@ -187,7 +187,7 @@ Existing plans (`.md`): read `Type:` header.
 | COMPLETE | * | Bugfix | `spec-bugfix-verify` |
 | VERIFIED | * | * | Done |
 
-`spec-implement` is identical for both types (the plan file is the interface). Verification differs: features get a code review (built-in `/code-review` at xhigh on Claude Code; native `changes-review` agent on Codex) + inline plan-compliance/goal audit + optional Codex companion + structured E2E (TS-NNN); bugfixes get Behavior Contract audit + revert-test proof.
+`spec-implement` is identical for both types (the plan file is the interface). Verification differs: features get a code review (built-in `/code-review` at the configured effort, default `xhigh`, on Claude Code; native `changes-review` agent on Codex) + inline plan-compliance/goal audit + optional Codex companion + structured E2E (TS-NNN); bugfixes get Behavior Contract audit + revert-test proof.
 
 **Status values:** `PENDING` (awaiting impl) → `COMPLETE` (ready to verify) → `VERIFIED` (done).
 

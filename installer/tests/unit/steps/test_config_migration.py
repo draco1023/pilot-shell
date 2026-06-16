@@ -1475,6 +1475,7 @@ class TestMigrationV12:
         assert result is True
         migrated = json.loads(config_path.read_text())
         from installer.steps.config_migration import CURRENT_CONFIG_VERSION as _CCV2
+
         assert migrated["_configVersion"] == _CCV2
         for dead in ("model", "skills", "agents", "extendedContext", "extendedContextOverrides"):
             assert dead not in migrated, f"{dead} should have been pruned"
@@ -1651,6 +1652,7 @@ class TestMigrationV13:
         assert result is True
         migrated = json.loads(config_path.read_text())
         from installer.steps.config_migration import CURRENT_CONFIG_VERSION as _CCV
+
         assert migrated["_configVersion"] == _CCV
         assert migrated["specWorkflow"]["modelSwitch"] is True
 
@@ -1678,10 +1680,10 @@ class TestMigrationV13:
 class TestMigrationV14:
     """Migration v13 -> v14: seed contextWindows default {opus:1m, sonnet:200k}."""
 
-    def test_current_version_is_14(self) -> None:
+    def test_current_version_is_at_least_14(self) -> None:
         from installer.steps.config_migration import CURRENT_CONFIG_VERSION
 
-        assert CURRENT_CONFIG_VERSION == 14
+        assert CURRENT_CONFIG_VERSION >= 14
 
     def test_v14_seeds_context_windows_when_absent(self) -> None:
         from installer.steps.config_migration import _migration_v14
@@ -1715,9 +1717,7 @@ class TestMigrationV14:
         from installer.steps.config_migration import CURRENT_CONFIG_VERSION, migrate_model_config
 
         config_path = tmp_path / "config.json"
-        config_path.write_text(
-            json.dumps({"_configVersion": 13, "specWorkflow": {"modelSwitch": True}})
-        )
+        config_path.write_text(json.dumps({"_configVersion": 13, "specWorkflow": {"modelSwitch": True}}))
 
         result = migrate_model_config(config_path)
 
@@ -1726,8 +1726,10 @@ class TestMigrationV14:
         assert migrated["_configVersion"] == CURRENT_CONFIG_VERSION
         assert migrated["contextWindows"] == {"opus": "1m", "sonnet": "200k"}
 
-    def test_v14_idempotent_when_already_v14(self, tmp_path: Path) -> None:
-        from installer.steps.config_migration import migrate_model_config
+    def test_v14_config_advances_to_current_seeding_code_review(self, tmp_path: Path) -> None:
+        """A config at v14 (contextWindows present, codeReview absent) advances and
+        gets codeReview seeded by the v15 migration."""
+        from installer.steps.config_migration import CURRENT_CONFIG_VERSION, migrate_model_config
 
         config_path = tmp_path / "config.json"
         config_path.write_text(
@@ -1736,6 +1738,77 @@ class TestMigrationV14:
                     "_configVersion": 14,
                     "specWorkflow": {"modelSwitch": True},
                     "contextWindows": {"opus": "200k", "sonnet": "200k"},
+                }
+            )
+        )
+
+        result = migrate_model_config(config_path)
+        assert result is True
+        migrated = json.loads(config_path.read_text())
+        assert migrated["_configVersion"] == CURRENT_CONFIG_VERSION
+        assert migrated["codeReview"] == {"effort": "xhigh"}
+        # Existing contextWindows choice is preserved through the bump
+        assert migrated["contextWindows"] == {"opus": "200k", "sonnet": "200k"}
+
+
+class TestMigrationV15:
+    """Migration v14 -> v15: seed codeReview default {effort: xhigh}."""
+
+    def test_current_version_is_15(self) -> None:
+        from installer.steps.config_migration import CURRENT_CONFIG_VERSION
+
+        assert CURRENT_CONFIG_VERSION == 15
+
+    def test_v15_seeds_code_review_when_absent(self) -> None:
+        from installer.steps.config_migration import _migration_v15
+
+        raw: dict = {}
+        modified = _migration_v15(raw)
+
+        assert modified is True
+        assert raw["codeReview"] == {"effort": "xhigh"}
+
+    def test_v15_preserves_existing_code_review(self) -> None:
+        from installer.steps.config_migration import _migration_v15
+
+        raw: dict = {"codeReview": {"effort": "high"}}
+        modified = _migration_v15(raw)
+
+        assert modified is False
+        assert raw["codeReview"] == {"effort": "high"}
+
+    def test_v15_seeds_when_code_review_not_dict(self) -> None:
+        from installer.steps.config_migration import _migration_v15
+
+        raw: dict = {"codeReview": "high"}
+        modified = _migration_v15(raw)
+
+        assert modified is True
+        assert raw["codeReview"] == {"effort": "xhigh"}
+
+    def test_full_migration_from_v14_seeds_code_review_and_bumps_version(self, tmp_path: Path) -> None:
+        from installer.steps.config_migration import CURRENT_CONFIG_VERSION, migrate_model_config
+
+        config_path = tmp_path / "config.json"
+        config_path.write_text(json.dumps({"_configVersion": 14, "contextWindows": {"opus": "1m", "sonnet": "200k"}}))
+
+        result = migrate_model_config(config_path)
+
+        assert result is True
+        migrated = json.loads(config_path.read_text())
+        assert migrated["_configVersion"] == CURRENT_CONFIG_VERSION
+        assert migrated["codeReview"] == {"effort": "xhigh"}
+
+    def test_v15_idempotent_when_already_v15(self, tmp_path: Path) -> None:
+        from installer.steps.config_migration import migrate_model_config
+
+        config_path = tmp_path / "config.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "_configVersion": 15,
+                    "contextWindows": {"opus": "1m", "sonnet": "200k"},
+                    "codeReview": {"effort": "high"},
                 }
             )
         )

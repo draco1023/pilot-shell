@@ -84,7 +84,7 @@ const NavBar = () => {
             <Link to="/pricing">Subscribe</Link>
           </Button>
           <a
-            href="https://pilot.openchangelog.com/"
+            href="https://github.com/maxritter/pilot-shell/releases"
             target="_blank"
             rel="noopener noreferrer"
             className="text-muted-foreground hover:text-foreground transition-colors"

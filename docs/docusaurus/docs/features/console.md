@@ -111,7 +111,7 @@ Pilot doesn't manage model preferences. Set the model with Claude Code's `/model
 
 ### Spec Workflow -> Review Agents
 
-Two reviews run during `/spec` on Claude Code and Codex; **Changes Review** also runs at the end of `/fix`. Toggle each on or off. On Claude Code, **Spec Review** runs as a Claude sub-agent and **Changes Review** runs as the built-in `/code-review` skill at xhigh effort; Codex runs both as managed custom agents installed under `~/.codex/agents/`.
+Two reviews run during `/spec` on Claude Code and Codex; **Changes Review** also runs at the end of `/fix`. Toggle each on or off. On Claude Code, **Spec Review** runs as a Claude sub-agent and **Changes Review** runs as the built-in `/code-review` skill at a configurable effort (default `xhigh` - see [Code Review Effort](#spec-workflow---code-review-effort) below); Codex runs both as managed custom agents installed under `~/.codex/agents/`.
 
 | Agent | Default | Role |
 |-------|---------|------|
@@ -124,6 +124,10 @@ Two reviews run during `/spec` on Claude Code and Codex; **Changes Review** also
 |-------|---------|------|
 | **Codex Companion Spec Review** | Off | Plugin plan review - second opinion before implementation. |
 | **Codex Companion Changes Review** | Off | Plugin code review - second opinion after `/spec` and `/fix`. |
+
+### Spec Workflow -> Code Review Effort
+
+Sets the effort level the built-in Claude Code `/code-review` skill runs at for the **Changes Review** in `/spec` verification and `/fix`. Choose from `low`, `medium`, `high`, `xhigh`, or `max` - the same reasoning tiers the skill accepts (the billed cloud `ultra` mode is intentionally excluded). The default is **XHigh**; lower it for lighter models (for example Fable 5), where `xhigh` may be more than the review needs. The choice flows to the review via `$PILOT_CODE_REVIEW_EFFORT` and is allow-listed at the point of use (an unset or unrecognized value falls back to `xhigh`). It applies to Claude Code only - on Codex the changes-review agent uses its own reasoning effort.
 
 ### Spec Workflow -> Automation
 

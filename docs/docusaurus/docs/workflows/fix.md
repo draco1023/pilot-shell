@@ -68,7 +68,7 @@ Lint + types + build (when applicable), then the full anti-regression suite, onc
 
 ### Finalise
 
-If the **Changes Review** or **Codex Companion Changes Review** toggle is on, the corresponding review audits the fix first — the same review mechanisms `/spec` runs after implementation (Changes Review: built-in `/code-review` skill at xhigh effort on Claude Code, native agent on Codex). Findings are auto-fixed by severity before the commit and the approval gate, so review-driven changes land in the single bundled commit. Worktree mode: bundle test + fix into one `fix:` commit. Approval gate fires only if **Plan Approval** is enabled. The completion report includes a mandatory **E2E** line documenting what was actually run.
+If the **Changes Review** or **Codex Companion Changes Review** toggle is on, the corresponding review audits the fix first — the same review mechanisms `/spec` runs after implementation (Changes Review: built-in `/code-review` skill at a configurable effort, default `xhigh`, set in Console → Settings → Spec Workflow → Code Review Effort, on Claude Code; native agent on Codex). Findings are auto-fixed by severity before the commit and the approval gate, so review-driven changes land in the single bundled commit. Worktree mode: bundle test + fix into one `fix:` commit. Approval gate fires only if **Plan Approval** is enabled. The completion report includes a mandatory **E2E** line documenting what was actually run.
 
 ## When to bail out — use `/spec` instead
 

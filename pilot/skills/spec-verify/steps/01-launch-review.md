@@ -15,7 +15,7 @@ test -d "$SESS_DIR" && find "$SESS_DIR" -maxdepth 1 -name 'findings-changes-revi
 ---
 
 <!-- CC-ONLY -->
-**No native reviewer launch on Claude Code.** The code review runs INLINE in Step 3 via the built-in `/code-review` skill (`Skill(skill='code-review', args='xhigh')`) — there is no subagent to launch early and no findings file to derive. The only launch in this step is the optional Codex companion below.
+**No native reviewer launch on Claude Code.** The code review runs INLINE in Step 3 via the built-in `/code-review` skill at the configured effort (`$PILOT_CODE_REVIEW_EFFORT`, default `xhigh`; resolved and allow-listed in Step 3) — there is no subagent to launch early and no findings file to derive. The only launch in this step is the optional Codex companion below.
 
 #### Codex Adversarial Review (Optional — launch NOW, in the background)
 
