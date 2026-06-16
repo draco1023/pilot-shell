@@ -7,7 +7,7 @@ description: Real-time diagnostics, go-to-definition, and find-references via au
 # Language Servers
 
 :::warning Claude Code only
-Language Server integration requires Claude Code's LSP support. Codex CLI does not have an equivalent LSP integration. On Codex, the `file_checker.py` hook still provides linting and type-checking via the underlying CLI tools (ruff, basedpyright, ESLint, go vet, dotnet format) — but without real-time editor-style diagnostics, hover docs, or go-to-definition.
+Language Server integration requires Claude Code's LSP support. Codex CLI does not have an equivalent LSP integration. On Codex, the `file_checker.py` hook still provides linting and type-checking via the underlying CLI tools (ruff, basedpyright, ESLint, go vet) — plus a single-file `dotnet format` whitespace check for C# — but without real-time editor-style diagnostics, hover docs, or go-to-definition.
 :::
 
 Real-time diagnostics and go-to-definition for Claude Code, auto-installed and configured.
