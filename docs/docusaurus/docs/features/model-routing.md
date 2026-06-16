@@ -97,7 +97,7 @@ Pilot manages three env vars in `~/.claude/settings.json` based on your choice:
 
 **If a session errors with "model not available":** lower that model's context window to 200K in Console Settings.
 
-**Sub-agents** (`spec-review`) are pinned to the base Sonnet model and do not use the 1M context window regardless of this setting. The changes review runs as the built-in `/code-review` skill on the session model (xhigh effort), so it follows the active model and context window.
+**Sub-agents** (`spec-review`) are pinned to the base Sonnet model and do not use the 1M context window regardless of this setting. The changes review runs as the built-in `/code-review` skill on the session model at a configurable effort (default `xhigh`, set in Console -> Settings -> Spec Workflow -> Code Review Effort), so it follows the active model and context window.
 
 ## Default-On
 

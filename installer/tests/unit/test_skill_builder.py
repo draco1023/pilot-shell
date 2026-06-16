@@ -9,9 +9,11 @@ See .claude/rules/pilot-shell-package-boundaries.md for why we vendor.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
+import yaml
 
 from installer.skill_builder import (
     BuildError,
@@ -89,3 +91,39 @@ class TestBuildSkillMd:
         assert output.is_file()
         assert "# Orchestrator" in output.read_text()
         assert not (skill_dir / "SKILL.md.tmp").exists()
+
+
+class TestRealSkillFrontmatterIsValidYaml:
+    """Every built SKILL.md must carry frontmatter that parses under a strict YAML loader.
+
+    Claude Code's lenient frontmatter reader tolerated an `argument-hint` whose value
+    was a double-quoted scalar followed by trailing content (`"a" or "b"`), but strict
+    PyYAML-based loaders used by third-party agents reject it ("while parsing a block
+    mapping ... expected <block end>, but found '<scalar>'") and silently skip the skill.
+    Guards every shipped skill, not just the one that regressed.
+    """
+
+    SKILLS_ROOT = REPO_ROOT / "pilot" / "skills"
+
+    def _skill_dirs(self) -> list[Path]:
+        return sorted(
+            d
+            for d in self.SKILLS_ROOT.iterdir()
+            if (d / "manifest.json").is_file() and (d / "orchestrator.md").is_file()
+        )
+
+    def test_all_built_skill_frontmatter_parses_with_strict_yaml(self) -> None:
+        skill_dirs = self._skill_dirs()
+        assert skill_dirs, f"no skills discovered under {self.SKILLS_ROOT}"
+
+        failures: list[str] = []
+        for skill_dir in skill_dirs:
+            built = build_skill_md(skill_dir)
+            match = re.match(r"^---\n(.*?)\n---", built, re.DOTALL)
+            assert match is not None, f"{skill_dir.name}: built SKILL.md has no YAML frontmatter"
+            try:
+                yaml.safe_load(match.group(1))
+            except yaml.YAMLError as exc:
+                failures.append(f"{skill_dir.name}: {str(exc).splitlines()[0]}")
+
+        assert not failures, "invalid YAML frontmatter in built skills:\n" + "\n".join(failures)

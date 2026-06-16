@@ -109,14 +109,22 @@ except Exception: print('parse_error')" 2>/dev/null)
 
 #### 6.1.b Inline /code-review (only when `PILOT_CHANGES_REVIEW_ENABLED == "true"`)
 
-Run AFTER launching Codex (6.1.a) so the companion works in parallel. Invoke the built-in code review skill at xhigh effort:
+Run AFTER launching Codex (6.1.a) so the companion works in parallel. Resolve the configured effort first, fail-closed to `xhigh` for an unset/invalid value (never pass the raw env var straight through):
+
+```bash
+EFFORT="${PILOT_CODE_REVIEW_EFFORT:-xhigh}"
+case "$EFFORT" in low|medium|high|xhigh|max) ;; *) EFFORT=xhigh ;; esac
+echo "$EFFORT"
+```
+
+Then invoke the built-in code review skill at that effort (substitute the resolved `<EFFORT>`):
 
 ```
-Skill(skill='code-review', args='xhigh')
+Skill(skill='code-review', args='<EFFORT>')
 ```
 
 - Execute the loaded review protocol fully. Do NOT pass `--fix` — findings are applied by this orchestrator (6.1.c), not by the review.
-- The default scope (uncommitted working-tree changes + commits ahead of upstream) covers the `/fix` diff in a clean tree. **If the tree carries unrelated dirty files, pass the bugfix lineage AS THE TARGET in the Skill args** — `Skill(skill='code-review', args='xhigh <fix file> <test file>')` — covering BOTH the fix AND the Step 2 reproducing test (never review the fix without its test, or weak test assertions go unaudited); prose-level scoping outside the args does not bind the review. A ref-range target only covers committed work and misses the uncommitted fix.
+- The default scope (uncommitted working-tree changes + commits ahead of upstream) covers the `/fix` diff in a clean tree. **If the tree carries unrelated dirty files, pass the bugfix lineage AS THE TARGET in the Skill args** — `Skill(skill='code-review', args='<EFFORT> <fix file> <test file>')` — covering BOTH the fix AND the Step 2 reproducing test (never review the fix without its test, or weak test assertions go unaudited); prose-level scoping outside the args does not bind the review. A ref-range target only covers committed work and misses the uncommitted fix.
 - `/code-review` does not know the bug — root-cause-vs-symptom judgment stays with this orchestrator (Step 1.3 trace + 6.5 checklist), and the Codex companion (6.1.a, when enabled) is the reviewer that receives the bug summary.
 - Output: a ranked JSON array of findings `{file, line, summary, failure_scenario}` — most severe first, no severity labels.
 
@@ -216,7 +224,7 @@ When approval is enabled, summarise + ask:
 
 ```
 AskUserQuestion(
-  question="Bugfix complete.\n\nBug: <one line>\nRoot cause: <file>:<line> — <what>\nFix: <one-line description of the change>\nTests: reproducing test added (<test_name>), full suite green.\nReview: <none | /code-review (xhigh) or native changes-review: N findings, all resolved | Codex: approve | ...>\nE2E: <command/URL you ran and the concrete observation that proves the fix — e.g. 'curl /search -d {} → 200 with [results]', 'opened /tasks page, saved end_date=2026-05-15, list shows 2026-05-15', 'ran pilot register-plan ./foo.md PENDING → exit 0, plan visible in console'>\n\nReview the diff in the Console's Changes tab. Approve when ready.",
+  question="Bugfix complete.\n\nBug: <one line>\nRoot cause: <file>:<line> — <what>\nFix: <one-line description of the change>\nTests: reproducing test added (<test_name>), full suite green.\nReview: <none | /code-review (configured effort) or native changes-review: N findings, all resolved | Codex: approve | ...>\nE2E: <command/URL you ran and the concrete observation that proves the fix — e.g. 'curl /search -d {} → 200 with [results]', 'opened /tasks page, saved end_date=2026-05-15, list shows 2026-05-15', 'ran pilot register-plan ./foo.md PENDING → exit 0, plan visible in console'>\n\nReview the diff in the Console's Changes tab. Approve when ready.",
   options=[<see list above>]
 )
 ```
@@ -224,7 +232,7 @@ AskUserQuestion(
 Handle:
 
 - **Approve** → done.
-- **Request changes** → user describes problem in free-form. Treat as a new investigation: re-run Step 1.3 (re-trace) → Step 2 onward (6.1 reviews re-run on the new fix; the codex-once flag keeps Codex to a single run per invocation, and the inline `/code-review` re-run is scoped to the files changed since the previous review by passing them as the target — `Skill(skill='code-review', args='xhigh <changed files>')` — not the whole diff again).
+- **Request changes** → user describes problem in free-form. Treat as a new investigation: re-run Step 1.3 (re-trace) → Step 2 onward (6.1 reviews re-run on the new fix; the codex-once flag keeps Codex to a single run per invocation, and the inline `/code-review` re-run is scoped to the files changed since the previous review by passing them as the target — `Skill(skill='code-review', args='<EFFORT> <changed files>')` (same resolved `<EFFORT>` as 6.1.b) — not the whole diff again).
 - **Explain the fix in more detail** → write a fuller walkthrough (causal chain from trigger → root cause; why the boundary you fixed at is correct; line-by-line meaning of the diff; alternatives considered and rejected). Do NOT modify code. Then re-ask 6.3 — drop the "Explain" option from the new list to avoid loops.
 
 ### 6.4 Console notification (always, when binary present)
@@ -255,7 +263,7 @@ If any box is unchecked, do not write the report and do not ask for approval —
 Bugfix complete — <bug>.
 Root cause: <file>:<line>.
 Tests: 1 new reproducing test, full suite green.
-Review: <none enabled | /code-review (xhigh) / native changes-review + Codex, no blocking findings | N findings resolved>.
+Review: <none enabled | /code-review (configured effort) / native changes-review + Codex, no blocking findings | N findings resolved>.
 E2E: <command/URL run> → <observation that proves the symptom is gone>.
 
 Run /clear before starting new work — this resets context while keeping project rules loaded.

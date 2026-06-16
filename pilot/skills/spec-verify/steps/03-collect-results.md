@@ -7,14 +7,22 @@
 
 #### Run /code-review (inline — AFTER the Step 2 automated checks are green)
 
-Invoke the built-in code review skill at xhigh effort:
+Resolve the configured effort first, fail-closed to `xhigh` for an unset/invalid value (never pass the raw env var straight through):
+
+```bash
+EFFORT="${PILOT_CODE_REVIEW_EFFORT:-xhigh}"
+case "$EFFORT" in low|medium|high|xhigh|max) ;; *) EFFORT=xhigh ;; esac
+echo "$EFFORT"
+```
+
+Then invoke the built-in code review skill at that effort (substitute the resolved `<EFFORT>`):
 
 ```
-Skill(skill='code-review', args='xhigh')
+Skill(skill='code-review', args='<EFFORT>')
 ```
 
 - Execute the loaded review protocol fully (finder angles → verify → sweep). Do NOT pass `--fix` — findings are applied by this orchestrator (below), not by the review.
-- The default scope (branch commits ahead of upstream + uncommitted changes) is correct for a clean worktree or branch. **If the working tree carries unrelated dirty files, pass the plan's files AS THE TARGET in the Skill args** — `Skill(skill='code-review', args='xhigh <file1> <file2> …')` with the paths from the plan's `Files:` blocks — so the review protocol itself scopes its diff (`git diff HEAD -- <those paths>`); prose-level scoping outside the args does NOT bind the review and risks spending the capped findings on unrelated files. ⛔ Do NOT use a bare ref-range like `main...HEAD` to narrow a dirty tree — ref-ranges cover committed work only and would scope AWAY the spec's uncommitted changes.
+- The default scope (branch commits ahead of upstream + uncommitted changes) is correct for a clean worktree or branch. **If the working tree carries unrelated dirty files, pass the plan's files AS THE TARGET in the Skill args** — `Skill(skill='code-review', args='<EFFORT> <file1> <file2> …')` with the paths from the plan's `Files:` blocks — so the review protocol itself scopes its diff (`git diff HEAD -- <those paths>`); prose-level scoping outside the args does NOT bind the review and risks spending the capped findings on unrelated files. ⛔ Do NOT use a bare ref-range like `main...HEAD` to narrow a dirty tree — ref-ranges cover committed work only and would scope AWAY the spec's uncommitted changes.
 - Output: a ranked JSON array of findings `{file, line, summary, failure_scenario}` — most severe first, no severity labels.
 - **If the `code-review` skill is unavailable (older Claude Code version) or the invocation errors:** do NOT silently proceed as if reviewed. Record the gap explicitly in the Step 3 report and the Step 6.2 Not-Verified table, and rely on the Step 2.2 audit results for this iteration.
 
@@ -103,7 +111,7 @@ rm -f "/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md"
 
 **Skip** when fixes were localized (terminology, error handling, test updates, minor bugs). Run tests + lint to confirm, proceed to Phase B.
 
-**Re-verify** when fixes required new functionality, changed APIs, or significant new code paths: re-run the Step 2.2 Plan Compliance & Goal-Truth Audit on the post-fix diff (fixes can break mitigations or truths), then re-run the inline review SCOPED to the files the fixes touched — pass them as the target: `Skill(skill='code-review', args='xhigh <fixed files>')` — rather than the whole spec diff. Max 2 iterations before adding remaining issues to plan.
+**Re-verify** when fixes required new functionality, changed APIs, or significant new code paths: re-run the Step 2.2 Plan Compliance & Goal-Truth Audit on the post-fix diff (fixes can break mitigations or truths), then re-run the inline review SCOPED to the files the fixes touched — pass them as the target: `Skill(skill='code-review', args='<EFFORT> <fixed files>')` (same resolved `<EFFORT>` as the first run) — rather than the whole spec diff. Max 2 iterations before adding remaining issues to plan.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 **If `PILOT_CHANGES_REVIEW_ENABLED` is `"false"` (from Step 0 — Step 1 was skipped),** skip this step entirely and proceed to Step 4 (Phase B).

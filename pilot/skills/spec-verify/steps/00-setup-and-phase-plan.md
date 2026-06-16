@@ -6,10 +6,10 @@
 
 <!-- CC-ONLY -->
 ```bash
-echo "REVIEWER=$PILOT_CHANGES_REVIEW_ENABLED CODEX_CHG=$PILOT_CODEX_CHANGES_REVIEW_ENABLED"
+echo "REVIEWER=$PILOT_CHANGES_REVIEW_ENABLED CODEX_CHG=$PILOT_CODEX_CHANGES_REVIEW_ENABLED EFFORT=$PILOT_CODE_REVIEW_EFFORT"
 ```
 
-Codex reviewers are controlled entirely by Console Settings — the env vars are authoritative.
+Codex reviewers are controlled entirely by Console Settings — the env vars are authoritative. `EFFORT` is the configured `/code-review` effort (default `xhigh` when unset/invalid; allow-listed at the point of use in Step 3).
 
 Reference these values in Steps 1 (Codex companion launch) and 3 (inline /code-review + Codex collection).
 <!-- /CC-ONLY -->
@@ -26,7 +26,7 @@ CODEX-END -->
 <!-- CC-ONLY -->
 ```
 Phase A — Finalize the code:
-  Launch Codex companion (if enabled) → Automated Checks (tests + lint + verify commands + Plan Compliance & Goal-Truth Audit) → Feature Parity (if migration) → /code-review (xhigh) + Collect Codex Results → Fix
+  Launch Codex companion (if enabled) → Automated Checks (tests + lint + verify commands + Plan Compliance & Goal-Truth Audit) → Feature Parity (if migration) → /code-review (configured effort) + Collect Codex Results → Fix
 
 Phase B — Verify the running program (depth depends on runtime profile):
   Build → Program Execution → Per-Task DoD Audit → E2E

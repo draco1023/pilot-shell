@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-CURRENT_CONFIG_VERSION = 14
+CURRENT_CONFIG_VERSION = 15
 
 _STALE_AGENT_KEYS = frozenset(
     {
@@ -118,6 +118,9 @@ def migrate_model_config(
 
     if version < 14:
         modified = _migration_v14(raw) or modified
+
+    if version < 15:
+        modified = _migration_v15(raw) or modified
 
     if raw.get("_configVersion") != CURRENT_CONFIG_VERSION:
         raw["_configVersion"] = CURRENT_CONFIG_VERSION
@@ -594,6 +597,23 @@ def _migration_v14(raw: dict[str, Any]) -> bool:
     """
     if not isinstance(raw.get("contextWindows"), dict):
         raw["contextWindows"] = {"opus": "1m", "sonnet": "200k"}
+        return True
+    return False
+
+
+def _migration_v15(raw: dict[str, Any]) -> bool:
+    """v14 -> v15: seed codeReview default {effort: xhigh}.
+
+    Makes the historical hard-coded review effort explicit in every config.json so
+    the Console exposes it and build_pilot_env_vars() emits PILOT_CODE_REVIEW_EFFORT
+    on the next `pilot sync-env` / startup. Existing installs keep `xhigh` (zero
+    behavior change); lighter models can dial it down via Console Settings.
+
+    Rule: absent or non-dict -> seed with the default; present dict -> leave
+    untouched (respect the user's explicit choice from Console Settings).
+    """
+    if not isinstance(raw.get("codeReview"), dict):
+        raw["codeReview"] = {"effort": "xhigh"}
         return True
     return False
 

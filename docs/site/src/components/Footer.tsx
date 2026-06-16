@@ -80,7 +80,7 @@ const Footer = () => {
               </li>
               <li>
                 <a
-                  href="https://pilot.openchangelog.com/"
+                  href="https://github.com/maxritter/pilot-shell/releases"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5"
