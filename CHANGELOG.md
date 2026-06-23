@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.7.0] - 2026-06-23
+
+### Features
+
+- Integrate impeccable design detector and design-quality rules
+
 ## [9.6.0] - 2026-06-17
 
 ### Bug Fixes
