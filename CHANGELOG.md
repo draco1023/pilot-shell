@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.7.1] - 2026-06-26
+
+### Bug Fixes
+
+- Heal duplicate keys and tables in Codex config.toml env-block merge
+
 ## [9.7.0] - 2026-06-23
 
 ### Features
