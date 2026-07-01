@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.8.0] - 2026-07-01
+
+### Features
+
+- Sonnet 5 support, always-1M model aliases, remove Context Window selection
+
 ## [9.7.3] - 2026-06-30
 
 ### Bug Fixes
