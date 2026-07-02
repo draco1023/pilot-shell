@@ -8,15 +8,16 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from plan_mode_tracker import is_plan_file, main, sentinel_path
+from plan_mode_tracker import is_plan_file, main
 
 
-def _run_main(stdin_data: dict, session_dir: Path) -> tuple[int, str]:
+def _run_main(stdin_data: dict, session_dir: Path, awaiting_approval: bool = False) -> tuple[int, str]:
     """Run main() with patched session dir and stdin, return (exit_code, stdout)."""
     with (
         patch("plan_mode_tracker._sessions_base", return_value=session_dir),
         patch("plan_mode_tracker.resolve_session_id", return_value="test-session"),
         patch("plan_mode_tracker.read_hook_stdin", return_value=stdin_data),
+        patch("plan_mode_tracker.spec_plan_awaiting_approval", return_value=awaiting_approval),
     ):
         import io
         from contextlib import redirect_stdout
@@ -140,3 +141,20 @@ class TestPreToolUseWarning:
         stdin = {"tool_name": "Edit", "tool_input": {}}
         _, stdout = _run_main(stdin, tmp_path)
         assert stdout.strip() == ""
+
+    def test_pre_approval_warning_while_plan_awaits_approval(self, tmp_path):
+        """While the spec plan is unapproved, the warning must NOT instruct
+        calling ExitPlanMode (auto_approve_plan denies it in that window) but
+        must still fire as an edit-time tripwire pointing at the approval gate.
+        """
+        sentinel = tmp_path / "test-session" / "plan-mode-active"
+        sentinel.parent.mkdir(parents=True)
+        sentinel.write_text("")
+
+        stdin = {"tool_name": "Edit", "tool_input": {"file_path": "src/auth.ts"}}
+        code, stdout = _run_main(stdin, tmp_path, awaiting_approval=True)
+        assert code == 0
+        data = json.loads(stdout)
+        context = data["hookSpecificOutput"]["additionalContext"]
+        assert "NOT APPROVED" in context
+        assert "Call ExitPlanMode NOW" not in context

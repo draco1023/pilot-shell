@@ -179,6 +179,7 @@ def find_git_root() -> Path | None:
             capture_output=True,
             text=True,
             check=False,
+            timeout=2,
         )
         if result.returncode == 0:
             return Path(result.stdout.strip())
@@ -204,6 +205,55 @@ def current_project_root() -> Path | None:
     if root:
         return Path(root)
     return find_git_root()
+
+
+PLAN_MODE_SENTINEL = "plan-mode-active"
+
+
+def plan_mode_sentinel_path() -> Path:
+    """Session-scoped plan-mode sentinel path (reader semantics - no mkdir).
+
+    Written/removed by plan_mode_tracker on EnterPlanMode/ExitPlanMode; read by
+    auto_approve_plan's deny guard and spec_plan_awaiting_approval below.
+    """
+    return _sessions_base() / resolve_session_id() / PLAN_MODE_SENTINEL
+
+
+def spec_plan_awaiting_approval() -> bool:
+    """True while a /spec planning leg is active and its plan is unapproved.
+
+    Deny-guard predicate shared by auto_approve_plan (denies a premature
+    ExitPlanMode) and plan_mode_tracker (suppresses its "call ExitPlanMode"
+    warning in the same window, so the two hooks never issue contradictory
+    instructions). Fails open (False) on ANY read or parse error - a guard
+    malfunction must never block ExitPlanMode or mute a legitimate warning
+    permanently.
+    """
+    try:
+        if not plan_mode_sentinel_path().exists():
+            return False
+        plan = _read_active_plan()
+        if not plan:
+            return False
+        if str(plan.get("status", "")).upper() != "PENDING":
+            return False
+        plan_path = Path(str(plan.get("plan_path", "")))
+        if not plan_path.is_file():
+            return False
+        if current_project_root() is None:
+            # plan_in_current_project fails open (True) when the root cannot
+            # be determined - correct for its legacy consumers, but for THIS
+            # deny consumer that direction is fail-closed: a stale plan from
+            # another repo could deny ExitPlanMode in a non-git cwd. Bail out
+            # to allow instead.
+            return False
+        if not plan_in_current_project(plan_path):
+            return False
+        approved_match = _APPROVED_RE.search(plan_path.read_text())
+        return not (approved_match and approved_match.group(1).lower() == "yes")
+    except Exception:
+        # Includes unreadable/undecodable plan files: ANY failure means allow.
+        return False
 
 
 def plan_in_current_project(plan_file: Path) -> bool:

@@ -10,6 +10,7 @@ import json
 import os
 import re
 import shutil
+import tomllib
 from pathlib import Path
 from typing import Any, Callable
 
@@ -204,7 +205,6 @@ class CodexFilesStep(BaseStep):
 
         Returns the number of MCP servers written into the managed block.
         """
-        _ = ctx
         pilot_home = Path.home() / ".pilot"
         mcp_json_path = pilot_home / ".mcp.json"
         if not mcp_json_path.is_file():
@@ -223,9 +223,6 @@ class CodexFilesStep(BaseStep):
         codex_dir.mkdir(parents=True, exist_ok=True)
         config_path = codex_dir / "config.toml"
 
-        marker_start = "# --- pilot-shell managed MCP servers ---"
-        marker_end = "# --- end pilot-shell managed MCP servers ---"
-
         existing = ""
         if config_path.is_file():
             try:
@@ -233,27 +230,33 @@ class CodexFilesStep(BaseStep):
             except OSError:
                 pass
 
-        if marker_start in existing:
-            start_idx = existing.index(marker_start)
-            if marker_end in existing:
-                end_idx = existing.index(marker_end) + len(marker_end)
-            else:
-                end_idx = start_idx + len(marker_start)
-            before = existing[:start_idx].rstrip("\n")
-            after = existing[end_idx:].lstrip("\n")
-            if before and after:
-                preserved = before + "\n\n" + after
-            else:
-                preserved = before or after
-        else:
-            preserved = existing
+        managed_names = _managed_server_names(mcp_data)
+        preserved, dropped = _clean_mcp_config(existing, managed_names)
+        if dropped and ctx.ui:
+            ctx.ui.warning(
+                "Replacing [mcp_servers.*] tables found outside the pilot-managed block in "
+                f"~/.codex/config.toml: {', '.join(sorted(dropped))} (leftovers of an earlier "
+                "corrupted write, or a user copy of a Pilot-managed server -- re-add custom "
+                "servers under a different name)"
+            )
 
-        managed_block = f"\n{marker_start}\n{toml_block}{marker_end}\n"
+        managed_block = f"\n{_MCP_MARKER_START}\n{toml_block}{_MCP_MARKER_END}\n"
         final = preserved.rstrip("\n") + "\n" + managed_block if preserved.strip() else managed_block.lstrip("\n")
-        _validate_toml_structure(final)
+        try:
+            tomllib.loads(final)
+        except tomllib.TOMLDecodeError as e:
+            # Attribute the failure: a pre-existing user syntax error needs a
+            # different remediation than a bug in our own surgery/generation.
+            try:
+                tomllib.loads(existing)
+            except tomllib.TOMLDecodeError as e_existing:
+                raise _TomlStructureError(
+                    "existing ~/.codex/config.toml is invalid TOML and could not be healed "
+                    f"(fix it manually and re-run): {e_existing}"
+                ) from e_existing
+            raise _TomlStructureError(f"generated config.toml would be invalid: {e}") from e
         _atomic_write(config_path, final)
-        servers = mcp_data.get("mcpServers", {})
-        return len(servers) if isinstance(servers, dict) else 0
+        return len(managed_names)
 
     def _install_codex_rules(self, ctx: InstallContext) -> int:
         """Merge Pilot Shell rules into ~/.codex/AGENTS.md between markers."""
@@ -336,6 +339,7 @@ class CodexFilesStep(BaseStep):
         Top-level keys are inserted before the first [section] header so they
         don't accidentally land inside an unrelated TOML table.
         """
+        _ = ctx
         codex_dir = _get_codex_config_dir()
         codex_dir.mkdir(parents=True, exist_ok=True)
         config_path = codex_dir / "config.toml"
@@ -588,6 +592,130 @@ def _insert_top_level_key(content: str, key: str, value: str) -> str:
     if content and not content.endswith("\n"):
         content += "\n"
     return content + line
+
+
+# Also hard-coded in uninstall.sh (marker_pairs + its grep gate) and
+# test_uninstall_sh.py -- keep the literals in sync when editing.
+_MCP_MARKER_START = "# --- pilot-shell managed MCP servers ---"
+_MCP_MARKER_END = "# --- end pilot-shell managed MCP servers ---"
+
+# Matches the [mcp_servers.<name>] table header and ANY of its sub-tables
+# (.env, .headers, ...). Name may be bare or quoted; whitespace inside the
+# brackets is tolerated. No naive '#'-split: a comment after ']' simply isn't
+# consumed, and quoted names containing '#' survive.
+_MCP_TABLE_HEADER_RE = re.compile(r"^\[\s*mcp_servers\s*\.\s*(?:\"([^\"]+)\"|'([^']+)'|([^.\s\]\"']+))\s*[.\]]")
+
+_TOML_HEADER_LINE_RE = re.compile(r"^\[.*\]\s*(?:#.*)?$")
+
+
+def _mcp_table_name(line: str) -> str | None:
+    """Return the server name when `line` is a table header of
+    [mcp_servers.<name>] or any of its sub-tables, else None. Sibling of the
+    env-block header check in pilot/hooks/codex_skill_sync.py."""
+    m = _MCP_TABLE_HEADER_RE.match(line.strip())
+    if not m:
+        return None
+    name = next((g for g in m.groups() if g is not None), None)
+    return name or None
+
+
+def _managed_server_names(mcp_data: dict[str, Any]) -> set[str]:
+    """Server names Pilot will (re)write -- the single authority for which
+    entries _mcp_json_to_toml emits and _clean_mcp_config strips."""
+    servers = mcp_data.get("mcpServers", {})
+    if not isinstance(servers, dict):
+        return set()
+    return {name for name, config in servers.items() if isinstance(config, dict)}
+
+
+def _split_marker_lines(existing: str) -> list[str]:
+    """splitlines(), additionally splitting any line that embeds a marker
+    mid-line into (prefix, marker, suffix) lines. Heals the historical
+    newline-loss corruption where a marker got concatenated with adjacent
+    content (e.g. '# --- pilot-shell managed MCP servers ---[mcp_servers.x]'),
+    which whole-line marker matching would otherwise miss entirely."""
+    out: list[str] = []
+    for raw in existing.splitlines():
+        rest = raw
+        while True:
+            if rest.strip() in (_MCP_MARKER_START, _MCP_MARKER_END):
+                out.append(rest.strip())
+                break
+            hits = [
+                (idx, marker) for marker in (_MCP_MARKER_END, _MCP_MARKER_START) if (idx := rest.find(marker)) != -1
+            ]
+            if not hits:
+                out.append(rest)
+                break
+            idx, marker = min(hits)
+            prefix = rest[:idx]
+            if prefix.strip():
+                out.append(prefix)
+            out.append(marker)
+            rest = rest[idx + len(marker) :]
+            if not rest.strip():
+                break
+    return out
+
+
+def _clean_mcp_config(existing: str, managed_names: set[str]) -> tuple[str, set[str]]:
+    """Strip prior pilot-shell managed MCP state from existing config.toml content.
+
+    Returns (cleaned_content, dropped_names): dropped_names are managed-name
+    tables removed OUTSIDE any marker region -- content the user could regard
+    as their own (leftovers of a lost marker, or a hand-written override), so
+    the caller surfaces a warning for them. Two removal mechanisms, both
+    required:
+
+    - Marker regions: every well-formed START..END region is dropped whole.
+      This is the only mechanism that removes tables whose names Pilot no
+      longer ships (region content is Pilot-owned regardless of name). The
+      forward scan is non-greedy: an orphaned START whose next marker is
+      another START (or nothing) drops just the marker line, never the user
+      content after it. Lone END markers are dropped as single lines.
+    - Managed-name tables: any [mcp_servers.<name>] table (and its
+      sub-tables) matching a name Pilot is about to (re)write is dropped
+      wherever it appears. Without this, a table left outside the markers by
+      a lost START marker would duplicate the freshly appended block -- a
+      duplicate key/table that aborts Codex startup loading config.toml.
+      The skip stops at header-shaped lines only, so multi-line values whose
+      continuation happens to start with '[' don't truncate the removal.
+
+    Line endings are normalized to LF; user bytes are otherwise preserved
+    verbatim (deliberately no blank-line rewriting -- a global newline
+    collapse previously corrupted multi-line TOML string values).
+    """
+    lines = _split_marker_lines(existing)
+
+    cleaned: list[str] = []
+    dropped: set[str] = set()
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if stripped == _MCP_MARKER_START:
+            nxt = next(
+                (j for j in range(i + 1, len(lines)) if lines[j].strip() in (_MCP_MARKER_START, _MCP_MARKER_END)),
+                None,
+            )
+            if nxt is not None and lines[nxt].strip() == _MCP_MARKER_END:
+                i = nxt + 1  # well-formed region: drop it whole
+            else:
+                i += 1  # orphaned START: drop the marker line, keep what follows
+            continue
+        if stripped == _MCP_MARKER_END:
+            i += 1  # lone END marker
+            continue
+        name = _mcp_table_name(lines[i])
+        if name is not None and name in managed_names:
+            dropped.add(name)
+            i += 1
+            while i < len(lines) and not _TOML_HEADER_LINE_RE.match(lines[i].strip()):
+                i += 1
+            continue
+        cleaned.append(lines[i])
+        i += 1
+
+    return "\n".join(cleaned), dropped
 
 
 def _mcp_json_to_toml(mcp_data: dict[str, Any]) -> str:

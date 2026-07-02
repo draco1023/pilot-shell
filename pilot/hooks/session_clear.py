@@ -15,6 +15,7 @@ SESSIONS_DIR = Path.home() / ".pilot" / "sessions"
 
 STALE_FILES = [
     "active_plan.json",
+    "plan-mode-active",  # keep in sync with PLAN_MODE_SENTINEL in _lib/util.py (no _lib import here by design)
     "spec-stop-guard",
     "spec-approval-pending",
     "continuation.md",

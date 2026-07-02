@@ -104,7 +104,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/auto_approve_plan.py\""
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/auto_approve_plan.py\"",
+            "timeout": 10
           }
         ]
       }
@@ -115,7 +116,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/plan_mode_tracker.py\""
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/plan_mode_tracker.py\"",
+            "timeout": 10
           }
         ]
       },
@@ -144,7 +146,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/plan_mode_tracker.py\""
+            "command": "uv run --no-project --python python3 python \"$HOME/.pilot/hooks/plan_mode_tracker.py\"",
+            "timeout": 10
           }
         ]
       },

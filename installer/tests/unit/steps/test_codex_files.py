@@ -603,7 +603,7 @@ class TestCodexRulesInstallation:
 
 
 class TestCodexMcpConfiguration:
-    def test_generates_toml_for_stdio_server(self, tmp_path: Path) -> None:
+    def test_generates_toml_for_stdio_server(self) -> None:
         from installer.steps.codex_files import _mcp_json_to_toml
 
         mcp = {"mcpServers": {"context7": {"command": "npx", "args": ["-y", "@upstash/context7-mcp@2.2.4"]}}}
@@ -612,7 +612,7 @@ class TestCodexMcpConfiguration:
         assert 'command = "npx"' in toml
         assert 'args = ["-y", "@upstash/context7-mcp@2.2.4"]' in toml
 
-    def test_generates_toml_for_http_server(self, tmp_path: Path) -> None:
+    def test_generates_toml_for_http_server(self) -> None:
         from installer.steps.codex_files import _mcp_json_to_toml
 
         mcp = {"mcpServers": {"grep-mcp": {"type": "http", "url": "https://mcp.grep.app"}}}
@@ -620,7 +620,7 @@ class TestCodexMcpConfiguration:
         assert "[mcp_servers.grep-mcp]" in toml
         assert 'url = "https://mcp.grep.app"' in toml
 
-    def test_generates_toml_with_env_vars(self, tmp_path: Path) -> None:
+    def test_generates_toml_with_env_vars(self) -> None:
         from installer.steps.codex_files import _mcp_json_to_toml
 
         mcp = {
@@ -637,17 +637,20 @@ class TestCodexMcpConfiguration:
         assert 'MODE = "stdio"' in toml
         assert 'ENGINE = "duckduckgo"' in toml
 
-    def test_installs_mcp_to_codex_config_toml(self, tmp_path: Path) -> None:
+    @staticmethod
+    def _run_mcp_install(tmp_path: Path, existing_toml: str | None, mcp_servers: dict) -> tuple[str, MagicMock]:
+        """Run _install_codex_mcp against a fixture config; return (final content, ctx)."""
         codex_dir = tmp_path / ".codex"
-        codex_dir.mkdir(parents=True)
+        codex_dir.mkdir(parents=True, exist_ok=True)
+        if existing_toml is not None:
+            (codex_dir / "config.toml").write_text(existing_toml)
 
         mcp_json = tmp_path / ".pilot" / ".mcp.json"
-        mcp_json.parent.mkdir(parents=True)
-        mcp_json.write_text(json.dumps({"mcpServers": {"test-server": {"command": "echo", "args": ["hello"]}}}))
+        mcp_json.parent.mkdir(parents=True, exist_ok=True)
+        mcp_json.write_text(json.dumps({"mcpServers": mcp_servers}))
 
         step = CodexFilesStep()
         ctx = MagicMock()
-        ctx.ui = None
 
         with (
             patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
@@ -655,31 +658,142 @@ class TestCodexMcpConfiguration:
         ):
             step._install_codex_mcp(ctx)
 
-        config = (codex_dir / "config.toml").read_text()
+        return (codex_dir / "config.toml").read_text(), ctx
+
+    _CONTEXT7 = {"context7": {"command": "npx", "args": ["-y", "@upstash/context7-mcp@3.2.1"]}}
+
+    def test_installs_mcp_to_codex_config_toml(self, tmp_path: Path) -> None:
+        config, _ = self._run_mcp_install(tmp_path, None, {"test-server": {"command": "echo", "args": ["hello"]}})
         assert "[mcp_servers.test-server]" in config
 
     def test_preserves_user_mcp_entries(self, tmp_path: Path) -> None:
-        codex_dir = tmp_path / ".codex"
-        codex_dir.mkdir(parents=True)
-        (codex_dir / "config.toml").write_text('[mcp_servers.my-server]\ncommand = "my-cmd"\n\n')
-
-        mcp_json = tmp_path / ".pilot" / ".mcp.json"
-        mcp_json.parent.mkdir(parents=True)
-        mcp_json.write_text(json.dumps({"mcpServers": {"pilot-server": {"command": "echo", "args": ["hello"]}}}))
-
-        step = CodexFilesStep()
-        ctx = MagicMock()
-        ctx.ui = None
-
-        with (
-            patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
-            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
-        ):
-            step._install_codex_mcp(ctx)
-
-        config = (codex_dir / "config.toml").read_text()
+        config, _ = self._run_mcp_install(
+            tmp_path,
+            '[mcp_servers.my-server]\ncommand = "my-cmd"\n\n',
+            {"pilot-server": {"command": "echo", "args": ["hello"]}},
+        )
         assert "my-server" in config
         assert "pilot-server" in config
+
+    def test_heals_orphaned_mcp_block_missing_start_marker(self, tmp_path: Path) -> None:
+        """A prior write that lost its start marker leaves [mcp_servers.context7]
+        as plain (unmarked) content followed by a lone end marker. Appending a
+        fresh managed block on top of that -- instead of recognizing and
+        removing the orphaned table -- declares [mcp_servers.context7] a
+        second time: a duplicate key/table that aborts Codex startup."""
+        content, _ = self._run_mcp_install(
+            tmp_path,
+            'approval_policy = "never"\n'
+            "\n"
+            "[mcp_servers.context7]\n"
+            'command = "npx"\n'
+            'args = ["-y", "@upstash/context7-mcp@3.2.1"]\n'
+            "\n"
+            "[mcp_servers.herd]\n"
+            'command = "php"\n'
+            'args = ["/Applications/Herd.app/Contents/Resources/herd-mcp.phar"]\n'
+            "\n"
+            "# --- end pilot-shell managed MCP servers ---\n",
+            self._CONTEXT7,
+        )
+        assert content.count("[mcp_servers.context7]") == 1
+        assert "[mcp_servers.herd]" in content  # non-pilot entry preserved
+        # the lone END marker must be gone; only the freshly appended pair remains
+        assert content.count("# --- end pilot-shell managed MCP servers ---") == 1
+        assert content.count("# --- pilot-shell managed MCP servers ---") == 1
+        tomllib.loads(content)  # must not raise: duplicate key/table = Codex startup crash
+
+    def test_orphaned_start_marker_does_not_swallow_user_content(self, tmp_path: Path) -> None:
+        """An orphaned START marker must not greedily pair with a LATER region's
+        END marker -- that span contains user content."""
+        content, _ = self._run_mcp_install(
+            tmp_path,
+            "# --- pilot-shell managed MCP servers ---\n"
+            "\n"
+            "[mcp_servers.usercustom]\n"
+            'command = "my-cmd"\n'
+            "\n"
+            "# --- pilot-shell managed MCP servers ---\n"
+            "[mcp_servers.context7]\n"
+            'command = "npx"\n'
+            "# --- end pilot-shell managed MCP servers ---\n",
+            self._CONTEXT7,
+        )
+        assert "[mcp_servers.usercustom]" in content
+        assert content.count("[mcp_servers.context7]") == 1
+        tomllib.loads(content)
+
+    def test_heals_quoted_managed_table_name(self, tmp_path: Path) -> None:
+        """[mcp_servers."context7"] is the same TOML table as the bare spelling;
+        missing it would re-declare the table and abort Codex startup."""
+        content, _ = self._run_mcp_install(
+            tmp_path,
+            '[mcp_servers."context7"]\ncommand = "old"\n',
+            self._CONTEXT7,
+        )
+        parsed = tomllib.loads(content)
+        assert parsed["mcp_servers"]["context7"]["command"] == "npx"
+
+    def test_heals_managed_table_with_nested_array(self, tmp_path: Path) -> None:
+        """A continuation line of a multi-line array starting with '[' must not
+        truncate the table removal (dangling fragments fail the TOML gate)."""
+        content, _ = self._run_mcp_install(
+            tmp_path,
+            "[mcp_servers.context7]\narg_matrix = [\n    [1, 2],\n    [3, 4],\n]\n",
+            self._CONTEXT7,
+        )
+        assert content.count("[mcp_servers.context7]") == 1
+        parsed = tomllib.loads(content)
+        assert "arg_matrix" not in parsed["mcp_servers"]["context7"]
+
+    def test_preserves_multiline_string_values(self, tmp_path: Path) -> None:
+        """User values must survive byte-for-byte -- a global newline collapse
+        previously corrupted multi-line strings containing blank lines."""
+        existing = 'banner = """line1\n\n\n\nline2"""\n'
+        content, _ = self._run_mcp_install(tmp_path, existing, self._CONTEXT7)
+        assert tomllib.loads(content)["banner"] == tomllib.loads(existing)["banner"]
+
+    def test_removes_non_env_subtables_of_managed_server(self, tmp_path: Path) -> None:
+        """Leftover sub-tables of a managed server (.headers etc.) must not
+        graft stale keys onto the freshly written server."""
+        content, _ = self._run_mcp_install(
+            tmp_path,
+            '[mcp_servers.context7]\ncommand = "old"\n[mcp_servers.context7.headers]\nAuthorization = "Bearer stale"\n',
+            self._CONTEXT7,
+        )
+        parsed = tomllib.loads(content)
+        assert "headers" not in parsed["mcp_servers"]["context7"]
+
+    def test_heals_marker_concatenated_with_header(self, tmp_path: Path) -> None:
+        """The historical newline-loss corruption (marker glued to the next
+        table header on one line) must still be recognized as a marker."""
+        content, _ = self._run_mcp_install(
+            tmp_path,
+            'approval_policy = "never"\n'
+            "# --- pilot-shell managed MCP servers ---[mcp_servers.context7]\n"
+            'command = "npx"\n'
+            "# --- end pilot-shell managed MCP servers ---\n",
+            self._CONTEXT7,
+        )
+        parsed = tomllib.loads(content)
+        assert "command" not in parsed  # stranded keys must not leak to top level
+        assert content.count("[mcp_servers.context7]") == 1
+
+    def test_warns_when_dropping_unmarked_managed_table(self, tmp_path: Path) -> None:
+        """Deleting content the user may regard as their own must be surfaced."""
+        _, ctx = self._run_mcp_install(
+            tmp_path,
+            '[mcp_servers.context7]\ncommand = "my-own-copy"\n',
+            self._CONTEXT7,
+        )
+        warnings = [str(c.args[0]) for c in ctx.ui.warning.call_args_list]
+        assert any("context7" in w for w in warnings)
+
+    def test_reports_existing_invalid_config(self, tmp_path: Path) -> None:
+        """A pre-existing user syntax error must be attributed to the existing
+        file (actionable), not to Pilot's generated config."""
+        with pytest.raises(_TomlStructureError, match="invalid TOML and could not be healed"):
+            self._run_mcp_install(tmp_path, "key =\n", self._CONTEXT7)
 
 
 class TestAdaptInvocationSyntax:
