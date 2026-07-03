@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.8.1] - 2026-07-02
+
+### Bug Fixes
+
+- Deny premature ExitPlanMode before spec approval and harden Codex MCP config healing
+
 ## [9.8.0] - 2026-07-01
 
 ### Features
