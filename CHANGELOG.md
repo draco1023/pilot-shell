@@ -2,6 +2,12 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.9.1] - 2026-07-06
+
+### Bug Fixes
+
+- Verify /spec planning-leg model and raise Codex AGENTS.md size cap
+
 ## [9.9.0] - 2026-07-03
 
 ### Bug Fixes
