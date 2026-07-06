@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -158,3 +159,89 @@ class TestPreToolUseWarning:
         context = data["hookSpecificOutput"]["additionalContext"]
         assert "NOT APPROVED" in context
         assert "Call ExitPlanMode NOW" not in context
+
+
+class TestPlanningLegModelCheck:
+    """Observed-model verification for the /spec planning leg.
+
+    With Model Switching ON, plan mode under opusplan must run on Opus.
+    Claude Code can silently serve the Sonnet leg instead (Opus usage-limit
+    fallback on Max plans, or the session was never on opusplan). The hook
+    verifies the observed model from the statusline cache at the first
+    plan-file write after EnterPlanMode and warns once per planning leg.
+    """
+
+    PLAN_WRITE = {"tool_name": "Write", "tool_input": {"file_path": "docs/plans/2026-07-06-fix.md"}}
+
+    def _setup_leg(self, tmp_path, model_id, cache_fresh=True):
+        """Create sentinel + statusline cache; cache render post-dates the sentinel unless stale."""
+        session = tmp_path / "test-session"
+        session.mkdir(parents=True, exist_ok=True)
+        sentinel = session / "plan-mode-active"
+        sentinel.write_text("")
+        os.utime(sentinel, (1_000_000, 1_000_000))
+        cache = session / "context-pct.json"
+        cache.write_text(json.dumps({"model_id": model_id}))
+        stamp = 1_000_100 if cache_fresh else 999_900
+        os.utime(cache, (stamp, stamp))
+        return session
+
+    def _run(self, tmp_path, switch="true"):
+        env = {"PILOT_MODEL_SWITCH_ENABLED": switch}
+        with patch.dict(os.environ, env):
+            return _run_main(self.PLAN_WRITE, tmp_path)
+
+    def test_warns_when_planning_leg_not_on_opus(self, tmp_path):
+        session = self._setup_leg(tmp_path, "claude-sonnet-5")
+        code, stdout = self._run(tmp_path)
+        assert code == 0
+        context = json.loads(stdout)["hookSpecificOutput"]["additionalContext"]
+        assert "NOT running on Opus" in context
+        assert "claude-sonnet-5" in context
+        assert "/model opusplan" in context
+        assert "usage limit" in context.lower()
+        assert (session / "plan-model-warned").exists()
+
+    def test_silent_when_planning_leg_on_opus(self, tmp_path):
+        self._setup_leg(tmp_path, "claude-opus-4-8")
+        _, stdout = self._run(tmp_path)
+        assert stdout.strip() == ""
+
+    def test_silent_when_model_switch_off(self, tmp_path):
+        self._setup_leg(tmp_path, "claude-sonnet-5")
+        _, stdout = self._run(tmp_path, switch="false")
+        assert stdout.strip() == ""
+
+    def test_silent_on_fable_family_model(self, tmp_path):
+        self._setup_leg(tmp_path, "claude-fable-5[1m]")
+        _, stdout = self._run(tmp_path)
+        assert stdout.strip() == ""
+
+    def test_silent_when_cache_render_predates_sentinel(self, tmp_path):
+        """A render from before EnterPlanMode proves nothing - no warning."""
+        self._setup_leg(tmp_path, "claude-sonnet-5", cache_fresh=False)
+        _, stdout = self._run(tmp_path)
+        assert stdout.strip() == ""
+
+    def test_silent_when_cache_missing(self, tmp_path):
+        session = tmp_path / "test-session"
+        session.mkdir(parents=True)
+        (session / "plan-mode-active").write_text("")
+        _, stdout = self._run(tmp_path)
+        assert stdout.strip() == ""
+
+    def test_warns_only_once_per_planning_leg(self, tmp_path):
+        self._setup_leg(tmp_path, "claude-sonnet-5")
+        _, first = self._run(tmp_path)
+        assert first.strip() != ""
+        _, second = self._run(tmp_path)
+        assert second.strip() == ""
+
+    def test_enter_plan_mode_resets_warned_marker(self, tmp_path):
+        """A new planning leg gets a fresh chance to warn (uneven switching)."""
+        session = tmp_path / "test-session"
+        session.mkdir(parents=True)
+        (session / "plan-model-warned").write_text("")
+        stdin = {"tool_name": "EnterPlanMode", "tool_input": {}, "tool_response": {"result": "ok"}}
+        _run_main(stdin, tmp_path)
+        assert not (session / "plan-model-warned").exists()

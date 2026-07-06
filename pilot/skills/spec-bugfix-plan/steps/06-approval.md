@@ -82,7 +82,8 @@ Then:
 
 1. **Note the permission mode after `ExitPlanMode`.** On Claude Code versions affected by #49525/#39973 it may land in `acceptEdits` instead of `bypassPermissions`. If it is NOT `bypassPermissions`, print one visible line: *"ℹ️ Implementation may prompt for permissions — press Shift+Tab to switch to Bypass Permissions for an uninterrupted run."* Then proceed regardless.
 2. **If `ToolSearch(query="select:ExitPlanMode")` returns no tool:** print a one-line warning ("ExitPlanMode unavailable — implementation will run on the current model") and proceed.
-3. Invoke `Skill(skill='spec-implement', args='<plan-path>')` to continue in the same session.
+3. **Phrase the handoff as a request, not an observation.** Say "exiting plan mode — implementation continues on the opusplan execution leg", never "Model switch complete (Opus planning → Sonnet implementation)": you cannot observe your own model, and Claude Code may not have delivered the expected leg (e.g. Opus usage-limit fallback served Sonnet during planning). The status bar shows the observed model; point the user there if they ask.
+4. Invoke `Skill(skill='spec-implement', args='<plan-path>')` to continue in the same session.
 
 **If `PILOT_MODEL_SWITCH_ENABLED` is `"false"`:** do NOT call `ExitPlanMode`. Invoke `Skill(skill='spec-implement', args='<plan-path>')` directly — implementation continues on Opus.
 <!-- /CC-ONLY -->

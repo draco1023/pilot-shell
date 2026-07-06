@@ -40,6 +40,16 @@ Pilot writes this into `~/.claude/settings.json` during install and whenever Con
 
 With **Model Switching OFF**, the check flips: `/spec` requires **Opus** (only Opus may enter plan mode; Fable-family models also pass) and hard-blocks any other model. Resuming an existing plan (`/spec <path/to/plan.md>`) skips the check on any model.
 
+## Troubleshooting: Planning Didn't Switch to Opus
+
+The `opusplan` switch is performed by Claude Code, and Claude Code can decline it silently. If the statusline stays on **Sonnet** during planning -- or flips between Opus and Sonnet part-way through -- the usual causes are:
+
+- **Opus usage-limit fallback** (Max plans). When your Opus pool is exhausted, `opusplan` serves Sonnet even in plan mode and switches back once the rolling limit window frees up. This is Claude Code behavior, not a Pilot bug -- check `/usage`. Because the window is rolling, it looks like "uneven" switching that engages mid-planning.
+- **The session isn't on `opusplan`.** Run `/model opusplan` and start `/spec` again.
+- **Asking the model doesn't work.** Models don't reliably know which model they are -- a planning leg genuinely running on Opus can still answer "Sonnet". Trust the statusline, not self-reports.
+
+Pilot verifies the switch instead of assuming it: during the planning leg, the `plan_mode_tracker` hook compares the observed session model (from the statusline) against the expected Opus leg at your first plan-file write and injects a visible `PLANNING-LEG MODEL CHECK` warning -- naming the observed model, the likely cause, and the remedy -- when planning is not actually on Opus. No warning means the switch took effect.
+
 ## Fable 5
 
 [Claude Fable 5](https://www.anthropic.com/news/claude-fable-5-mythos-5) is Anthropic's frontier model (`/model fable`, or `fable[1m]` for the 1M window). There is **no `fableplan`** -- no Fable equivalent of `opusplan` exists (for now), so automated model switching does not apply. Pilot is fully Fable-aware instead:

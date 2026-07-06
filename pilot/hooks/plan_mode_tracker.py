@@ -5,7 +5,9 @@ Registered as:
   PostToolUse(EnterPlanMode) -> writes the sentinel
   PostToolUse(ExitPlanMode)  -> deletes the sentinel
   PreToolUse(Edit|Write|MultiEdit) -> injects a warning if the sentinel is active
-                                      and the target file is not a plan doc
+                                      and the target file is not a plan doc;
+                                      for plan-doc writes, verifies the observed
+                                      planning-leg model (see below)
 
 The sentinel lives at:
   ~/.pilot/sessions/<session_id>/plan-mode-active
@@ -13,10 +15,22 @@ The sentinel lives at:
 Purpose: ensure spec-implement never runs on Opus because ExitPlanMode was
 accidentally skipped. The warning gives the model one last chance to call
 ExitPlanMode before touching implementation files.
+
+Planning-leg model check: with Model Switching ON, plan mode under opusplan
+must run on Opus - but Claude Code can silently serve the Sonnet leg instead
+(Opus usage-limit fallback on Max plans, or the session was never on the
+opusplan model). EnterPlanMode itself cannot observe this (the statusline has
+not re-rendered in the new mode yet), so the check runs at the first plan-doc
+write after EnterPlanMode: by then the statusline cache carries a post-lever
+render (cache mtime > sentinel mtime) and its model_id is authoritative. On a
+mismatch a once-per-planning-leg warning is injected so the workflow reports
+the real model instead of narrating an unverified "switched to Opus".
 """
 
 from __future__ import annotations
 
+import json
+import os
 import sys
 from pathlib import Path
 
@@ -27,6 +41,7 @@ from _lib.util import (
     read_hook_stdin,
     resolve_session_id,
 )
+from spec_mode_guard import _is_fable, _is_opus
 
 try:
     from _lib.util import PLAN_MODE_SENTINEL, spec_plan_awaiting_approval
@@ -54,11 +69,66 @@ _PRE_APPROVAL_WARNING = (
     "approves."
 )
 
+# Written once per planning leg when the model check below fires; reset by the
+# next EnterPlanMode so a new leg (uneven switching) gets a fresh warning.
+PLAN_MODEL_WARNED_MARKER = "plan-model-warned"
+
+_MODEL_MISMATCH_WARNING = (
+    "[Pilot] PLANNING-LEG MODEL CHECK: Model Switching is ON and plan mode is "
+    "active, but the observed session model is '{model_id}' - planning is NOT "
+    "running on Opus. Likely causes: (1) Opus usage limit fallback on your "
+    "Claude plan - under opusplan, Claude Code silently serves Sonnet while the "
+    "Opus pool is exhausted and switches back when it frees up (this looks like "
+    "'uneven' mid-planning switching; check /usage); (2) the session is not on "
+    "the opusplan model - run /model opusplan. Tell the user in one short "
+    "paragraph which model planning is actually running on and why, then "
+    "continue planning on the current model. Do NOT re-call EnterPlanMode and "
+    "do NOT claim planning runs on Opus."
+)
+
 
 def sentinel_path() -> Path:
     session_dir = _sessions_base() / resolve_session_id()
     session_dir.mkdir(parents=True, exist_ok=True)
     return session_dir / PLAN_MODE_SENTINEL
+
+
+def _planning_leg_model_context() -> str | None:
+    """Return the mismatch warning when planning is observably not on Opus.
+
+    Fires at most once per planning leg, and only on evidence: the statusline
+    cache must carry a render newer than the EnterPlanMode sentinel (an older
+    render still shows the pre-lever leg and proves nothing). Opus- and
+    Fable-family models are the expected legs; anything else (Sonnet, Haiku)
+    means the opusplan plan-mode switch did not take effect.
+    """
+    if os.environ.get("PILOT_MODEL_SWITCH_ENABLED", "true").strip().lower() == "false":
+        return None
+
+    sentinel = sentinel_path()
+    session_dir = sentinel.parent
+    marker = session_dir / PLAN_MODEL_WARNED_MARKER
+    if marker.exists():
+        return None
+
+    cache = session_dir / "context-pct.json"
+    try:
+        sentinel_mtime = sentinel.stat().st_mtime
+        cache_mtime = cache.stat().st_mtime
+        data = json.loads(cache.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    if cache_mtime <= sentinel_mtime:
+        return None
+
+    model_id = data.get("model_id") if isinstance(data, dict) else None
+    if not isinstance(model_id, str) or not model_id:
+        return None
+    if _is_opus(model_id) or _is_fable(model_id):
+        return None
+
+    marker.write_text("")
+    return _MODEL_MISMATCH_WARNING.format(model_id=model_id)
 
 
 def is_plan_file(file_path: str) -> bool:
@@ -78,7 +148,10 @@ def main() -> int:
             response = data.get("tool_response", {})
             if isinstance(response, dict) and response.get("is_error"):
                 return 0
-            sentinel_path().write_text("")
+            sentinel = sentinel_path()
+            sentinel.write_text("")
+            # New planning leg: allow the model check to warn again.
+            (sentinel.parent / PLAN_MODEL_WARNED_MARKER).unlink(missing_ok=True)
         elif tool_name == "ExitPlanMode":
             response = data.get("tool_response", {})
             if isinstance(response, dict) and response.get("is_error"):
@@ -89,7 +162,14 @@ def main() -> int:
         if not sentinel_path().exists():
             return 0
         file_path = data.get("tool_input", {}).get("file_path", "")
-        if not file_path or is_plan_file(file_path):
+        if not file_path:
+            return 0
+        if is_plan_file(file_path):
+            # Plan-doc write mid-planning: the statusline has re-rendered since
+            # EnterPlanMode, so the observed model is now verifiable.
+            context = _planning_leg_model_context()
+            if context:
+                print(pre_tool_use_context(context))
             return 0
         # Predicate last: it stats/reads session + plan state (and may shell
         # out to git), so the pure-string checks above short-circuit first.

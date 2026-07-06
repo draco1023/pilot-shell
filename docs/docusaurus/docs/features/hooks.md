@@ -41,6 +41,7 @@ Blocking hooks reject actions or force fixes before they land. Non-blocking hook
 |------|-------------|
 | `tool_redirect.py` | Redirects to MCP alternatives; blocks unsupported web paths *(Claude Code only)* |
 | `tool_token_saver.py` | Rewrites Bash commands via RTK for 60–90% token savings |
+| `plan_mode_tracker.py` | Tracks the `/spec` plan-mode levers via a session sentinel; verifies the observed planning-leg model against the expected Opus leg and warns when planning is not on Opus (e.g. Opus usage-limit fallback) *(Claude Code only)* |
 
 ## PostToolUse
 

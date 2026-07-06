@@ -1296,3 +1296,56 @@ class TestMcpMarkerReplacement:
         assert "mcp_servers.ctx7" in result
         assert "mcp_servers.old" not in result
         _validate_toml_structure(result)
+
+
+class TestProjectDocMaxBytes:
+    """Codex silently truncates AGENTS.md beyond project_doc_max_bytes (default
+    32 KiB). Pilot's merged rules are ~88 KB, so the installer must raise the
+    ceiling or most rules never prime Codex startup instructions."""
+
+    def test_raises_project_doc_max_bytes_above_codex_default(self, tmp_path: Path) -> None:
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir(parents=True)
+        config = codex_dir / "config.toml"
+        config.write_text('approval_policy = "never"\n')
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = None
+        with (
+            patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+        ):
+            step._install_codex_config(ctx)
+
+        result = config.read_text()
+        # Must be a top-level key, inserted before the first [section] header.
+        first_section = result.index("[")
+        assert "project_doc_max_bytes" in result[:first_section]
+        parsed = tomllib.loads(result)
+        value = parsed["project_doc_max_bytes"]
+        assert isinstance(value, int)
+        # Must exceed Codex's 32 KiB default that causes the truncation, with
+        # real headroom above the current ~88 KB merged AGENTS.md.
+        assert value > 32768
+        assert value >= 131072
+        _validate_toml_structure(result)
+
+    def test_preserves_user_project_doc_max_bytes(self, tmp_path: Path) -> None:
+        codex_dir = tmp_path / ".codex"
+        codex_dir.mkdir(parents=True)
+        config = codex_dir / "config.toml"
+        config.write_text('approval_policy = "never"\nproject_doc_max_bytes = 65536\n')
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = None
+        with (
+            patch("installer.steps.codex_files._get_codex_config_dir", return_value=codex_dir),
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+        ):
+            step._install_codex_config(ctx)
+
+        result = config.read_text()
+        assert result.count("project_doc_max_bytes") == 1
+        assert tomllib.loads(result)["project_doc_max_bytes"] == 65536

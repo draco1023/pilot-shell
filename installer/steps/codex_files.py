@@ -20,6 +20,15 @@ from installer.steps.base import BaseStep
 
 _CODEX_REVIEW_AGENT_MODEL = "codex-auto-review"
 
+# Codex silently truncates AGENTS.md beyond project_doc_max_bytes (default
+# 32 KiB; openai/codex config.schema.json / DEFAULT_PROJECT_DOC_MAX_BYTES).
+# Pilot merges its full rule set into ~/.codex/AGENTS.md (~88 KB and growing),
+# so without this the majority of the rules never reach Codex startup
+# instructions. Raise the ceiling to 1 MiB (a cap, not a preallocation, so it
+# only costs context up to the file's actual size) to guarantee every rule
+# primes startup rather than being dropped at the 32 KiB cutoff.
+_CODEX_PROJECT_DOC_MAX_BYTES = 1024 * 1024
+
 
 def _get_codex_config_dir() -> Path:
     """Resolve the Codex config directory, respecting CODEX_HOME env var."""
@@ -362,6 +371,8 @@ class CodexFilesStep(BaseStep):
             # Suppress the "Under-development features enabled" warning that Codex
             # prints because we opt into unstable features (e.g. mentions_v2) below.
             "suppress_unstable_features_warning": "true",
+            # Load the full merged AGENTS.md instead of Codex's 32 KiB default.
+            "project_doc_max_bytes": str(_CODEX_PROJECT_DOC_MAX_BYTES),
         }
         changed = False
         section_match = re.search(r"(?m)^\[", existing)
