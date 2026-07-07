@@ -2,6 +2,16 @@
 
 All notable changes to Pilot Shell will be documented in this file.
 
+## [9.10.0] - 2026-07-07
+
+### Bug Fixes
+
+- List taskkill in knip ignoreBinaries
+
+### Features
+
+- Add /ask-codex skill for headless Codex orchestration
+
 ## [9.9.1] - 2026-07-06
 
 ### Bug Fixes
