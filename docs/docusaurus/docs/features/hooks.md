@@ -43,6 +43,14 @@ Blocking hooks reject actions or force fixes before they land. Non-blocking hook
 | `tool_token_saver.py` | Rewrites Bash commands via RTK for 60–90% token savings |
 | `plan_mode_tracker.py` | Tracks the `/spec` plan-mode levers via a session sentinel; verifies the observed planning-leg model against the expected Opus leg and warns when planning is not on Opus (e.g. Opus usage-limit fallback) *(Claude Code only)* |
 
+## PermissionRequest *(Claude Code only)*
+
+*When a tool call would show a permission dialog*
+
+| Hook | Description |
+|------|-------------|
+| `auto_approve_plan.py` | Allows `ExitPlanMode` as the `/spec` model-switch lever (denies it while a registered spec plan awaits approval), and restores `bypassPermissions` after a plan-mode exit: current Claude Code builds drop the session to `acceptEdits` or manual mode on exit, so when the session was observed in bypass before the planning leg, the hook re-applies bypass on the first permission request that follows — no prompt is shown |
+
 ## PostToolUse
 
 *After file edits, reads, and searches*

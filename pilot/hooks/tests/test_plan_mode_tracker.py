@@ -66,6 +66,33 @@ class TestSentinelTracking:
         _run_main(stdin, tmp_path)
         assert not (tmp_path / "test-session" / "plan-mode-active").exists()
 
+    def test_pre_enter_plan_mode_records_permission_mode(self, tmp_path):
+        """PreToolUse(EnterPlanMode) fires before the mode flips to plan, so
+        the observed permission_mode is the pre-plan mode - the bypass
+        evidence auto_approve_plan needs to arm the post-exit restore."""
+        stdin = {
+            "tool_name": "EnterPlanMode",
+            "tool_input": {},
+            "permission_mode": "bypassPermissions",
+        }
+        code, out = _run_main(stdin, tmp_path)
+        assert code == 0
+        assert out == ""
+        record = tmp_path / "test-session" / "pre-plan-permission-mode"
+        assert record.read_text() == "bypassPermissions"
+
+    def test_pre_enter_plan_mode_without_mode_clears_stale_record(self, tmp_path):
+        """No permission_mode field (older Claude Code) -> clear any stale
+        record so a previous leg's evidence cannot arm a later restore."""
+        record = tmp_path / "test-session" / "pre-plan-permission-mode"
+        record.parent.mkdir(parents=True)
+        record.write_text("bypassPermissions")
+        stdin = {"tool_name": "EnterPlanMode", "tool_input": {}}
+        code, out = _run_main(stdin, tmp_path)
+        assert code == 0
+        assert out == ""
+        assert not record.exists()
+
     def test_exit_plan_mode_deletes_sentinel(self, tmp_path):
         sentinel = tmp_path / "test-session" / "plan-mode-active"
         sentinel.parent.mkdir(parents=True)

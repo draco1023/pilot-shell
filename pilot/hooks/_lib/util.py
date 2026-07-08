@@ -209,6 +209,12 @@ def current_project_root() -> Path | None:
 
 PLAN_MODE_SENTINEL = "plan-mode-active"
 
+# Pre-plan permission mode recorded by plan_mode_tracker at
+# PreToolUse(EnterPlanMode) - i.e. BEFORE the mode flips to "plan" - and
+# consumed by auto_approve_plan as the positive bypass evidence required to
+# arm the post-plan-exit bypassPermissions restore.
+PRE_PLAN_MODE_RECORD = "pre-plan-permission-mode"
+
 
 def plan_mode_sentinel_path() -> Path:
     """Session-scoped plan-mode sentinel path (reader semantics - no mkdir).

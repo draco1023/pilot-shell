@@ -44,9 +44,10 @@ from _lib.util import (
 from spec_mode_guard import _is_fable, _is_opus
 
 try:
-    from _lib.util import PLAN_MODE_SENTINEL, spec_plan_awaiting_approval
+    from _lib.util import PLAN_MODE_SENTINEL, PRE_PLAN_MODE_RECORD, spec_plan_awaiting_approval
 except ImportError:  # version-skewed _lib predating these names: legacy behavior
     PLAN_MODE_SENTINEL = "plan-mode-active"
+    PRE_PLAN_MODE_RECORD = "pre-plan-permission-mode"
 
     def spec_plan_awaiting_approval() -> bool:
         return False
@@ -158,6 +159,20 @@ def main() -> int:
                 return 0
             sentinel_path().unlink(missing_ok=True)
     else:
+        # PreToolUse(EnterPlanMode): the mode has not flipped to "plan" yet,
+        # so permission_mode is the pre-plan mode. Record it as the bypass
+        # evidence auto_approve_plan requires to arm the post-exit restore
+        # (a shift-tab plan entry records nothing - it never calls the tool).
+        if tool_name == "EnterPlanMode":
+            record = sentinel_path().parent / PRE_PLAN_MODE_RECORD
+            mode = data.get("permission_mode")
+            if isinstance(mode, str) and mode:
+                record.write_text(mode)
+            else:
+                # No field (older Claude Code): clear stale evidence so a
+                # previous leg's record cannot arm a later restore.
+                record.unlink(missing_ok=True)
+            return 0
         # PreToolUse: warn if editing a non-plan file while plan mode is active
         if not sentinel_path().exists():
             return 0

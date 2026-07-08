@@ -11,6 +11,25 @@ from pathlib import Path
 
 HOOK_PATH = Path(__file__).resolve().parent.parent / "auto_approve_plan.py"
 SESSION = "test-session"
+RESTORE_MARKER = "bypass-restore-pending"
+
+
+def _marker(tmp_path: Path) -> Path:
+    return tmp_path / "home" / ".pilot" / "sessions" / SESSION / RESTORE_MARKER
+
+
+def _arm_marker(tmp_path: Path) -> Path:
+    marker = _marker(tmp_path)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("")
+    return marker
+
+
+def _record_pre_plan_mode(tmp_path: Path, mode: str) -> Path:
+    record = tmp_path / "home" / ".pilot" / "sessions" / SESSION / "pre-plan-permission-mode"
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(mode)
+    return record
 
 
 def _setup_spec_state(
@@ -37,8 +56,18 @@ def _setup_spec_state(
     return plan_path
 
 
-def _run(tmp_path: Path, hook_path: Path = HOOK_PATH, project_root_env: bool = True) -> tuple[int, dict]:
-    """Run the hook hermetically (isolated HOME/session/project) and parse its output."""
+def _run(
+    tmp_path: Path,
+    hook_path: Path = HOOK_PATH,
+    project_root_env: bool = True,
+    payload: dict | None = None,
+) -> tuple[int, dict | None]:
+    """Run the hook hermetically (isolated HOME/session/project) and parse its output.
+
+    payload is the PermissionRequest stdin JSON; the default simulates the
+    classic ExitPlanMode request. Returns None for data when the hook printed
+    nothing (passthrough to the normal permission dialog).
+    """
     home = tmp_path / "home"
     project = tmp_path / "project"
     home.mkdir(exist_ok=True)
@@ -53,17 +82,22 @@ def _run(tmp_path: Path, hook_path: Path = HOOK_PATH, project_root_env: bool = T
     env.pop("CLAUDE_CODE_SESSION_ID", None)
     env.pop("CODEX_THREAD_ID", None)
     env.pop("PYTHONPATH", None)  # a leaked path to pilot/hooks would defeat the orphan-_lib isolation
+    if payload is None:
+        payload = {"tool_name": "ExitPlanMode", "permission_mode": "plan"}
     result = subprocess.run(
         [sys.executable, str(hook_path)],
         capture_output=True,
         text=True,
         env=env,
         cwd=str(project),
+        input=json.dumps(payload),
     )
-    return result.returncode, json.loads(result.stdout.strip())
+    stdout = result.stdout.strip()
+    return result.returncode, json.loads(stdout) if stdout else None
 
 
-def _decision(data: dict) -> dict:
+def _decision(data: dict | None) -> dict:
+    assert data is not None, "hook printed no decision"
     return data["hookSpecificOutput"]["decision"]
 
 
@@ -72,6 +106,7 @@ class TestAutoApprovePlan:
         """No registered plan / no plan-mode sentinel -> plain allow (legacy behavior)."""
         code, data = _run(tmp_path)
         assert code == 0
+        assert data is not None
         assert data["hookSpecificOutput"]["hookEventName"] == "PermissionRequest"
         decision = _decision(data)
         assert decision["behavior"] == "allow"
@@ -111,6 +146,7 @@ class TestAutoApprovePlan:
         assert "askuserquestion" in message.lower()
         assert "plan-mode-active" in message  # escape hatch names the sentinel
         assert "updatedPermissions" not in decision  # allow-only field per hook schema
+        assert not _marker(tmp_path).exists()  # a denied exit must not arm the restore
 
     def test_allows_after_plan_approved(self, tmp_path):
         _setup_spec_state(tmp_path, approved="Yes")
@@ -176,3 +212,122 @@ class TestAutoApprovePlan:
         code, data = _run(tmp_path, hook_path=orphan_hook)
         assert code == 0
         assert _decision(data)["behavior"] == "allow"
+        # Restore branch under the same skew: never crash, never auto-allow -
+        # a non-ExitPlanMode request degrades to the normal permission dialog.
+        code, data = _run(
+            tmp_path,
+            hook_path=orphan_hook,
+            payload={"tool_name": "Bash", "permission_mode": "acceptEdits"},
+        )
+        assert code == 0
+        assert data is None
+
+    def test_exit_allow_arms_restore_marker(self, tmp_path):
+        """An allowed ExitPlanMode must arm the bypass-restore marker.
+
+        Claude Code resets the session to acceptEdits on plan exit (upstream
+        #39973) and silently drops the setMode sent on the exit request itself
+        (#49525), so the restore must be replayed on the NEXT permission
+        request. The marker is what arms that replay. Arming requires positive
+        pre-plan bypass evidence (recorded by plan_mode_tracker at
+        PreToolUse(EnterPlanMode)); the record is consumed per planning leg.
+        """
+        record = _record_pre_plan_mode(tmp_path, "bypassPermissions")
+        code, data = _run(tmp_path, payload={"tool_name": "ExitPlanMode", "permission_mode": "plan"})
+        assert code == 0
+        assert _decision(data)["behavior"] == "allow"
+        assert _marker(tmp_path).exists()
+        assert not record.exists()  # evidence is per-leg, consumed on use
+
+    def test_exit_allow_requires_bypass_evidence_to_arm(self, tmp_path):
+        """No recorded pre-plan bypass mode -> allow, but NEVER arm the marker.
+
+        Guards the permissions regression a reviewer flagged: without this
+        gate, a session that was never in bypassPermissions (user deliberately
+        in manual/acceptEdits, or a shift-tab plan entry that records nothing)
+        would get its next permission prompt silently auto-allowed.
+        """
+        payload = {"tool_name": "ExitPlanMode", "permission_mode": "plan"}
+        # (a) no evidence record at all
+        code, data = _run(tmp_path, payload=payload)
+        assert code == 0
+        assert _decision(data)["behavior"] == "allow"
+        assert not _marker(tmp_path).exists()
+        # (b) evidence of a NON-bypass pre-plan mode
+        _record_pre_plan_mode(tmp_path, "default")
+        code, data = _run(tmp_path, payload=payload)
+        assert code == 0
+        assert _decision(data)["behavior"] == "allow"
+        assert not _marker(tmp_path).exists()
+
+    def test_enter_plan_mode_request_leaves_marker_untouched(self, tmp_path):
+        """A PermissionRequest for EnterPlanMode is pure passthrough: no
+        output, and an armed marker survives to fire on the next
+        non-EnterPlanMode request."""
+        marker = _arm_marker(tmp_path)
+        code, data = _run(tmp_path, payload={"tool_name": "EnterPlanMode", "permission_mode": "acceptEdits"})
+        assert code == 0
+        assert data is None
+        assert marker.exists()
+
+    def test_restore_fires_on_first_prompt_after_plan_exit(self, tmp_path):
+        """First permission request after a plan exit -> allow + setMode
+        bypassPermissions, marker consumed (single-shot).
+
+        The exit drops the session to acceptEdits (#39973) OR to manual
+        (Claude Code >= 2.1.204's exit dialog, field report from the /spec
+        smoke test) - the replay must cover every involuntary drop state,
+        both 'default' and its 2.1.200+ alias 'manual'.
+        """
+        for dropped_mode in ("acceptEdits", "default", "manual"):
+            marker = _arm_marker(tmp_path)
+            code, data = _run(
+                tmp_path,
+                payload={
+                    "tool_name": "Bash",
+                    "permission_mode": dropped_mode,
+                    "tool_input": {"command": "echo hi"},
+                },
+            )
+            assert code == 0, dropped_mode
+            decision = _decision(data)
+            assert decision["behavior"] == "allow", dropped_mode
+            assert any(
+                p.get("type") == "setMode"
+                and p.get("mode") == "bypassPermissions"
+                and p.get("destination") == "session"
+                for p in decision["updatedPermissions"]
+            ), dropped_mode
+            assert not marker.exists(), dropped_mode
+            message = decision["message"].lower()
+            assert "approved" not in message, f"misleading approval wording: {message!r}"
+            assert "not plan approval" in message, f"missing disclaimer: {message!r}"
+
+    def test_passthrough_for_other_tools_without_marker(self, tmp_path):
+        """No armed marker -> a non-ExitPlanMode request produces NO output.
+
+        Safety-critical with the '*' matcher: any output here would auto-allow
+        arbitrary permission requests. Silence hands the request back to the
+        normal Claude Code permission dialog.
+        """
+        code, data = _run(tmp_path, payload={"tool_name": "Bash", "permission_mode": "acceptEdits"})
+        assert code == 0
+        assert data is None
+
+    def test_no_restore_in_plan_or_unknown_mode(self, tmp_path):
+        """Marker armed but the session is back in plan mode (or the mode is
+        missing/unrecognized) -> stand down: consume the marker, no output.
+
+        Only the involuntary drop states (acceptEdits/default/manual) replay;
+        anything else must never be auto-allowed.
+        """
+        for mode_payload in (
+            {"permission_mode": "plan"},
+            {"permission_mode": "bypassPermissions"},  # unreachable in practice; pinned defensively
+            {},
+        ):
+            marker = _arm_marker(tmp_path)
+            code, data = _run(tmp_path, payload={"tool_name": "Bash", **mode_payload})
+            assert code == 0, mode_payload
+            assert data is None, mode_payload
+            assert not marker.exists(), mode_payload

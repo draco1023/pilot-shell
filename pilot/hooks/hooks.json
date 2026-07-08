@@ -100,7 +100,7 @@
     ],
     "PermissionRequest": [
       {
-        "matcher": "ExitPlanMode",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
@@ -112,7 +112,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit",
+        "matcher": "EnterPlanMode|Edit|Write|MultiEdit",
         "hooks": [
           {
             "type": "command",
