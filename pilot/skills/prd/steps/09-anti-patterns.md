@@ -1,12 +1,12 @@
-## Step 9: Anti-Patterns
+## Step 9: Principles & Anti-Patterns
 
-- **Defaulting to free-form questions during the convergent phase** — once you're in Clarify/Converge (Step 4 onward), `AskUserQuestion` with predefined options is the default. Brief prose riffs are allowed when a question opens a genuinely new unknown (see Step 4), but don't drift back into open-ended chat for decisions that have a clean A/B/C shape.
-- **Skipping ideation when the idea is vague** — if the user gave a problem statement instead of a solution, don't jump straight to structured questions. Brainstorm in prose first (Step 3).
-- **Pretending to ideate when the user already decided** — if the input is concrete, skip Step 3. Don't pitch alternatives the user didn't ask for.
-- **Rewriting the whole PRD when the user requests changes** — use `Edit` on specific sections so the user doesn't have to reload the file in their editor and re-read everything.
-- **Rushing to solutions** — understand the problem first, always
-- **Asking too many questions at once** — one at a time, each building on the last
-- **Being a yes-man** — challenge assumptions, surface trade-offs
-- **Over-specifying technically** — the PRD describes WHAT and WHY, `/spec` handles HOW
-- **Skipping the conversation entirely** — even "simple" features benefit from 2-3 clarifying questions. Unexamined assumptions cause the most wasted work.
-- **Letting one PRD swallow a whole platform** — if the request describes multiple independent subsystems, decompose in Step 1 before continuing.
+Quick reinforcement of rules already stated across Steps 1-8 — the traps that cause the most wasted work. (Rules fully covered in the step bodies — decompose in Step 1, diverge/ideate in Steps 2-3, one-question-at-a-time and multiple-choice in Step 4, edit-don't-rewrite in Step 7 — are not repeated here.)
+
+- **Rushing to solutions** — understand the problem first, always. The PRD describes WHAT and WHY; `/spec` handles HOW, so resist over-specifying technically.
+- **Being a yes-man** — challenge assumptions and surface trade-offs; you're a strategic thought partner, not an order-taker.
+- **Pretending to ideate when the user already decided** — if the input is concrete, skip Step 3; don't pitch alternatives the user didn't ask for.
+- **Skipping the conversation entirely** — even "simple" features benefit from 2-3 clarifying questions; unexamined assumptions cause the most wasted work.
+- **YAGNI ruthlessly** — apply rung 1 of the ladder (`development-practices.md` → *Build the least that works*) to every proposed feature: "does this need to exist at all?" The cheapest scope to cut is the scope never specified.
+- **Write for handoff** — the PRD is a contract between requirements and specification; a reader running `/spec` should need nothing else.
+
+ARGUMENTS: $ARGUMENTS

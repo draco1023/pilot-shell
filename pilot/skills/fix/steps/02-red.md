@@ -12,7 +12,7 @@ If no clean entry point exists: that's a design smell. Document it briefly and u
 
 ### 2.2 Encode `Currently → Expected`
 
-The test asserts the **correct** behaviour. Against the buggy code, the assertion must fail with an error matching the symptom you stated in Step 1.4.
+The test asserts the **correct** behaviour. Against the buggy code, the assertion must fail with an error matching the symptom you stated in Step 1.5.
 
 Naming: `test_<function>_<bug>_<expected>` (Python) or `it("should <expected> when <condition>", ...)` (TS/JS). Keep it boring — this is regression insurance, not a showcase.
 

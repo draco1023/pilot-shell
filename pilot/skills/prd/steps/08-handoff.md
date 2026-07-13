@@ -1,31 +1,20 @@
 ## Step 8: Hand Off to /spec
 
-After the user confirms the PRD:
+This is the single terminal confirmation — Step 7 already settled the PRD content, so do NOT ask "does anything need to change?" again here.
 
-**Ask:** "Ready to hand this off to `/spec` for implementation planning?"
+**⛔ Never auto-invoke `/spec` or `Skill('spec')`.** The user MUST type the command themselves (global rule in `task-and-workflow.md`). This skill's terminal action is to PRINT the command, then stop and wait.
 
-Use `AskUserQuestion` with options:
-- **"Yes, start /spec now"** — invoke `/spec` immediately
-- **"No, I'll run /spec later"** — just confirm the PRD path
+**Ask** (`AskUserQuestion`, or plain-text numbered options on Codex):
+- **"Show me the `/spec` command"** — print the ready-to-run command below
+- **"I'm done for now"** — just confirm the PRD path
 
-### If yes — invoke /spec:
-
-<!-- CC-ONLY -->
-```
-Skill('spec', args='<one-line-summary> — PRD: docs/prd/YYYY-MM-DD-slug.md — see PRD for full requirements')
-```
-<!-- /CC-ONLY -->
-<!-- CODEX-START
-Codex has no callable phase-dispatch tool. Continue immediately with the `$spec` skill instructions using arguments: `<one-line-summary> — PRD: docs/prd/YYYY-MM-DD-slug.md — see PRD for full requirements`.
-CODEX-END -->
-
-**The args string must NOT end in `.md`** — the trailing text after the path prevents the `/spec` dispatcher from treating it as an existing plan file. The dispatcher only triggers plan-file mode when args end with `.md` AND the file exists.
-
-### If no:
+Either way, print the hand-off command for the user to run (do not run it yourself):
 
 ```
 PRD saved to docs/prd/YYYY-MM-DD-slug.md
 
-To implement later, run:
-  /spec "Implement <summary> — PRD: docs/prd/YYYY-MM-DD-slug.md — see PRD for full requirements"
+To start implementation planning, run:
+  /spec "Implement <one-line-summary> — PRD: docs/prd/YYYY-MM-DD-slug.md — see PRD for full requirements"
 ```
+
+**The command's argument must NOT end in `.md`** — the trailing text after the path prevents the `/spec` dispatcher from treating it as an existing plan file (dispatcher plan-file mode triggers only when the argument ends with `.md` AND the file exists).

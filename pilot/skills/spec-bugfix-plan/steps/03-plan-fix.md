@@ -2,13 +2,7 @@
 
 ### Gate — before writing the plan
 
-Answer YES to all:
-
-1. Root cause stated as `file:lineN — function() does X but should do Y`?
-2. WHY it causes the symptom is explained?
-3. Confidence is High or Medium?
-
-If any NO → return to Step 2.
+Re-confirm the three Step 0 **Enforcement** questions (root cause stated as `file:lineN — function() does X but should do Y`; WHY it causes the symptom; confidence High or Medium). If any is NO → return to Step 2. No exceptions, even for "obvious" bugs.
 
 ### Fix approach selection
 
@@ -16,7 +10,7 @@ If any NO → return to Step 2.
 
 **Propose 2–3 approaches only when there is a genuine architectural choice** (patch at call site vs. fix at source vs. add validation layer, with materially different scope/regression/maintenance trade-offs). For each: name, what it fixes, trade-offs, recommendation.
 
-**Ground approach labels in the root cause.** Step 2.5 already produced a concrete `Root Cause: file:line — function_name()` statement and Step 2.3 ran `codegraph_context`. When proposing alternatives, option labels must reference the actual symbols/files involved — e.g., `Patch at OrderHandler.validate (call site, src/handlers/order.py:88)` vs. `Fix at source OrderValidator.check (src/validators/order.py:42)`. Generic labels ("patch at call site" / "fix at source") with no symbol names are a regression — the data to ground them is already in your investigation notes.
+**Ground approach labels in the root cause.** Step 2.5 already produced a concrete `Root Cause: file:line — function_name()` statement and Step 2.3 ran `codegraph_explore`. When proposing alternatives, option labels must reference the actual symbols/files involved — e.g., `Patch at OrderHandler.validate (call site, src/handlers/order.py:88)` vs. `Fix at source OrderValidator.check (src/validators/order.py:42)`. Generic labels ("patch at call site" / "fix at source") with no symbol names are a regression — the data to ground them is already in your investigation notes.
 
 When a genuine choice exists AND `PILOT_PLAN_QUESTIONS_ENABLED` is not `"false"`: use `AskUserQuestion` to pick.
 
@@ -59,9 +53,9 @@ For each gap found, either extend `Expected (fix):` to cover it OR document why 
 **Task 1 — Write Reproducing Test (RED)**
 Encode `Currently → Expected` via an existing public entry point. Run → must FAIL with the documented symptom. Worktree mode: commit alone before any fix code. Naming: `test_<function>_<bug>_<expected>`.
 
-**Reuse > create.** If a test class already exists for this entry point, modify it (add one new test method that encodes the bug). Do NOT create a sister test class — that violates the parsimony rule (see `pilot/rules/testing.md` § Test Parsimony).
+**Reuse > create.** If a test class already exists for this entry point, modify it (add one new test method that encodes the bug). Do NOT create a sister test class — that violates the parsimony rule (see the testing rules § Test Parsimony).
 
-**`Trivial:` does not apply here.** The feature TDD loop's `Trivial:` escape (see `pilot/skills/spec-implement/steps/02-tdd-loop.md`) is feature-only. Bugfixes always require a reproducing RED test regardless of diff size — that is the bugfix lane's anti-regression guarantee, and removing it would destroy the lane's value.
+**`Trivial:` does not apply here.** The feature TDD loop's `Trivial:` escape (spec-implement's TDD loop) is feature-only. Bugfixes always require a reproducing RED test regardless of diff size — that is the bugfix lane's anti-regression guarantee, and removing it would destroy the lane's value.
 
 **Task 2 — Implement Fix at Root Cause**
 Minimal change at `Root Cause: file:line`. Fix at source, not symptom. Re-run reproducing test → must PASS. Run targeted test module(s), not full suite — full suite runs at Task 3. Diff must touch the root-cause file.

@@ -26,7 +26,7 @@ CODEX-END -->
    ```
 
 3. Handle response — **match strictly, never auto-approve ambiguous input:**
-   - **Approve:** Response is one of: "Approve", "approve", "lgtm", "looks good", "continue", "proceed" → proceed to Step 7
+   - **Approve:** Response is one of: "Approve", "approve", "lgtm", "looks good" → proceed to Step 7. (Do NOT treat a bare "continue"/"proceed" as approval — those are routine resume nudges, not a verification sign-off.)
    - **Fix:** Response matches "Fix" or mentions annotations/console feedback → re-run Step 5 (check for code review annotations in JSON), apply fixes, re-run tests, return to Step 6
    - **Manual / custom text:** Response matches "Manual" OR is ANY other free-text/custom input → the user wants to pause. **Do NOT mark VERIFIED. Do NOT change plan status.** Use `AskUserQuestion` again (required so the stop guard allows the user to exit while waiting):
      ```

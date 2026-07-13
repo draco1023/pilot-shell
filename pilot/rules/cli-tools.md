@@ -73,6 +73,6 @@ Pilot also surfaces this in the statusline and the Console "Usage" tab (`localho
 
 #### When NOT to use Semble
 
-- **Callers / callees / impact analysis** → use CodeGraph (`codegraph_callers` / `codegraph_callees` / `codegraph_impact`). Semble can find code that *mentions* a callee, but cannot enumerate callers.
+- **Callers / callees / impact analysis** → use CodeGraph (`codegraph_explore(query="<fn> callers and impact")` — one call returns the call path + blast radius; full contract in `mcp-servers.md`). Semble can find code that *mentions* a callee, but cannot enumerate callers.
 - **AST pattern matching (e.g., "all `async function $X` declarations")** → no equivalent. Use CodeGraph by symbol name, or Grep as a last resort.
-- **Extract enclosing block at `file:line`** → use `Read` with `offset`/`limit`, or `codegraph_node` when you have a symbol name.
+- **Extract enclosing block at `file:line`** → use `Read` with `offset`/`limit`, or `codegraph_explore(query="<symbol>")` when you have a symbol name.

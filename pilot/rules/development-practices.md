@@ -16,41 +16,33 @@ CODEX-END -->
 #### Tool Selection by Scenario
 
 <!-- CC-ONLY -->
-CodeGraph and Semble are **co-primary**. Pick by scenario, not by habit.
+CodeGraph and Semble are **co-primary**. Pick by scenario, not by habit. CodeGraph is a single tool (`codegraph_explore`) — full contract in `mcp-servers.md`.
 
 | Scenario | Tool |
 |----------|------|
-| Orient on a new task | `codegraph_context(task=...)` — the fastest way to surface entry points |
-| Find a symbol by name | `codegraph_search` |
-| Enumerate callers / callees | `codegraph_callers` + `codegraph_callees`, then `Grep` for completeness |
-| Blast radius | `codegraph_impact` |
-| Deep dive across known symbols | `codegraph_explore(query="SymA SymB file.ts")` |
+| Any structural question — orient, find a symbol, callers/callees, blast radius, deep-dive across known symbols | `codegraph_explore(query=...)` — one call returns source + call path + impact |
 | Understand a concept / feature area | `semble search "how does X work" ./` |
 | Find where something is modified | `semble search "settings.json modify write" ./` |
 | Cross-cutting concerns | `semble search "notification push events" ./` |
 | Debug: "where does X happen" | `semble search "error handling recovery" ./` |
 | Find similar patterns | `semble find-related <file> <line> ./` (unique — no CodeGraph equivalent) |
 
-**Combined workflow:** `codegraph_context` first (structure), then `semble search` (intent) — especially for cross-language connections and non-structural relationships.
+**Combined workflow:** `codegraph_explore` first (structure), then `semble search` (intent) — especially for cross-language connections and non-structural relationships.
 <!-- /CC-ONLY -->
 
 <!-- CODEX-START
-CodeGraph and Semble are **co-primary**. Pick by scenario, not by habit.
+CodeGraph and Semble are **co-primary**. Pick by scenario, not by habit. CodeGraph is a single tool (`codegraph_explore`) — full contract in `mcp-servers.md`.
 
 | Scenario | Tool |
 |----------|------|
-| Structural runtime-code orientation when entry points are unknown | `codegraph_context(task=...)` |
-| Find a symbol by name | `codegraph_search` |
-| Enumerate callers / callees for a function you will modify | `codegraph_callers` + `codegraph_callees`, then exact-text verification if needed |
-| Blast radius for a non-local runtime change | `codegraph_impact` |
-| Deep dive across known symbols | `codegraph_explore(query="SymA SymB file.ts")` |
+| Any structural runtime-code question — orient, find a symbol, callers/callees, blast radius, deep-dive | `codegraph_explore(query=...)` — one call returns source + call path + impact |
 | Understand a concept / feature area | `semble search "how does X work" ./` |
 | Find where something is modified | `semble search "settings.json modify write" ./` |
 | Cross-cutting concerns | `semble search "notification push events" ./` |
 | Debug: "where does X happen" | `semble search "error handling recovery" ./` |
 | Find similar patterns | `semble find-related <file> <line> ./` |
 
-Use `codegraph_context` selectively for structural runtime-code questions, especially when entry points are unknown. For docs, rules, markdown, config, UI copy, reviews of a known diff, or named paths, start with direct file reads or Semble; only call CodeGraph if that reveals an actual runtime symbol/call-graph question.
+Use `codegraph_explore` selectively for structural runtime-code questions, especially when entry points are unknown. For docs, rules, markdown, config, UI copy, reviews of a known diff, or named paths, start with direct file reads or Semble; only call CodeGraph if that reveals an actual runtime symbol/call-graph question.
 
 #### Codex Search Budget
 
@@ -90,7 +82,7 @@ No unrequested abstractions (no interface with one implementation, no factory fo
 ### Project Policies
 
 - **File size:** aim < 800 lines. > 1000 is a split signal — only when it's the focus of the current task, not a side-refactor. Test files exempt.
-- **Dependency check:** before modifying a shared or non-trivial function, trace `codegraph_callers` + `codegraph_callees` (then Grep for completeness) — it catches callers you'd otherwise miss. A self-contained local function the plan already isolated doesn't need it.
+- **Dependency check:** before modifying a shared or non-trivial function, run `codegraph_explore(query="<fn> callers and impact")` — its response includes the call path and blast radius, catching callers you'd otherwise miss. Grep only as a completeness check for dynamic/reflective call sites the AST can't follow, not to re-verify codegraph's structural results. A self-contained local function the plan already isolated doesn't need it.
 - **Self-correction:** fix obvious mistakes (syntax, typos, missing imports) in code you're actively writing. Do NOT auto-fix code the user edited — report it.
 - **Performance:** hot paths (render loops, request handlers, polling) must cache/memoize. Use lighter alternatives for heavy deps. Don't redo work when input hasn't changed.
 - **Diagnostics:** check before starting, after changes. Fix all errors before marking complete.
@@ -107,13 +99,13 @@ No unrequested abstractions (no interface with one implementation, no factory fo
 
 **Red flags → STOP:** "quick fix for now," multiple changes at once, proposing fixes before tracing data flow, 2+ failed fixes. **3+ failed fixes = architectural problem** — question the pattern, don't fix again.
 
-**Revert-first.** When something breaks: (1) revert the change, (2) consider deleting the broken thing entirely, (3) one-liner targeted fix, (4) none of the above → stop, reconsider. 3+ failed fixes = the approach is wrong, not the fix.
+**Revert-first.** When something breaks: (1) revert the change, (2) consider deleting the broken thing entirely, (3) one-liner targeted fix, (4) none of the above → stop, reconsider.
 
 **Meta-debugging:** treat your own code as foreign. Your mental model is a guess — the code's behavior is truth.
 
 #### Defense-in-Depth (after fixing)
 
-Make the bug structurally impossible, not just patched. Trace backward from symptom to original trigger (LSP `incomingCalls`, or `new Error().stack` instrumentation). Fix at the source. Then add validation at every layer the data passes:
+Make the bug structurally impossible, not just patched. Trace backward from symptom to original trigger (`codegraph_explore(query="<fn> callers")`, or `new Error().stack` instrumentation). Fix at the source. Then add validation at every layer the data passes:
 
 | Layer | Purpose |
 |-------|---------|

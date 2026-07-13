@@ -76,7 +76,7 @@ Blocking hooks reject actions or force fixes before they land. Non-blocking hook
 | `spec_stop_guard.py` | Blocks stopping if an active spec hasn't completed verification |
 | Session summarizer | Saves session observations to memory (async) |
 
-`spec_plan_validator.py` and `spec_verify_validator.py` run as command-scoped Stop hooks during `/spec` phases.
+`spec_plan_validator.py` runs as a command-scoped Stop hook during the `/spec` planning phases.
 
 ## SessionEnd *(Claude Code only)*
 

@@ -5,7 +5,7 @@ argument-hint: "<bug description> or <path/to/plan.md>"
 user-invocable: false
 hooks:
   Stop:
-    - command: uv run --no-project --python python3 python "$HOME/.claude/hooks/spec_plan_validator.py"
+    - command: uv run --no-project --python python3 python "$HOME/.pilot/hooks/spec_plan_validator.py"
 ---
 
 # /spec-bugfix-plan - Bugfix Planning Phase
@@ -27,7 +27,7 @@ CODEX-END -->
 
 ## Resuming an Unapproved Plan
 
-When the argument ends with `.md`: read the plan, check `Status:` and `Approved:`. Resume from wherever planning left off:
+When the argument ends with `.md`: read the plan, check `Status:` and `Approved:`. **Step 0 (toggle read + the 0.1a plan-mode/Fable sentinel that the later steps depend on) always runs first**, then resume from wherever planning left off:
 
 - No investigation yet → Step 2 (Investigation)
 - Has investigation, no tasks → Step 3 (Plan the Fix)
@@ -50,7 +50,7 @@ If Step 2 is incomplete, you cannot propose fixes. Symptom fixes are failure. Re
 
 ## Critical Constraints
 
-- **NEVER write code during planning** — planning and implementation are separate phases
+- **NEVER write production code during planning** — planning and implementation are separate phases. The ONE exception: temporary boundary instrumentation during Step 2 investigation (log/print lines marked `SPEC-DEBUG:`) is allowed to trace the root cause; it must be removed before the plan is written (and Step 1.5 of verification greps for the marker to catch leftovers).
 - **NEVER assume — verify by reading files.** Trace the bug to actual file:line.
 - **Lean ≠ skipping steps.** Small bugs get short tasks, not fewer tasks. The three-task structure (Reproducing Test → Fix → Quality Gate) is non-negotiable.
 - **Plan file is source of truth** — survives across auto-compaction cycles

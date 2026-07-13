@@ -9,9 +9,8 @@ pass through untouched - an Explore/Haiku fan-out is often the cheaper, faster
 path than running CodeGraph/Semble inline.
 
 Also nudges (non-deny) on recursive code-search Bash commands (grep -r, rg, find,
-fd, ag), built-in Grep, and built-in Glob — pointing at codegraph_search /
-codegraph_files / semble search. Throttled per-(category, session) so the
-reminder stays salient.
+fd, ag), built-in Grep, and built-in Glob - pointing at codegraph_explore /
+semble search. Throttled per-(category, session) so the reminder stays salient.
 """
 
 from __future__ import annotations
@@ -166,37 +165,37 @@ def classify_search_command(cmd: str) -> str | None:
 
 
 _NUDGE_BASH_GREP = (
-    "Recursive grep on the project. For symbol search by name, codegraph_search is faster "
-    "(returns structured matches by file). For find-by-intent, semble search 'query' ./ "
+    "Recursive grep on the project. For symbol search by name, codegraph_explore is faster "
+    "(one call returns structured source plus the call path). For find-by-intent, semble search 'query' ./ "
     "ranks results by relevance (hybrid BM25+semantic). If you need exact text "
     "in known files, proceed."
 )
 _NUDGE_BASH_RG = (
-    "Recursive ripgrep. For symbol search use codegraph_search; for project file structure "
-    "use codegraph_files; for intent-based code search use semble search 'query' ./ "
+    "Recursive ripgrep. For symbol search or project structure use codegraph_explore; "
+    "for intent-based code search use semble search 'query' ./ "
     "(or mcp__semble__search). If you need exact text/regex on the filesystem, proceed."
 )
 _NUDGE_BASH_FIND = (
-    "Project file enumeration. codegraph_files returns the indexed file tree faster and "
-    "with metadata. If you need a filesystem-level operation (e.g., -delete, -exec), proceed."
+    "Project file enumeration. codegraph_explore surfaces the files that define or relate to "
+    "a symbol faster than a raw tree walk. If you need a filesystem-level operation (e.g., -delete, -exec), proceed."
 )
 _NUDGE_BASH_FD = (
-    "Project file discovery. codegraph_files returns the indexed file tree faster. "
+    "Project file discovery. codegraph_explore surfaces structurally-related files faster. "
     "Proceed if you specifically need fd's filesystem behavior."
 )
 _NUDGE_BASH_AG = (
-    "Silver searcher. codegraph_search (by symbol) and semble search (by intent) are faster "
+    "Silver searcher. codegraph_explore (by symbol/structure) and semble search (by intent) are faster "
     "on indexed projects. Proceed if you need exact text in arbitrary filesystem paths."
 )
 _NUDGE_BUILTIN_GREP = (
     "Built-in Grep is valid for exact text/regex and as a completeness check after "
-    "codegraph_callers. For symbol search by name, codegraph_search is faster. For "
+    "codegraph_explore. For symbol search by name, codegraph_explore is faster. For "
     "intent-based code search, semble search 'query' ./ (or mcp__semble__search) "
     "ranks by relevance."
 )
 _NUDGE_BUILTIN_GLOB = (
-    "Built-in Glob lists files by pattern. For project file structure, codegraph_files "
-    "returns the indexed tree faster (with language and symbol metadata). Proceed if you "
+    "Built-in Glob lists files by pattern. For project structure by symbol, codegraph_explore "
+    "surfaces the relevant files faster (with call path and metadata). Proceed if you "
     "need exact-pattern matching."
 )
 

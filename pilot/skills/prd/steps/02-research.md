@@ -13,7 +13,7 @@ CODEX-END -->
 
 ### Quick Tier
 
-Skip this phase entirely. Proceed to Step 4.
+Skip web research. Proceed to Step 3 (Ideate) if the idea is still vague and would benefit from brainstorming; otherwise go straight to Step 4 (Clarify).
 
 ### Standard Tier
 
@@ -28,9 +28,9 @@ Skip this phase entirely. Proceed to Step 4.
 4. **Optionally fetch full pages** for promising results: `ToolSearch(query="+web-fetch fetch")` then `fetch_url(url="...")`
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-2. **Use available web tools directly:** prefer the web-search MCP tool (`mcp__web_search__search`) when available.
+2. **Use available web tools directly:** prefer the web-search MCP tool (`mcp__web-search__search`) when available.
 3. **Execute searches sequentially**, gathering key findings from each.
-4. **Optionally fetch full pages** for promising results with the web-fetch MCP tool (`mcp__web_fetch__fetch_url`) when available.
+4. **Optionally fetch full pages** for promising results with the web-fetch MCP tool (`mcp__web-fetch__fetch_url`) when available.
 CODEX-END -->
 5. **Compile research summary:**
    - Key findings (3-5 bullet points)
@@ -63,9 +63,9 @@ The `deep-research` skill is Claude-Code-only and unavailable in Codex, so Deep 
    - "Competitor landscape" — what exists, market positioning, pricing
    - "Technical approaches" — architectures, frameworks, implementation patterns
    - "User experience" — UX patterns, onboarding flows, common pain points
-2. **Run searches sequentially** (one per angle, 2-3 search queries each). Use the web-search MCP tool (`mcp__web_search__search`) if available. For each angle:
+2. **Run searches sequentially** (one per angle, 2-3 search queries each). Use the web-search MCP tool (`mcp__web-search__search`) if available. For each angle:
    - Execute 2-3 targeted searches
-   - Optionally fetch full pages for promising results via `mcp__web_fetch__fetch_url`
+   - Optionally fetch full pages for promising results via `mcp__web-fetch__fetch_url`
    - Compile findings per angle
 3. **Synthesize findings** across all angles into a comprehensive research summary.
 

@@ -57,7 +57,7 @@ Check `package.json` scripts first — projects often have custom configurations
 - [ ] Explicit return types on exports
 - [ ] No `any` types
 - [ ] Correct lock file committed
-- [ ] Production files ideally under 800 lines (1000+ = consider splitting)
+- [ ] File size within the limit (see `development-practices.md` → File size)
 
 ### Quick Reference
 
@@ -65,4 +65,4 @@ Check `package.json` scripts first — projects often have custom configurations
 |------|-----|------|------|-----|
 | Install | `npm install` | `yarn` | `pnpm install` | `bun install` |
 | Add pkg | `npm install pkg` | `yarn add pkg` | `pnpm add pkg` | `bun add pkg` |
-| Run script | `npm run x` | `yarn x` | `pnpm x` | `bun x` |
+| Run script | `npm run x` | `yarn x` | `pnpm x` | `bun run x` |

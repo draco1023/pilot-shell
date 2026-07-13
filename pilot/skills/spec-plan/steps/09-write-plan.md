@@ -20,7 +20,7 @@
 If you find yourself writing the same fact in two places, delete one — the longer/more-specific version stays.
 
 **Required sections:** Summary · Approach · Progress Tracking · Implementation Tasks.
-**Conditional sections** (include only when applicable, omit entirely otherwise): Out of Scope · Context for Implementer · Runtime Environment · Feature Inventory · Assumptions · Risks and Mitigations · Goal Verification · E2E Test Scenarios · Open Questions · Deferred Ideas.
+**Conditional sections** (include only when applicable, omit entirely otherwise): Out of Scope · Context for Implementer · Runtime Environment · File Structure (Step 7.0, for 4+ task plans) · Feature Inventory · Assumptions · Autonomous Decisions (defaults recorded when questions/approval are disabled — Steps 0.2/3.3/4/6) · Risks and Mitigations · Goal Verification · E2E Test Scenarios · Open Questions · Deferred Ideas.
 
 <!-- CODEX-START
 ### Codex Console Task-Card Contract
@@ -55,6 +55,7 @@ CODEX-END -->
 # [Feature Name] Implementation Plan
 
 Created: [Date]
+Author: [email if available — from Step 2; omit the line entirely if unavailable]
 <!-- CC-ONLY -->
 Agent: [Claude Code|Codex — from Step 2 detection]
 <!-- /CC-ONLY -->
@@ -101,7 +102,7 @@ Type: Feature
 ⚠️ Real risks only — drop hedges ("be careful when splitting files", "follow conventions"). Mitigations must be commitments verification can check.
 ✅ "Reset to null when project not in list" ❌ "Handle edge cases"
 
-## Goal Verification (only when there is a cross-task observable outcome that NO single E2E scenario and NO single task DoD captures; otherwise omit the whole section — spec-verify Step 10 audits via E2E + task DoD source keys when this is absent)
+## Goal Verification (only when there is a cross-task observable outcome that NO single E2E scenario and NO single task DoD captures; otherwise omit the whole section — spec-verify audits via E2E + task DoD source keys when this is absent, Steps 2/6/7)
 
 > Skip-test: if every truth you would write reduces to `TS-NNN passes` or `Task N DoD verifies`, drop the section. Pure-reference truths are noise.
 

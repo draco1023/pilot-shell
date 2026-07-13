@@ -5,7 +5,7 @@ argument-hint: "<task description> or <path/to/plan.md>"
 user-invocable: false
 hooks:
   Stop:
-    - command: uv run --no-project --python python3 python "$HOME/.claude/hooks/spec_plan_validator.py"
+    - command: uv run --no-project --python python3 python "$HOME/.pilot/hooks/spec_plan_validator.py"
 ---
 
 # /spec-plan - Planning Phase
@@ -25,7 +25,7 @@ CODEX-END -->
 
 ## ⛔ Critical Constraints
 
-- **NO sub-agents during planning** except Step 10 (spec-review, when enabled in settings)
+- **NO writing sub-agents during planning.** Read-only fan-out is allowed: the Step 5.3 `Explore`/`general-purpose` survey subagents, and the Step 10 `spec-review` reviewer (when enabled in settings). No sub-agent may edit or write files.
 - **Run spec-review when enabled** — it runs for every feature spec when `$PILOT_SPEC_REVIEW_ENABLED` is not `"false"`. Context level is NOT a valid reason to skip. To disable, use Console Settings → Reviewers → Spec Review toggle.
 - **NEVER write code during planning** — planning and implementation are separate phases
 - **NEVER assume — verify by reading files**
@@ -51,5 +51,4 @@ For Codex, quality means enough verified context to write an implementable plan,
 - Use a bounded scan: at most one CodeGraph orientation call when runtime-code structure is unknown, plus one Semble intent search at most before asking or choosing. If either result is irrelevant, pivot immediately to direct file reads. Skip CodeGraph for docs, rules, markdown, config, UI copy, reviews of a known diff, or named paths.
 - Ask at most one clarification/design batch before approval. If you can make a reversible assumption, document it under "Assumptions" or "Autonomous Decisions" and continue.
 - Stop exploration once you can name the files, commands, tests, and user-visible checks for each task. Leave implementation-time details to task DoD.
-- Do not wait for automated reviewer agents during Codex planning. Step 10 is self-review only until Codex-native review agents are available.
 CODEX-END -->

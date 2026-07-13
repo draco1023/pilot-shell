@@ -8,7 +8,7 @@
 `spec-plan` should have called `ExitPlanMode` before invoking this skill. If it didn't (model skip, approval edge case, etc.), you are still on Opus in plan mode and implementation will run on the wrong model. Exit now.
 
 ```bash
-echo "MODEL_SWITCH=$PILOT_MODEL_SWITCH_ENABLED"
+echo "MODEL_SWITCH=${PILOT_MODEL_SWITCH_ENABLED:-true}"
 SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-default}}"
 [ -f "$HOME/.pilot/sessions/$SPEC_SESS/plan-mode-skipped-fable" ] && echo "ON_FABLE=true" || echo "ON_FABLE=false"
 ```
@@ -22,7 +22,7 @@ ExitPlanMode(...)                          # safe to call even if already exited
 ```
 
 - If `ToolSearch` returns no tool: emit one visible line ("ExitPlanMode unavailable — implementation will run on current model") and continue.
-- If `MODEL_SWITCH=false` or unset: skip entirely — no plan mode was entered.
+- If `MODEL_SWITCH=false`: skip entirely — no plan mode was entered. (Unset defaults to `true`, matching the plan-side default, so the ExitPlanMode safety net still fires.)
 
 **Do NOT skip this step to save tokens. An extra ExitPlanMode call costs nothing; running the entire implementation leg on Opus is expensive and wrong.**
 <!-- /CC-ONLY -->
@@ -34,14 +34,14 @@ ExitPlanMode(...)                          # safe to call even if already exited
 3. **Check current state:** `git status --short`, `git diff --name-only`, plan progress (`[x]` vs `[ ]`)
 
 <!-- CC-ONLY -->
-**Research tools during implementation:** CodeGraph (`codegraph_context` to orient on each task, `codegraph_explore` for deep code understanding in one call, `codegraph_callers`/`codegraph_callees` before modifying a shared or non-trivial function, `codegraph_impact` for blast radius), Context7 (library docs), Semble `semble search` or `mcp__semble__search` (find patterns by intent), `semble find-related` (discover parallel implementations), grep-mcp (production examples).
+**Research tools during implementation:** CodeGraph (`codegraph_explore(query=...)` — one call orients on the task, returns deep source, and gives callers + blast radius before you modify a shared or non-trivial function), Context7 (library docs), Semble `semble search` or `mcp__semble__search` (find patterns by intent), `semble find-related` (discover parallel implementations), grep-mcp (production examples).
 
-**Before modifying a shared or non-trivial function:** trace `codegraph_callers` + `codegraph_callees` — it catches callers you'd otherwise miss. A self-contained local function the plan already isolated doesn't need it.
+**Before modifying a shared or non-trivial function:** run `codegraph_explore(query="<fn> callers and impact")` — its response includes the call path and blast radius, catching callers you'd otherwise miss. A self-contained local function the plan already isolated doesn't need it.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-**Research tools during implementation:** Use CodeGraph for structural runtime-code questions (`codegraph_context` when entry points are unknown, `codegraph_explore` for known symbols, `codegraph_callers`/`codegraph_callees` before non-local function changes, `codegraph_impact` for blast radius), Context7 for library docs, Semble for intent/pattern discovery, and grep-mcp for production examples.
+**Research tools during implementation:** Use CodeGraph for structural runtime-code questions (`codegraph_explore(query=...)` — one call orients, returns known-symbol source, and gives callers + blast radius before a non-local change), Context7 for library docs, Semble for intent/pattern discovery, and grep-mcp for production examples.
 
-**Codex proportionality:** Skip CodeGraph for docs, rules, markdown, config, UI copy, test-only edits, or named-path local changes unless the call graph itself is the uncertainty. Before modifying a runtime function with non-local effects, run `codegraph_callers` + `codegraph_callees`; for a local function already isolated by the plan and targeted reads, do not add graph calls just to satisfy a checklist.
+**Codex proportionality:** Skip CodeGraph for docs, rules, markdown, config, UI copy, test-only edits, or named-path local changes unless the call graph itself is the uncertainty. Before modifying a runtime function with non-local effects, run `codegraph_explore(query="<fn> callers")`; for a local function already isolated by the plan and targeted reads, do not add graph calls just to satisfy a checklist.
 CODEX-END -->
 
 ### 1.2 Detect or Resume Worktree (Conditional)

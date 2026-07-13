@@ -61,12 +61,7 @@ Use when behavior depends on data shape, ranges, or combinations — not single 
 
 ### Running Tests
 
-```bash
-uv run pytest -q                   # Python (quiet)
-uv run pytest --cov=src            # Coverage report (gate is per-critical-path; see "Test Strategy & Coverage" above)
-bun test                           # Bun
-npm test -- --silent               # Jest/Vitest
-```
+Always run quiet, minimal-output modes (`uv run pytest -q`, `bun test`, `npm test -- --silent`) — avoid `-v`/`-s` unless actively debugging. The authoritative per-language run commands, coverage flags, and quality gates live in the `standards-<lang>.md` files (coverage gate is per-critical-path; see "Test Strategy & Coverage" above).
 
 ### Mandatory Mocking in Unit Tests
 
@@ -111,7 +106,7 @@ When a function gains a new dependency (subprocess, helper, I/O), update ALL exi
 
 ### ⛔ Zero Tolerance for Failing Tests
 
-Every test failure MUST be fixed before work is done. Run the FULL suite, not just files you touched. "Pre-existing failure" is not an excuse — if you see it, you fix it.
+Every test failure MUST be fixed before work is done. Run the FULL suite, not just files you touched. "Pre-existing failure" is not an excuse — if you see it, you fix it. This is the one sanctioned exception to the lineage/scope-creep rules (`development-practices.md`, `verification.md`): a pre-existing failure you did not cause is still yours to fix — in a clearly-labeled separate commit when practical, or report it explicitly if the fix is large enough to warrant its own change.
 
 ### Completion Checklist
 

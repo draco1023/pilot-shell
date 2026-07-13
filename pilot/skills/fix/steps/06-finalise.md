@@ -6,15 +6,34 @@
 
 The same two Console Settings toggles that drive `/spec`'s post-implementation review also govern `/fix`. Run whichever are enabled, and **auto-fix findings before** the worktree commit (6.2) and the approval gate (6.3) — so any review-driven change lands in the single bundled commit.
 
+<!-- CC-ONLY -->
 ```bash
-echo "CHANGES_REVIEW=$PILOT_CHANGES_REVIEW_ENABLED"          # changes review (CC: mechanism per FIX_MODE below; Codex: native agent)
+echo "CHANGES_REVIEW=$PILOT_CHANGES_REVIEW_ENABLED"          # changes review — runs unless explicitly "false" (mechanism per FIX_MODE below)
 echo "FIX_MODE=$PILOT_FIX_CODE_REVIEW_MODE"                  # CC mechanism: agent = single changes-review sub-agent; medium/high/xhigh = /code-review at that effort
-echo "CODEX_REVIEW=$PILOT_CODEX_CHANGES_REVIEW_ENABLED"      # Codex companion review
+echo "CODEX_REVIEW=$PILOT_CODEX_CHANGES_REVIEW_ENABLED"      # Codex companion review — runs only when "true"
 ```
 
-**If BOTH are `"false"` or unset → skip this sub-step entirely and proceed to 6.2.**
+**Skip this sub-step entirely (proceed to 6.2) ONLY when `PILOT_CHANGES_REVIEW_ENABLED` IS `"false"` AND `PILOT_CODEX_CHANGES_REVIEW_ENABLED` is not `"true"`.** Otherwise at least one reviewer runs (changes-review is on by default — an unset `PILOT_CHANGES_REVIEW_ENABLED` runs it).
+<!-- /CC-ONLY -->
+<!-- CODEX-START
+```bash
+echo "CHANGES_REVIEW=$PILOT_CHANGES_REVIEW_ENABLED"          # native changes-review agent — runs unless explicitly "false"
+```
 
-#### 6.1.pre Stage the bugfix files (always run when any reviewer is enabled, before launching it)
+`FIX_MODE` and the Codex companion (`PILOT_CODEX_CHANGES_REVIEW_ENABLED`) do NOT apply in Codex. **Skip this sub-step (proceed to 6.2) ONLY when `PILOT_CHANGES_REVIEW_ENABLED` IS `"false"`;** otherwise the native `changes-review` agent runs (an unset value runs it).
+CODEX-END -->
+
+#### 6.1.pre Instrumentation gate + stage the bugfix files (always run when any reviewer is enabled, before launching it)
+
+**⛔ Leftover-instrumentation gate — runs BEFORE staging and the 6.2 commit** (the earlier Step 3.5 scan is the primary gate; this is the last pre-commit backstop, so a `SPEC-DEBUG`/`console` line can NEVER be committed — the 6.5 checklist's `git show HEAD` variant would only catch it after the worktree commit, too late):
+
+```bash
+# Scan the UNSTAGED working tree before anything is staged or committed:
+git diff | grep -nE "SPEC-DEBUG|^\+.*\b(console\.log|console\.error|print\()" && \
+  { echo "Leftover instrumentation — remove before staging/commit"; } || echo "instrumentation clean"
+```
+
+Remove any match and re-run before proceeding. Then stage the change's own files.
 
 The fix and its new test sit UNSTAGED in the working tree — and a brand-new test file is untracked. A pre-commit review of that unstaged tree misfires both ways: a reviewer that reads `git status --untracked-files=all` flags the new test as a spurious `critical` ("untracked deliverable"), while a reviewer that reads only `git diff HEAD` silently OMITS it, so the test goes unreviewed. Stage the change's own files with a **real `git add`** (NOT `git add -N`) before launching any reviewer below:
 
@@ -32,7 +51,7 @@ For `/fix` the "plan" is the conversation, not a file. Resolve `FIX_MODE` first 
 
 ```bash
 SESS_ID="${PILOT_SESSION_ID:-default}"
-# Deterministic path (no $$): later Bash invocations, the agent-mode Task prompt,
+# Deterministic path (no $$): later Bash invocations, the agent-mode reviewer prompt,
 # and the 6.1.d cleanup all need to reconstruct it outside this shell.
 FIX_PLAN_FILE="/tmp/fix-review-plan-$SESS_ID.md"
 cat > "$FIX_PLAN_FILE" <<'PLAN_EOF'
@@ -68,33 +87,45 @@ CODEX_FLAG="$SESS_DIR/codex-changes-review-ran-fix.flag"
 
    ```bash
    PROMPT_TEMPLATE="$HOME/.claude/agents/changes-review-codex.md"
-   PROMPT_FILE="/tmp/codex-fix-review-$SESS_ID-$$.md"
+   PROMPT_FILE="/tmp/codex-fix-review-$SESS_ID.md"
 
    PLAN_GOAL="Bugfix for: <one-line bug>. Root cause at <file>:<line>. The reproducing test must reliably fail before the fix and pass after."
-   BASE_REF="$(git rev-parse --abbrev-ref HEAD@{upstream} 2>/dev/null | sed 's|^[^/]*/||' || echo main)"
+   # The fix + test are UNCOMMITTED at review time (staged in 6.1.pre), so review the working tree, not a committed range:
+   BASE_REF="HEAD"
 
    PLAN_PATH="$FIX_PLAN_FILE" PLAN_GOAL="$PLAN_GOAL" BASE_REF="$BASE_REF" CHANGED_FILES="$CHANGED_FILES" \
    PROMPT_TEMPLATE="$PROMPT_TEMPLATE" PROMPT_FILE="$PROMPT_FILE" \
-   uv run --no-project --python python3 python -c '
-   import os, pathlib
-   text = pathlib.Path(os.environ["PROMPT_TEMPLATE"]).read_text()
-   for key in ("PLAN_PATH", "PLAN_GOAL", "BASE_REF", "CHANGED_FILES"):
-       text = text.replace("{{" + key + "}}", os.environ[key])
-   pathlib.Path(os.environ["PROMPT_FILE"]).write_text(text)
+   node -e '
+   const fs = require("fs");
+   let text = fs.readFileSync(process.env.PROMPT_TEMPLATE, "utf8");
+   for (const key of ["PLAN_PATH", "PLAN_GOAL", "BASE_REF", "CHANGED_FILES"])
+     text = text.split("{{" + key + "}}").join(process.env[key] ?? "");
+   fs.writeFileSync(process.env.PROMPT_FILE, text);
    '
    ```
 
+   Render with `node` (guaranteed present wherever the companion runs; no `uv` dependency on this path). `split/join` instead of `replace` avoids JS `$`-pattern expansion if a substitution value contains `$&`.
+
 3. **Launch the task in background.** Use `task --background --prompt-file` (the companion's own background mode is supported for `task` — unlike `review`/`adversarial-review`).
+
+   **Resolve the review effort first (fail-closed to `medium`).** A changes review is a bounded read-only audit — it does not need the user's interactive reasoning default (often `xhigh`, ~2× slower for equivalent material findings; verified live). Users override via `PILOT_CODEX_REVIEW_EFFORT`. ⛔ Do NOT pass `--model` — fast-model aliases (e.g. `spark`) are rejected on ChatGPT-plan auth; the user's default model always stays.
+
+   ```bash
+   CODEX_EFFORT="${PILOT_CODEX_REVIEW_EFFORT:-medium}"
+   case "$CODEX_EFFORT" in none|minimal|low|medium|high|xhigh) ;; *) CODEX_EFFORT=medium ;; esac
+   ```
 
    ⛔ **Launch the companion via Bash from the MAIN conversation — NEVER through a subagent** (`codex:codex-rescue` included): a subagent-launched job's ID is unreachable afterwards (no findings file, no `TaskOutput`, no `SendMessage`).
 
    ```
    Bash(
-     command="cd $PROJECT_ROOT && node $CODEX_COMPANION task --background --prompt-file \"$PROMPT_FILE\"",
+     command="cd $PROJECT_ROOT && node $CODEX_COMPANION task --background --effort \"$CODEX_EFFORT\" --prompt-file \"$PROMPT_FILE\"",
      run_in_background=false,
      timeout=60000
    )
    ```
+
+   If the launch itself errors on the effort value (a model that rejects the requested `reasoning.effort` fails within seconds with a `400`), re-launch once WITHOUT `--effort` — inheriting the user's Codex default — before falling back to the no-Codex path.
 
    Capture the job ID from stdout (`task-…` token). **Verify registration before polling** — fail-fast guard against synthetic-ID launches:
 
@@ -106,35 +137,48 @@ CODEX_FLAG="$SESS_DIR/codex-changes-review-ran-fix.flag"
    If `$JOB_ID` is empty, skip the Codex part of 6.1.c. Otherwise run the **active stall monitor** — broker `status` alone is not a liveness signal (a silent job keeps reporting `running`/`verifying` and a status-only loop burns its whole timeout). It watches `job.logFile` mtime and returns the moment the job finishes OR stalls:
 
    ```bash
-   STALL=90; CEILING=480   # seconds: max no-log-growth, then absolute ceiling
-   LOGF=$(node "$CODEX_COMPANION" status "$JOB_ID" --json 2>/dev/null \
-     | uv run --no-project --python python3 python -c "import json,sys
-try: print((json.load(sys.stdin).get('job') or {}).get('logFile') or '')
-except Exception: print('')")
-   last_change=$(date +%s); last_mtime=0; start=$(date +%s)
-   while :; do
-     PSTATE=$(node "$CODEX_COMPANION" status "$JOB_ID" --json 2>/dev/null \
-       | uv run --no-project --python python3 python -c "import json,sys
-try: print((json.load(sys.stdin).get('job') or {}).get('status') or 'unknown')
-except Exception: print('parse_error')")
-     case "$PSTATE" in
-       completed)                            echo "READY elapsed=$(($(date +%s)-start))s"; break ;;
-       failed|cancelled|parse_error|unknown) echo "FAIL state=$PSTATE"; break ;;
-     esac
-     now=$(date +%s)
-     m=$( { [ -n "$LOGF" ] && stat -f %m "$LOGF" 2>/dev/null; } || { [ -n "$LOGF" ] && stat -c %Y "$LOGF" 2>/dev/null; } || echo 0 )
-     [ "$m" -gt "$last_mtime" ] && { last_mtime=$m; last_change=$now; }
-     [ $((now - last_change)) -ge "$STALL" ]   && { echo "STALLED no_log_growth=$((now-last_change))s"; break; }
-     [ $((now - start))       -ge "$CEILING" ] && { echo "CEILING elapsed=$((now-start))s"; break; }
-     sleep 15
-   done
+   STALL=90 CEILING=480 node -e '
+   const { execFileSync } = require("child_process");
+   const fs = require("fs");
+   const [companion, jobId] = process.argv.slice(1);
+   const stallMs = (Number(process.env.STALL) || 90) * 1000;
+   const ceilingMs = (Number(process.env.CEILING) || 480) * 1000;
+   const start = Date.now();
+   let lastChange = Date.now(), lastMtime = 0, logFile = null;
+   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+   (async () => {
+     while (true) {
+       let job = {};
+       try {
+         job = JSON.parse(execFileSync(process.execPath, [companion, "status", jobId, "--json"], { encoding: "utf8", timeout: 30000 })).job ?? {};
+       } catch { console.log("FAIL state=status_error"); return; }
+       const st = job.status ?? "unknown";
+       if (st === "completed") { console.log(`READY elapsed=${Math.round((Date.now() - start) / 1000)}s`); return; }
+       if (st === "failed" || st === "cancelled" || st === "unknown") { console.log(`FAIL state=${st}`); return; }
+       if (!logFile) logFile = job.logFile ?? null;
+       let m = 0;
+       try { if (logFile) m = fs.statSync(logFile).mtimeMs; } catch {}
+       if (m > lastMtime) { lastMtime = m; lastChange = Date.now(); }
+       if (Date.now() - lastChange >= stallMs) { console.log(`STALLED no_log_growth=${Math.round((Date.now() - lastChange) / 1000)}s`); return; }
+       if (Date.now() - start >= ceilingMs) { console.log(`CEILING elapsed=${Math.round((Date.now() - start) / 1000)}s`); return; }
+       await sleep(5000);
+     }
+   })();
+   ' "$CODEX_COMPANION" "$JOB_ID"
    ```
 
-   Run the monitor as `Bash(run_in_background=true, timeout=600000)` (background so `sleep` is allowed; the CEILING exits before the bash timeout). Use `PSTATE`, never a variable named `status` (read-only in zsh). If `LOGF` came back empty, the monitor degrades to status + CEILING only. ⛔ **Wait for the completion notification** — do NOT read the result file before the `<task-notification>` arrives. The inline review (6.1.b) runs while Codex churns.
+   Run the monitor as `Bash(run_in_background=true, timeout=600000)` (the CEILING exits before the bash timeout). One node process replaces the old bash loop — no per-poll `uv`/`python` spawns, no zsh traps (read-only `status` variable, unquoted word-splitting), no `stat -f`/`stat -c` platform juggling — and the 5s poll detects completion up to 10s sooner. Output contract unchanged: `READY` / `FAIL state=…` / `STALLED no_log_growth=…` / `CEILING`. A missing `logFile` degrades the monitor to status + CEILING only. ⛔ **Wait for the completion notification** — do NOT read the result file before the `<task-notification>` arrives. The inline review (6.1.b) runs while Codex churns.
 
-   **Outcome handling.** `READY` → fetch the result in 6.1.c. `FAIL` → treat as a failed run (6.1.d launch-failure handling). `STALLED`/`CEILING` → the job went silent: cancel it (`node "$CODEX_COMPANION" cancel "$JOB_ID" --json 2>/dev/null || true`) and re-launch ONCE under the same monitor; if it stalls again, do NOT spin a third time and do NOT silently skip — proceed without the Codex pass, note the gap in the 6.6 report, and rely on the 6.1.b changes-review results.
+   **Outcome handling.** `READY` → fetch the result in 6.1.c. `FAIL` → treat as a failed run (6.1.d launch-failure handling). `STALLED`/`CEILING` → the job went silent: cancel it and re-launch ONCE under the same monitor — **without the `--effort` override** (inherit the user's Codex default), so the one retry has no configuration variable in play:
 
-#### 6.1.b Changes review (only when `PILOT_CHANGES_REVIEW_ENABLED == "true"`)
+   ```bash
+   node "$CODEX_COMPANION" cancel "$JOB_ID" --json 2>/dev/null || true
+   node "$CODEX_COMPANION" task --background --prompt-file "$PROMPT_FILE"   # retry: NO --effort
+   ```
+
+   If it stalls again, do NOT spin a third time and do NOT silently skip — proceed without the Codex pass, note the gap in the 6.6 report, and rely on the 6.1.b changes-review results.
+
+#### 6.1.b Changes review (only when `PILOT_CHANGES_REVIEW_ENABLED` is not `"false"`)
 
 Run AFTER launching Codex (6.1.a) so the companion works in parallel. Resolve the configured mechanism first, fail-closed to `agent` for an unset/invalid value (never pass the raw env var straight through):
 
@@ -155,7 +199,7 @@ rm -f "$SESS_DIR"/findings-changes-review-fix*.json   # incl. -rN re-launch file
 ```
 
 ```
-Task(
+Agent(
   subagent_type="changes-review",
   run_in_background=true,
   prompt="""
@@ -197,10 +241,10 @@ Skill(skill='code-review', args='<FIX_MODE>')
 **Codex reviewer (if launched in 6.1.a):** on the completion notification, fetch via the public interface:
 
 ```bash
-node "$CODEX_COMPANION" result "$JOB_ID" --json > /tmp/codex-fix-result-$$.json
+node "$CODEX_COMPANION" result "$JOB_ID" --json > /tmp/codex-fix-result-$SESS_ID.json
 ```
 
-Read `/tmp/codex-fix-result-$$.json`. Verify `storedJob.status === "completed"`, then parse `storedJob.result.rawOutput` as JSON (`{verdict, summary, findings, next_steps}`). If JSON parse fails, fall back to `storedJob.rendered` and surface as a suggestion-level finding.
+Read `/tmp/codex-fix-result-$SESS_ID.json`. Verify `storedJob.status === "completed"`, then parse `storedJob.result.rawOutput` as JSON (`{verdict, summary, findings, next_steps}`). If JSON parse fails, fall back to `storedJob.rendered` and surface as a suggestion-level finding.
 
 **Act on Codex findings — same action map as the inline table above, keyed by Codex severity:** `critical`/`high` → must_fix; `medium`/`low` → should_fix (single-site, in-lineage) or summarise; `info` → mention only.
 
@@ -210,13 +254,13 @@ If a reviewer returns no blocking findings (Codex verdict `approve`, `/code-revi
 
 ```bash
 [ -n "$JOB_ID" ] && touch "$CODEX_FLAG"   # codex-once
-rm -f "$PROMPT_FILE" "$FIX_PLAN_FILE" /tmp/codex-fix-result-$$.json
+rm -f "$PROMPT_FILE" "$FIX_PLAN_FILE" /tmp/codex-fix-result-$SESS_ID.json
 ```
 
 **Launch failure handling.** If the Codex job ended `failed` (genuine launch failure, not timeout): surface the captured stderr to the user, do **not** silently mark the bugfix done. Continue with the 6.1.b changes-review results.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-When `PILOT_CHANGES_REVIEW_ENABLED == "true"`, run the managed Codex `changes-review` custom agent on the bugfix diff before finalising. (The Codex *companion* review — `PILOT_CODEX_CHANGES_REVIEW_ENABLED` — is a Claude-Code-only plugin path and does not run here.)
+When `PILOT_CHANGES_REVIEW_ENABLED` is not `"false"`, run the managed Codex `changes-review` custom agent on the bugfix diff before finalising. (The Codex *companion* review — `PILOT_CODEX_CHANGES_REVIEW_ENABLED` — is a Claude-Code-only plugin path and does not run here.)
 
 1. Build a one-page bugfix summary in a temp file as the review anchor:
 
@@ -275,7 +319,7 @@ When approval is enabled, summarise + ask:
 
 1. `"Approve — done"`
 2. `"Request changes"`
-3. `"Explain the fix in more detail"` — always present.
+3. `"Explain the fix in more detail"` — present in the initial ask (dropped from the re-ask list, per 6.3 below, to avoid loops).
 
 ```
 AskUserQuestion(
@@ -312,7 +356,7 @@ Walk every box before writing the report. **Missing any one = not done** — ret
 - [ ] Full anti-regression suite green (Step 5.2 fresh run).
 - [ ] E2E executed against the actual program with concrete evidence captured (Step 4).
 - [ ] Enabled reviewers (6.1) ran; all `must_fix` / `should_fix` resolved or escalated.
-- [ ] `git diff | grep -E "SPEC-DEBUG|^\\+.*\\b(console\\.log|print\\()"` returns nothing (no leftover instrumentation).
+- [ ] No leftover instrumentation. Instrumentation was already gated at Step 3.5 and again pre-commit at 6.1.pre (before staging/6.2 commit), so this is a final backstop only. Confirm on the staged/committed content: `git diff HEAD | grep -nE "SPEC-DEBUG|^\\+.*\\b(console\\.log|console\\.error|print\\()"` returns nothing (in worktree mode, where 6.2 already committed, use `git show HEAD | grep -nE "SPEC-DEBUG|console\\.log|console\\.error|print\\("` — if this fires, amend/revert the commit).
 - [ ] Diff is small and every changed line traces to the bug (lineage rule).
 - [ ] Worktree mode: single bundled `fix:` commit. Non-worktree: changes ready, no commit yet.
 

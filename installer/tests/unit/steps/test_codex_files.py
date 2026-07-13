@@ -448,7 +448,7 @@ class TestCodexSkillsInstallation:
         result = build_codex_skill_md(Path("pilot/skills/fix"))
 
         assert 'Start with `codegraph_context(task="<bug description>")`' not in result
-        assert "Use `codegraph_context` only when the bug is structural" in result
+        assert "Use `codegraph_explore` only when the bug is structural" in result
         assert "For docs, rules, markdown, config, UI copy, or a named local file/function" in result
 
     def test_fix_skill_env_blocker_protocol_diverges_per_agent(self) -> None:
@@ -587,7 +587,7 @@ class TestCodexRulesInstallation:
         assert "persist returned agent/job ids to a session file" in content
         assert "| Start any new task | `codegraph_context(task=...)` — ALWAYS FIRST |" not in content
         assert "| Task orientation (FIRST on every task) | `codegraph_context` |" not in content
-        assert "Use `codegraph_context` selectively for structural runtime-code questions" in content
+        assert "Use `codegraph_explore` selectively for structural runtime-code questions" in content
         assert "For docs, rules, markdown, config, UI copy, reviews of a known diff, or named paths" in content
         preamble_end = "Skill invocation: use `$skill-name` (not `/skill-name`)."
         assert preamble_end in content

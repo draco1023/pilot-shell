@@ -24,7 +24,7 @@ paths:
 - **Minimal props:** Under 5-7. More = component doing too much. Always typed with defaults.
 - **State:** Keep local — only lift when multiple components need it. Prop drilling 3+ levels → use composition or context.
 - **Naming:** Components: PascalCase nouns. Props: camelCase, booleans `is*`/`has*`. Events: `on*` for props, `handle*` internal.
-- **Split when:** >600-800 lines, multiple responsibilities, reusable elsewhere, testing becomes difficult.
+- **Split when:** >600-800 lines (deliberately stricter than the global 800/1000 in `development-practices.md` — JSX/component files grow unwieldy faster), multiple responsibilities, reusable elsewhere, testing becomes difficult.
 
 ## CSS
 
@@ -71,7 +71,7 @@ Then execute that direction with precision across every detail below.
 - **Color:** Clear hierarchy: Primary (CTAs) → Accent → Neutral → Semantic. Dominant colors with sharp accents outperform timid, evenly-distributed palettes. Dark mode: design separately, not just invert.
 - **Spacing:** Generous whitespace. Cramped = low quality.
 - **Spatial Composition:** Break out of predictable grid layouts. Use asymmetry, overlapping elements, diagonal flow, or grid-breaking accents to create visual interest. Controlled density and unexpected placement make interfaces feel designed rather than templated.
-- **Visual Depth:** Create atmosphere beyond solid backgrounds. Use gradient meshes, subtle noise textures, layered transparencies, dramatic shadows, decorative borders, or grain overlays — matched to the overall aesthetic. Flat and empty ≠ minimal; depth creates polish.
+- **Visual Depth:** Create atmosphere beyond solid backgrounds. Use gradient meshes, subtle noise textures, layered transparencies (on background/decorative layers — not blurred translucent card surfaces, which is the glassmorphism ban below), dramatic shadows, decorative borders, or grain overlays — matched to the overall aesthetic. Flat and empty ≠ minimal; depth creates polish.
 - **Motion:** Every animation has purpose. Max 500ms. Always respect `prefers-reduced-motion`. Prefer one well-orchestrated page load with staggered reveals (`animation-delay`) over scattered micro-interactions. Use scroll-triggered animations and surprising hover states for high-impact moments. CSS-only for HTML; Motion library for React when available.
 - **Avoid AI aesthetic:** Purple gradients on white, symmetric 3-column grids, rounded shadowed cards, overused font families (Inter, Space Grotesk, Geist), cookie-cutter component patterns. The hardest, most recognizable tells are listed under **Absolute Bans** below — treat those as match-and-refuse, not preferences.
 

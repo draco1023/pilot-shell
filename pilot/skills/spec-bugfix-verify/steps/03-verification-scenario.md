@@ -32,10 +32,10 @@ agent-browser --session "$AB_SESSION" open <url>
 4. **FAIL (attempt 1):** Analyze root cause, implement fix, re-run tests, re-execute scenario
 5. **FAIL (attempt 2):** Implement second fix, re-run tests, re-execute scenario
 <!-- CC-ONLY -->
-6. **FAIL after 2 attempts:** The bug is not fully fixed — set `Status: PENDING`, increment `Iterations`, invoke `Skill(skill='spec-implement', args='<plan-path>')`. Do not proceed to VERIFIED.
+6. **FAIL after 2 attempts:** The bug is not fully fixed — route the loop-back through Step 7's iteration-cap check (read `Iterations:`; if `>= 3`, surface Continue/Pivot/Abandon to the user before incrementing), which sets `Status: PENDING`, increments `Iterations`, and re-invokes `Skill(skill='spec-implement', args='<plan-path>')`. Do not proceed to VERIFIED, and do not bypass the cap.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-6. **FAIL after 2 attempts:** The bug is not fully fixed — set `Status: PENDING`, increment `Iterations`, then continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`. Do not proceed to VERIFIED.
+6. **FAIL after 2 attempts:** The bug is not fully fixed — route the loop-back through Step 7's iteration-cap check (read `Iterations:`; if `>= 3`, present Continue/Pivot/Abandon to the user before incrementing), which sets `Status: PENDING`, increments `Iterations`, and continues with the `$spec-implement` skill instructions using arguments: `<plan-path>`. Do not proceed to VERIFIED, and do not bypass the cap.
 CODEX-END -->
 
 ```bash

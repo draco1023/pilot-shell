@@ -56,13 +56,13 @@ Look for the commit that introduced the bug. If recent, read that diff. If nothi
 ### 1.3 Trace to root cause
 
 <!-- CC-ONLY -->
-**Start with `codegraph_context(task="<bug description>")`** for structure, then `mcp__semble__search` for intent ("where does X get modified", "how is Y configured") — especially for cross-language or cross-cutting bugs.
+**Start with `codegraph_explore(query="<bug description>")`** for structure, then `mcp__semble__search` for intent ("where does X get modified", "how is Y configured") — especially for cross-language or cross-cutting bugs.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-**Use `codegraph_context` only when the bug is structural or the entry point is unclear.** For docs, rules, markdown, config, UI copy, or a named local file/function, start with targeted reads or Semble. If the user names a concrete path or the symptom points to one file, read that file first and add CodeGraph only if the call path becomes the actual question.
+**Use `codegraph_explore` only when the bug is structural or the entry point is unclear.** For docs, rules, markdown, config, UI copy, or a named local file/function, start with targeted reads or Semble. If the user names a concrete path or the symptom points to one file, read that file first and add CodeGraph only if the call path becomes the actual question.
 CODEX-END -->
 
-For local bugs (single file, single function): one or two targeted `Read`s is enough. **Do not** run `codegraph_callers`/`callees`/`impact` for local bugs — that's the full-lane bias and it's the single biggest time sink for trivial fixes.
+For local bugs (single file, single function): one or two targeted `Read`s is enough. **Do not** run `codegraph_explore` for callers/callees/impact on local bugs — that's the full-lane bias and it's the single biggest time sink for trivial fixes.
 
 For bugs that span 2 files in the same component (e.g. service.ts + service.test.ts): targeted `Read`s. Still no full call-graph traversal.
 

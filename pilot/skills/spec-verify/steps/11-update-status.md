@@ -53,10 +53,10 @@ CODEX-END -->
 
 Handle:
 <!-- CC-ONLY -->
-- **Continue:** increment `Iterations`, write `## Verification Gaps`, register status, invoke `Skill(skill='spec-implement', args='<plan-path>')` as below.
+- **Continue:** **set `Status: PENDING`**, increment `Iterations`, write `## Verification Gaps`, register status, invoke `Skill(skill='spec-implement', args='<plan-path>')` as below. (Do NOT hand a `Status: COMPLETE` plan to spec-implement.)
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-- **Continue:** increment `Iterations`, write `## Verification Gaps`, register status, then continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`.
+- **Continue:** **set `Status: PENDING`**, increment `Iterations`, write `## Verification Gaps`, register status, then continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`. (Do NOT hand a `Status: COMPLETE` plan to spec-implement.)
 CODEX-END -->
 - **Pivot:** set `Status: PENDING`, do NOT invoke spec-implement. Tell the user you're standing by for new investigation direction.
 - **Abandon:** leave `Status: PENDING`, do not invoke spec-implement. Stop.

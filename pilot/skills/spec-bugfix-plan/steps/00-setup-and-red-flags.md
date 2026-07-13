@@ -86,4 +86,4 @@ Before writing any task in Step 3, you must answer YES to all of these:
 2. Can I explain WHY this causes the symptom (not just what is wrong)?
 3. Is my confidence High or Medium (not Low)?
 
-If any answer is NO → return to Step 2. No exceptions, even for "obvious" bugs. Call-graph traversal (`codegraph_callers`/`codegraph_callees`) is required only for cross-component bugs (Step 2.3) — not for local fixes.
+If any answer is NO → return to Step 2. No exceptions, even for "obvious" bugs. Call-graph traversal (`codegraph_explore(query="<fn> callers and callees")`) is required only for cross-component bugs (Step 2.3) — not for local fixes.

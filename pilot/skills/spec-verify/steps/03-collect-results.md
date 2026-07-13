@@ -59,58 +59,59 @@ Rank order is the tiebreaker within a class. For each fix: implement → run rel
 
 #### Collect Codex Results (if launched)
 
-**⛔ Never skip or defer the Codex review.** If Codex was launched in Step 1, collect and act on its results before proceeding past Step 3. The Codex review runs as a `Bash(run_in_background=true)` — you will be automatically notified when it completes.
-
-**⛔ The completion notification is the ONLY valid signal.** Do NOT read the output file to check if the review is done. The file may contain partial output from an in-progress review — reading it before the notification arrives leads to false conclusions ("no findings" when the review is still running). This is the #1 cause of premature Codex skip.
-
-**⛔ If the notification hasn't arrived yet:** STOP. Do NOT proceed to Phase B, do NOT say "still running, moving on", do NOT read the output file, do NOT conclude the review failed. Wait for the `<task-notification>` with `<status>completed</status>`. If you are tempted to check the file — that is the exact mistake this rule prevents.
-
-**Wait for completion via the active stall monitor** (NOT a status-only poll, and NOT by reading the state file directly). Broker `status` alone is not a liveness signal — a silent job keeps reporting `running`/`verifying` and a status-only loop burns its whole timeout before noticing. The monitor watches `job.logFile` mtime as the liveness source and returns the moment the job finishes OR stalls, triggering the completion notification.
+**⛔ Never skip or defer the Codex review.** If Codex was launched in Step 1, collect and act on its results before proceeding past Step 3. Its completion signal is the **exit of the Step 3 stall monitor below** (run as a background `Bash`), which watches `job.logFile` mtime and returns the moment the job finishes OR stalls. Do NOT poll broker `status` alone (a silent job keeps reporting `running`/`verifying` and a status-only loop burns its whole timeout before noticing), and do NOT read the result file while the monitor is running (partial output reads as a false "no findings" — the #1 cause of premature Codex skip). Wait for the monitor to exit, then branch on its `READY` / `FAIL` / `STALLED` output.
 
 ```bash
 JOB_ID="<captured-task-id from Step 1>"
-STALL=90; CEILING=480   # seconds: max no-log-growth, then absolute ceiling
-LOGF=$(node "$CODEX_COMPANION" status "$JOB_ID" --json 2>/dev/null \
-  | uv run --no-project --python python3 python -c "import json,sys
-try: print((json.load(sys.stdin).get('job') or {}).get('logFile') or '')
-except Exception: print('')")
-last_change=$(date +%s); last_mtime=0; start=$(date +%s)
-while :; do
-  PSTATE=$(node "$CODEX_COMPANION" status "$JOB_ID" --json 2>/dev/null \
-    | uv run --no-project --python python3 python -c "import json,sys
-try: print((json.load(sys.stdin).get('job') or {}).get('status') or 'unknown')
-except Exception: print('parse_error')")
-  case "$PSTATE" in
-    completed)                            echo "READY elapsed=$(($(date +%s)-start))s"; break ;;
-    failed|cancelled|parse_error|unknown) echo "FAIL state=$PSTATE"; break ;;
-  esac
-  now=$(date +%s)
-  m=$( { [ -n "$LOGF" ] && stat -f %m "$LOGF" 2>/dev/null; } || { [ -n "$LOGF" ] && stat -c %Y "$LOGF" 2>/dev/null; } || echo 0 )
-  [ "$m" -gt "$last_mtime" ] && { last_mtime=$m; last_change=$now; }
-  [ $((now - last_change)) -ge "$STALL" ]   && { echo "STALLED no_log_growth=$((now-last_change))s"; break; }
-  [ $((now - start))       -ge "$CEILING" ] && { echo "CEILING elapsed=$((now-start))s"; break; }
-  sleep 15
-done
+STALL=90 CEILING=480 node -e '
+const { execFileSync } = require("child_process");
+const fs = require("fs");
+const [companion, jobId] = process.argv.slice(1);
+const stallMs = (Number(process.env.STALL) || 90) * 1000;
+const ceilingMs = (Number(process.env.CEILING) || 480) * 1000;
+const start = Date.now();
+let lastChange = Date.now(), lastMtime = 0, logFile = null;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+(async () => {
+  while (true) {
+    let job = {};
+    try {
+      job = JSON.parse(execFileSync(process.execPath, [companion, "status", jobId, "--json"], { encoding: "utf8", timeout: 30000 })).job ?? {};
+    } catch { console.log("FAIL state=status_error"); return; }
+    const st = job.status ?? "unknown";
+    if (st === "completed") { console.log(`READY elapsed=${Math.round((Date.now() - start) / 1000)}s`); return; }
+    if (st === "failed" || st === "cancelled" || st === "unknown") { console.log(`FAIL state=${st}`); return; }
+    if (!logFile) logFile = job.logFile ?? null;
+    let m = 0;
+    try { if (logFile) m = fs.statSync(logFile).mtimeMs; } catch {}
+    if (m > lastMtime) { lastMtime = m; lastChange = Date.now(); }
+    if (Date.now() - lastChange >= stallMs) { console.log(`STALLED no_log_growth=${Math.round((Date.now() - lastChange) / 1000)}s`); return; }
+    if (Date.now() - start >= ceilingMs) { console.log(`CEILING elapsed=${Math.round((Date.now() - start) / 1000)}s`); return; }
+    await sleep(5000);
+  }
+})();
+' "$CODEX_COMPANION" "$JOB_ID"
 ```
 
-Run this as `Bash(run_in_background=true, timeout=600000)` (background so `sleep` is allowed; the CEILING exits well before the bash timeout). Use `PSTATE`, never a variable named `status` (read-only in zsh). If `LOGF` came back empty (no `logFile` in the status JSON), the monitor degrades to status + CEILING only — still better than spinning blind. Code reviews typically take 2–6 minutes.
+Run this as `Bash(run_in_background=true, timeout=600000)` (the CEILING exits well before the bash timeout). One node process replaces the old bash loop — no per-poll `uv`/`python` spawns, no zsh traps (read-only `status` variable, unquoted word-splitting), no `stat -f`/`stat -c` platform juggling — and the 5s poll detects completion up to 10s sooner. Output contract unchanged: `READY` / `FAIL state=…` / `STALLED no_log_growth=…` / `CEILING`. A missing `logFile` in the status JSON degrades the monitor to status + CEILING only — still better than spinning blind. Code reviews at the default `medium` effort typically take 1–3 minutes (xhigh runs ~2× longer).
 
 **Outcome handling:**
 - `READY` → completion notification fired; fetch and act on the result below.
 - `FAIL` (`failed`/`cancelled`/`parse_error`/`unknown`) → genuine launch/broker failure; re-launch once synchronously per step 3 below.
-- `STALLED` / `CEILING` → the job went silent. Cancel it, then re-launch ONCE under the same monitor:
+- `STALLED` / `CEILING` → the job went silent. Cancel it, then re-launch ONCE under the same monitor — **without the `--effort` override** (inherit the user's Codex default), so the one retry has no configuration variable in play:
   ```bash
   node "$CODEX_COMPANION" cancel "$JOB_ID" --json 2>/dev/null || true
+  node "$CODEX_COMPANION" task --background --prompt-file "$PROMPT_FILE"   # retry: NO --effort
   ```
   If the re-launch also returns `STALLED`/`CEILING`/`FAIL`, do NOT spin a third time and do NOT silently skip: proceed WITHOUT the Codex pass and record the gap explicitly in the verification report and the Step 6.2 Not-Verified table (note how long it ran and when the log last advanced). Continue with this iteration's changes-review results (agent findings or inline `/code-review`, per the resolved mode).
 
 1. **When (and ONLY when) the completion notification arrives**, fetch the findings via the companion's public interface:
 
    ```bash
-   node "$CODEX_COMPANION" result "$JOB_ID" --json > /tmp/codex-task-result-$$.json
+   node "$CODEX_COMPANION" result "$JOB_ID" --json > "/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json"
    ```
 
-   Read `/tmp/codex-task-result-$$.json` with the `Read` tool. The relevant fields:
+   Read `/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json` with the `Read` tool. (Deterministic name, not `$$` — each Bash tool call is a new shell with a new PID, so a PID-based path cannot be reconstructed by a later step.) The relevant fields:
    - `storedJob.status` — must be `"completed"`. If `"failed"`, treat as a re-launch trigger; do not silently proceed.
    - `storedJob.result.rawOutput` — a string containing Codex's response. With our prompt template, this is JSON matching the `{verdict, summary, findings, next_steps}` schema.
    - `storedJob.rendered` — same content rendered for display; useful as a fallback if `rawOutput` is malformed.
@@ -133,7 +134,7 @@ mkdir -p "$(dirname "$CODEX_FLAG")" && touch "$CODEX_FLAG"
 
 5. **Cleanup:** delete the temp prompt file. `$PROMPT_FILE` from Step 1 is not in scope here (different bash invocation), so re-derive the path from the same template Step 1 used:
 ```bash
-rm -f "/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md"
+rm -f "/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md" "/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json"
 ```
 
 **Report:**
@@ -148,7 +149,7 @@ rm -f "/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md"
 
 **Skip** when fixes were localized (terminology, error handling, test updates, minor bugs). Run tests + lint to confirm, proceed to Phase B.
 
-**Re-verify** when fixes required new functionality, changed APIs, or significant new code paths: re-run the Step 2.2 Plan Compliance & Goal-Truth Audit on the post-fix diff (fixes can break mitigations or truths), then re-run the review SCOPED to the files the fixes touched rather than the whole spec diff. Agent mode: delete the findings file, re-launch the Step 1 `changes-review` sub-agent with `Changed files:` = the fixed files, poll and apply as above. Skill mode: pass the fixed files as the target — `Skill(skill='code-review', args='<SPEC_MODE> <fixed files>')` (same resolved `<SPEC_MODE>` as the first run). Max 2 iterations before adding remaining issues to plan.
+**Re-verify** when fixes required new functionality, changed APIs, or significant new code paths: re-run the Step 2.2 Plan Compliance & Goal-Truth Audit on the post-fix diff (fixes can break mitigations or truths), then re-run the review SCOPED to the files the fixes touched rather than the whole spec diff. Agent mode: re-launch the Step 1 `changes-review` sub-agent with a FRESH `-rN` output path (never delete or reuse the in-flight path — a late write from the superseded agent must never be collected as the fresh run) and `Changed files:` = the fixed files, then poll the new path and apply as above. Skill mode: pass the fixed files as the target — `Skill(skill='code-review', args='<SPEC_MODE> <fixed files>')` (same resolved `<SPEC_MODE>` as the first run). Max 2 iterations before adding remaining issues to plan.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 **If `PILOT_CHANGES_REVIEW_ENABLED` is `"false"` (from Step 0 — Step 1 was skipped),** skip this step entirely and proceed to Step 4 (Phase B).

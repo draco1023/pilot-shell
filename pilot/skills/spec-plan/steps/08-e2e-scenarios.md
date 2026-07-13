@@ -25,4 +25,4 @@ For features with UI or user-facing workflows, create structured E2E scenarios d
 - Steps must be executable via browser automation — Claude Code Chrome, playwright-cli, or agent-browser (concrete: navigate, click, fill, read page — no "observe manually")
 - Test what users see, not internal implementation — same observable inputs and outputs
 
-When scenarios are written, update Goal Verification truths to reference them (e.g., "TS-001 passes end-to-end").
+When scenarios are written, revisit the Step 7.2 Goal Verification decision — but do NOT convert truths into TS-NNN redirects (`[behavior] — TS-NNN passes` is forbidden by Step 7.2). If a scenario now fully covers what a truth asserted, drop that truth from Goal Verification and rely on the scenario itself.

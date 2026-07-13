@@ -58,4 +58,4 @@ basedpyright src                                    # Type check (adapt to your 
 - [ ] `basedpyright src` — clean (adapt to your source dirs)
 - [ ] Critical-path coverage adequate (see testing.md "Test Strategy & Coverage")
 - [ ] No unused imports
-- [ ] Production files ideally under 800 lines (1000+ = consider splitting)
+- [ ] File size within the limit (see `development-practices.md` → File size)

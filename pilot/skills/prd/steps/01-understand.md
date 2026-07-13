@@ -2,10 +2,10 @@
 
 1. **Restate the idea** in your own words — confirm you understand what the user is thinking
 <!-- CC-ONLY -->
-2. **Explore the project context** — `codegraph_context(task="<idea description>")` for structure, then `mcp__semble__search` for intent-based discovery (feature areas, configuration patterns, cross-cutting concerns). Use `codegraph_search` + `codegraph_explore` for deeper symbol understanding. Check docs and recent commits for additional context.
+2. **Explore the project context** — `codegraph_explore(query="<idea description>")` for structure, then `mcp__semble__search` for intent-based discovery (feature areas, configuration patterns, cross-cutting concerns). `codegraph_explore` also returns deeper symbol source when you pass symbol/file names. Check docs and recent commits for additional context.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-2. **Explore the project context with a bounded pass** — use `codegraph_context(task="<idea description>")` only when the idea touches existing runtime code and entry points are unknown, then at most one `mcp__semble__search` for intent-based discovery. If the user names paths, docs, rules, config, UI copy, or concrete features, read those files directly instead of spending a graph call.
+2. **Explore the project context with a bounded pass** — use `codegraph_explore(query="<idea description>")` only when the idea touches existing runtime code and entry points are unknown, then at most one `mcp__semble__search` for intent-based discovery. If the user names paths, docs, rules, config, UI copy, or concrete features, read those files directly instead of spending a graph call.
 CODEX-END -->
 3. **Identify the core problem** — what problem does this solve? For whom? Why now?
 4. **Scope check — is this one PRD, or several?** If the request spans multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag it now. Do not spend the rest of the workflow refining details of a project that needs to be split first.

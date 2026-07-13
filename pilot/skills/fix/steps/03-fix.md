@@ -43,7 +43,7 @@ Zero failures. The full anti-regression suite runs once at Step 5 — running it
 
 ```bash
 git diff --name-only
-git diff | grep -E "^\+.*\b(try:|except|catch \(|return None|return \[\]|return \{\}|console\.log|print\()"
+git diff | grep -E "^\+.*(SPEC-DEBUG|\b(try:|except|catch \(|return None|return \[\]|return \{\}|console\.log|console\.error|print\())"
 ```
 
 - **Root-cause file IS in the diff.** If not, the fix is at a symptom — return to 3.1.

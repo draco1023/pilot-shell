@@ -6,7 +6,7 @@
 
 2. Check: `~/.pilot/bin/pilot worktree detect --json <plan_slug>`
 
-3. **If no worktree:** Skip to Step 10.
+3. **If no worktree:** Skip to Step 9 (the annotation check — it runs BEFORE the review gate regardless of worktree mode; never collapse Step 9 → Step 10).
 
 4. **Save plan to project root** (only if gitignored):
    ```bash

@@ -3,7 +3,7 @@
 ### ⛔ Precondition Gate — verify ALL THREE before writing `Status: VERIFIED`
 
 1. `AskUserQuestion` was called in **this same conversation turn flow** as part of Step 6 (not a previous, abandoned one).
-2. The user's most recent reply contains one of the **explicit approve keywords**: `Approve`, `approve`, `lgtm`, `looks good`, `continue`, `proceed`.
+2. The user's most recent reply contains one of the **explicit approve keywords**: `Approve`, `approve`, `lgtm`, `looks good`. (A bare `continue`/`proceed` is a resume nudge, NOT approval.)
 3. That reply arrived **after** the AskUserQuestion call — not before, not as a stale message.
 
 If any of the three is false → return to Step 6 and re-ask. Common traps that DO NOT count as approval: "no annotations in file", "all tests pass", "user has been idle", "session was resumed", "user said 'thanks'/'ok'/anything else."
@@ -44,10 +44,10 @@ CODEX-END -->
 
 Handle:
 <!-- CC-ONLY -->
-- **Continue:** increment `Iterations`, invoke `Skill(skill='spec-implement', args='<plan-path>')` as below.
+- **Continue:** **set `Status: PENDING`**, add fix tasks, increment `Iterations`, invoke `Skill(skill='spec-implement', args='<plan-path>')` as below. (Do NOT hand a `Status: COMPLETE` plan to spec-implement.)
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-- **Continue:** increment `Iterations`, then continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`.
+- **Continue:** **set `Status: PENDING`**, add fix tasks, increment `Iterations`, then continue immediately with the `$spec-implement` skill instructions using arguments: `<plan-path>`. (Do NOT hand a `Status: COMPLETE` plan to spec-implement.)
 CODEX-END -->
 - **Pivot:** set `Status: PENDING`, do NOT invoke spec-implement. Tell the user you're standing by for new investigation direction.
 - **Abandon:** leave `Status: PENDING`, do not invoke spec-implement. Stop.

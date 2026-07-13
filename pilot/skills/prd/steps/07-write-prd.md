@@ -83,7 +83,7 @@ If the command returns a non-empty email, include `Author: <email>` in the heade
 **Agent:** Write `Agent: Codex`.
 CODEX-END -->
 
-**Category selection:** During the conversation (Step 4 or Step 6), use `AskUserQuestion` to select the PRD category from the fixed set: Feature, Infrastructure, UX, API, Performance, Security, Documentation, Integration.
+**Category selection:** the header needs a `Category:` value. If it was not already chosen earlier in the conversation, ask now — before writing the header — with `AskUserQuestion` (plain-text numbered options on Codex) from the fixed set: Feature, Infrastructure, UX, API, Performance, Security, Documentation, Integration.
 
 After writing:
 
@@ -103,9 +103,4 @@ After writing:
 
 3. **Apply any requested changes** with `Edit` directly on the file — don't rewrite the whole document. Then re-run the 4-point scan and ask the user to re-read **only the changed sections**.
 
-4. **Set Status to Final** once the user approves.
-
-5. **Confirm next step with `AskUserQuestion`:**
-   - "Looks good — proceed to handoff" — PRD is ready
-   - "I want to adjust something else" — let me specify changes
-   - "Start over on a section" — a section needs rethinking
+4. **Set Status to Final** once the user approves, then proceed to **Step 8 (Hand Off)** — that is the single terminal confirmation. Do NOT add a separate "looks good — proceed to handoff?" question here; Step 8 asks it once. (If the user wants further changes at item 2/3, loop there until they approve.)

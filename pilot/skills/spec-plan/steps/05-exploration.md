@@ -1,6 +1,6 @@
 ## Step 5: Exploration
 
-**Start from the Step 3 Workspace Scan — don't re-run `codegraph_context` with the same query.**
+**Start from the Step 3 Workspace Scan — don't re-run `codegraph_explore` with the same query.**
 
 <!-- CODEX-START
 
@@ -16,7 +16,7 @@ CODEX-END -->
 
 #### 5.1: Review Step 3 scan output
 
-The Workspace Scan in Step 3 already ran `codegraph_context(task=<task description>)` and (when applicable) a Semble pattern search. Re-read its structured output before any deeper exploration:
+The Workspace Scan in Step 3 already ran `codegraph_explore(query=<task description>)` and (when applicable) a Semble pattern search. Re-read its structured output before any deeper exploration:
 
 ```
 Entry points: [...]
@@ -35,13 +35,13 @@ CODEX-END -->
 <!-- CC-ONLY -->
 #### 5.2: Deep dive with CodeGraph explore
 
-After orienting, use `codegraph_search` to find specific symbol names, then:
+After orienting, call `codegraph_explore` directly with the relevant symbol/file names (or a natural-language question):
 
 ```
 codegraph_explore(query="SymbolA SymbolB relevant-file.ts")
 ```
 
-This returns **full source code sections** from all relevant files in ONE call — replacing dozens of Read/Grep calls. Use specific symbol names (from search results), not natural language. Follow the call budget in the tool description.
+This returns **full source code sections** from all relevant files in ONE call — plus the call path and blast radius — replacing dozens of Read/Grep calls. `codegraph_explore` accepts either specific symbol/file names or a natural-language question. Follow the call budget in the tool description.
 
 #### 5.3: Systematic exploration
 
@@ -49,14 +49,12 @@ This returns **full source code sections** from all relevant files in ONE call �
 
 | Need                            | Tool                                                    |
 | ------------------------------- | ------------------------------------------------------- |
-| **Orient on the task**          | CodeGraph `codegraph_context(task=<description>)` — already done in Step 3 |
-| **Deep understanding of code**  | CodeGraph `codegraph_search` → `codegraph_explore(query="<symbol names>")` |
+| **Orient on the task**          | CodeGraph `codegraph_explore(query=<description>)` — already done in Step 3 |
+| **Deep understanding / symbols / call tracing / blast radius** | CodeGraph `codegraph_explore(query="<symbol names or question>")` — one call returns source + call path + impact |
 | **Understand a feature by intent** | Semble `semble search "how does X work"` or `mcp__semble__search` |
-| **Find symbols by name**        | CodeGraph `codegraph_search`                            |
 | **Discover similar code from a hit** | Semble `semble find-related file.ts 42` or `mcp__semble__find_related` |
-| **Extract enclosing block at `file:line`** | `Read` with `offset`/`limit`, or `codegraph_node` (by symbol name) |
-| **Project file structure**      | CodeGraph `codegraph_files`                             |
-| **Call tracing**                | CodeGraph `codegraph_callers`/`codegraph_callees`       |
+| **Extract enclosing block at `file:line`** | `Read` with `offset`/`limit`, or `codegraph_explore(query="<symbol>")` |
+| **Project file structure**      | `Glob` / file listing                                   |
 | **Library/framework docs**      | Context7                                                |
 | **Real-world GitHub examples**  | grep-mcp                                                |
 | **Exact text/regex**            | Grep/Glob (last resort)                                 |
@@ -74,7 +72,7 @@ CODEX-END -->
 <!-- CC-ONLY -->
 #### 5.4: Dependency analysis (MANDATORY for 3+ file changes)
 
-For every function you plan to modify: (1) `codegraph_callers` + `codegraph_callees` for the call graph, (2) `Grep` for the symbol name to catch callers the graph may miss, (3) `codegraph_impact` to assess blast radius. CodeGraph gives structure; Grep gives completeness — use both.
+For every function you plan to modify: (1) `codegraph_explore(query="<fn> callers and impact")` — one call returns the call path and blast radius, (2) `Grep` for the symbol name only as a completeness check for dynamic/reflective call sites the AST can't follow. CodeGraph gives structure; Grep backstops it on indirect callers.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 #### 5.4: Dependency analysis (Codex scoped)

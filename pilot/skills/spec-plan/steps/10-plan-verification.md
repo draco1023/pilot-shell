@@ -33,24 +33,18 @@ If anything matches, fix it inline (no new round-trip needed). Then proceed to s
 
 For 3+ task plans, OR any plan touching sensitive surfaces regardless of task count, run the Claude reviewer below in full.
 
-**When running:** Run spec-review for every applicable feature spec. Missing edge cases and unclear DoD criteria are size-independent once the plan crosses the size gate.
-
-```bash
-SESS_ID=$(echo $PILOT_SESSION_ID)
-```
-
 **Derive plan slug** from the plan filename: strip the date prefix (`YYYY-MM-DD-`) and `.md` extension. Example: `2026-03-02-sku-builder-modal-cleanup.md` → `sku-builder-modal-cleanup`.
 
-Output path: `~/.pilot/sessions/<SESS_ID>/findings-spec-review-<plan-slug>.json`
-
-**Delete stale findings before launching** (previous run of the same plan may have left a file):
+**Delete stale findings before launching** (a previous run of the same plan may have left a file) — assign the path and remove it in one block:
 
 ```bash
+SESS_ID="${PILOT_SESSION_ID:-default}"
+OUTPUT_PATH="$HOME/.pilot/sessions/$SESS_ID/findings-spec-review-<plan-slug>.json"
 rm -f "$OUTPUT_PATH"
 ```
 
 ```
-Task(
+Agent(
   subagent_type="spec-review",
   run_in_background=true,
   prompt="""
@@ -112,26 +106,37 @@ CONTEXT_FILES=$(printf -- '- %s\n' \
 
 PLAN_PATH="$PLAN_PATH" PLAN_GOAL="$PLAN_GOAL" CONTEXT_FILES="$CONTEXT_FILES" \
 PROMPT_TEMPLATE="$PROMPT_TEMPLATE" PROMPT_FILE="$PROMPT_FILE" \
-uv run --no-project --python python3 python -c '
-import os, pathlib
-text = pathlib.Path(os.environ["PROMPT_TEMPLATE"]).read_text()
-for key in ("PLAN_PATH", "PLAN_GOAL", "CONTEXT_FILES"):
-    text = text.replace("{{" + key + "}}", os.environ[key])
-pathlib.Path(os.environ["PROMPT_FILE"]).write_text(text)
+node -e '
+const fs = require("fs");
+let text = fs.readFileSync(process.env.PROMPT_TEMPLATE, "utf8");
+for (const key of ["PLAN_PATH", "PLAN_GOAL", "CONTEXT_FILES"])
+  text = text.split("{{" + key + "}}").join(process.env[key] ?? "");
+fs.writeFileSync(process.env.PROMPT_FILE, text);
 '
 ```
 
+Render with `node` (guaranteed present wherever the companion runs; no `uv` dependency on this path). `split/join` instead of `replace` avoids JS `$`-pattern expansion if a substitution value contains `$&`.
+
 3. Launch the task in background. **For `task`, the companion's `--background` flag IS supported** (unlike `review`/`adversarial-review`, where only Claude Code's `Bash(run_in_background=true)` detaches). Use the companion's own background mode here — the launch command returns the job ID immediately on stdout. Capture the job ID for collection.
+
+   **Resolve the review effort first (fail-closed to `medium`).** A plan review is a bounded read-only audit — it does not need the user's interactive reasoning default (often `xhigh`, ~2× slower for equivalent material findings; verified live). Users override via `PILOT_CODEX_REVIEW_EFFORT`. ⛔ Do NOT pass `--model` — fast-model aliases (e.g. `spark`) are rejected on ChatGPT-plan auth; the user's default model always stays.
+
+   ```bash
+   CODEX_EFFORT="${PILOT_CODEX_REVIEW_EFFORT:-medium}"
+   case "$CODEX_EFFORT" in none|minimal|low|medium|high|xhigh) ;; *) CODEX_EFFORT=medium ;; esac
+   ```
 
    ⛔ **Launch the companion via Bash from the MAIN conversation — NEVER through a subagent** (`codex:codex-rescue` included): a subagent-launched job's ID is unreachable afterwards (no findings file, no `TaskOutput`, no `SendMessage`).
 
    ```
    Bash(
-     command="cd $PROJECT_ROOT && node $CODEX_COMPANION task --background --prompt-file \"$PROMPT_FILE\"",
+     command="cd $PROJECT_ROOT && node $CODEX_COMPANION task --background --effort \"$CODEX_EFFORT\" --prompt-file \"$PROMPT_FILE\"",
      run_in_background=false,
      timeout=60000
    )
    ```
+
+   If the launch itself errors on the effort value (a model that rejects the requested `reasoning.effort` fails within seconds with a `400`), re-launch once WITHOUT `--effort` — inheriting the user's Codex default — before falling back to the Claude-reviewer-only path.
 
    The stdout looks like: `Codex Task started in the background as task-<id>. Check /codex:status task-<id> for progress.` Extract the `task-…` token and store as `JOB_ID`.
 
@@ -181,44 +186,55 @@ The completion notification arrives automatically as a mid-turn tool-result-styl
 
 ```bash
 JOB_ID="<captured-task-id>"
-STALL=90; CEILING=480   # seconds: max no-log-growth, then absolute ceiling
-LOGF=$(node "$CODEX_COMPANION" status "$JOB_ID" --json 2>/dev/null \
-  | uv run --no-project --python python3 python -c "import json,sys
-try: print((json.load(sys.stdin).get('job') or {}).get('logFile') or '')
-except Exception: print('')")
-last_change=$(date +%s); last_mtime=0; start=$(date +%s)
-while :; do
-  PSTATE=$(node "$CODEX_COMPANION" status "$JOB_ID" --json 2>/dev/null \
-    | uv run --no-project --python python3 python -c "import json,sys
-try: print((json.load(sys.stdin).get('job') or {}).get('status') or 'unknown')
-except Exception: print('parse_error')")
-  case "$PSTATE" in
-    completed)                            echo "READY elapsed=$(($(date +%s)-start))s"; break ;;
-    failed|cancelled|parse_error|unknown) echo "FAIL state=$PSTATE"; break ;;
-  esac
-  now=$(date +%s)
-  m=$( { [ -n "$LOGF" ] && stat -f %m "$LOGF" 2>/dev/null; } || { [ -n "$LOGF" ] && stat -c %Y "$LOGF" 2>/dev/null; } || echo 0 )
-  [ "$m" -gt "$last_mtime" ] && { last_mtime=$m; last_change=$now; }
-  [ $((now - last_change)) -ge "$STALL" ]   && { echo "STALLED no_log_growth=$((now-last_change))s"; break; }
-  [ $((now - start))       -ge "$CEILING" ] && { echo "CEILING elapsed=$((now-start))s"; break; }
-  sleep 15
-done
+STALL=90 CEILING=480 node -e '
+const { execFileSync } = require("child_process");
+const fs = require("fs");
+const [companion, jobId] = process.argv.slice(1);
+const stallMs = (Number(process.env.STALL) || 90) * 1000;
+const ceilingMs = (Number(process.env.CEILING) || 480) * 1000;
+const start = Date.now();
+let lastChange = Date.now(), lastMtime = 0, logFile = null;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+(async () => {
+  while (true) {
+    let job = {};
+    try {
+      job = JSON.parse(execFileSync(process.execPath, [companion, "status", jobId, "--json"], { encoding: "utf8", timeout: 30000 })).job ?? {};
+    } catch { console.log("FAIL state=status_error"); return; }
+    const st = job.status ?? "unknown";
+    if (st === "completed") { console.log(`READY elapsed=${Math.round((Date.now() - start) / 1000)}s`); return; }
+    if (st === "failed" || st === "cancelled" || st === "unknown") { console.log(`FAIL state=${st}`); return; }
+    if (!logFile) logFile = job.logFile ?? null;
+    let m = 0;
+    try { if (logFile) m = fs.statSync(logFile).mtimeMs; } catch {}
+    if (m > lastMtime) { lastMtime = m; lastChange = Date.now(); }
+    if (Date.now() - lastChange >= stallMs) { console.log(`STALLED no_log_growth=${Math.round((Date.now() - lastChange) / 1000)}s`); return; }
+    if (Date.now() - start >= ceilingMs) { console.log(`CEILING elapsed=${Math.round((Date.now() - start) / 1000)}s`); return; }
+    await sleep(5000);
+  }
+})();
+' "$CODEX_COMPANION" "$JOB_ID"
 ```
 
-Run this as `Bash(run_in_background=true, timeout=600000)` (background so `sleep` is allowed; the CEILING exits before the bash timeout). Use `PSTATE`, never a variable named `status` (read-only in zsh). If `LOGF` came back empty, the monitor degrades to status + CEILING only. Plan reviews typically take 1–4 minutes (no diff context to load).
+Run this as `Bash(run_in_background=true, timeout=600000)` (the CEILING exits before the bash timeout). One node process replaces the old bash loop — no per-poll `uv`/`python` spawns, no zsh traps (read-only `status` variable, unquoted word-splitting), no `stat -f`/`stat -c` platform juggling — and the 5s poll detects completion up to 10s sooner. Output contract unchanged: `READY` / `FAIL state=…` / `STALLED no_log_growth=…` / `CEILING`. A missing `logFile` degrades the monitor to status + CEILING only. Plan reviews at the default `medium` effort typically take under 2 minutes (no diff context to load; xhigh runs ~2× longer).
 
 **Outcome handling:**
 - `READY` → fetch and act on the result below.
 - `FAIL` → genuine launch/broker failure; re-launch once synchronously per step 3 below.
-- `STALLED` / `CEILING` → the job went silent. Cancel it (`node "$CODEX_COMPANION" cancel "$JOB_ID" --json 2>/dev/null || true`), then re-launch ONCE under the same monitor. If the re-launch also returns `STALLED`/`CEILING`/`FAIL`, do NOT spin again and do NOT silently skip: proceed with the Claude reviewer results only and note the missing Codex pass before requesting approval.
+- `STALLED` / `CEILING` → the job went silent. Cancel it, then re-launch ONCE under the same monitor — **without the `--effort` override** (inherit the user's Codex default), so the one retry has no configuration variable in play:
+  ```bash
+  node "$CODEX_COMPANION" cancel "$JOB_ID" --json 2>/dev/null || true
+  node "$CODEX_COMPANION" task --background --prompt-file "$PROMPT_FILE"   # retry: NO --effort
+  ```
+  If the re-launch also returns `STALLED`/`CEILING`/`FAIL`, do NOT spin again and do NOT silently skip: proceed with the Claude reviewer results only and note the missing Codex pass before requesting approval.
 
 1. **When (and ONLY when) the completion notification arrives**, fetch the result via the companion's public interface:
 
    ```bash
-   node "$CODEX_COMPANION" result "$JOB_ID" --json > /tmp/codex-task-result-$$.json
+   node "$CODEX_COMPANION" result "$JOB_ID" --json > "/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json"
    ```
 
-   Read `/tmp/codex-task-result-$$.json` with the `Read` tool. The relevant fields:
+   Read `/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json` with the `Read` tool. (Deterministic name, not `$$` — each Bash tool call is a new shell with a new PID, so a PID-based path cannot be reconstructed by a later step.) The relevant fields:
    - `storedJob.status` — must be `"completed"`. If not, treat as a re-launch trigger; do not silently proceed.
    - `storedJob.result.rawOutput` — a string containing Codex's response. With our prompt, this is JSON matching the schema above.
    - `storedJob.rendered` — same content rendered for display; useful as a fallback if `rawOutput` is malformed.
@@ -239,9 +255,9 @@ Run this as `Bash(run_in_background=true, timeout=600000)` (background so `sleep
 mkdir -p "$(dirname "$CODEX_FLAG")" && touch "$CODEX_FLAG"
 ```
 
-5. **Cleanup:** delete the temp prompt file:
+5. **Cleanup:** delete the temp prompt and result files:
 ```bash
-rm -f "$PROMPT_FILE"
+rm -f "$PROMPT_FILE" "/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json"
 ```
 
 **If Codex was NOT launched**, proceed after all Claude reviewer must_fix/should_fix resolved.

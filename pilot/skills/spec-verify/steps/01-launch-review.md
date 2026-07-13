@@ -16,19 +16,23 @@ test -d "$SESS_DIR" && "$FIND_BIN" "$SESS_DIR" -maxdepth 1 -name 'findings-chang
 
 Use the absolute `FIND_BIN` form above. In Pilot Shell sessions the shell hook may rewrite plain `find` to RTK, and RTK rejects the `-delete` predicate shape this cleanup needs.
 
-### 1b: Stage the change's files (always run, before ANY reviewer launches)
+### 1b: Resolve the review diff scope and stage (before ANY reviewer launches)
 
-The implementation phase does not commit, so the work sits in the WORKING TREE — modified files plus brand-new untracked ones (new modules, pages, tests). A review of that unstaged tree misfires both ways: a reviewer that reads `git status --untracked-files=all` reports a spurious `critical` ("deliverable depends on untracked files"), while a reviewer that reads only `git diff HEAD` silently OMITS the new files, so they go unreviewed. Fix both at once by staging the change's own files with a **real `git add`** before any reviewer launches below:
+**Resolve `DIFF_SCOPE` once — every reviewer launch below AND every Step 2 audit uses exactly this scope.** It depends on the plan's `Worktree:` mode, because that determines whether the change is committed:
+
+- **Non-worktree mode (`Worktree: No`, the default):** the implementation phase does NOT commit, so the work sits in the WORKING TREE (modified files plus brand-new untracked ones). Stage the change's own files (below), then **`DIFF_SCOPE` = `git diff HEAD -- <changed files>`** — which now includes the staged additions.
+- **Worktree mode (`Worktree: Yes`):** the implementation phase per-task-commits (`spec-implement` TDD loop), so the work is already committed on the worktree branch. Do NOT stage. Resolve the base ref (`~/.pilot/bin/pilot worktree status --json <slug>` → `base_branch`, default `main`) and **`DIFF_SCOPE` = `git diff <base_ref>..HEAD -- <changed files>`**. A plain `git diff HEAD` here would review an EMPTY diff.
+
+A review of the unstaged tree (non-worktree) misfires both ways: a reviewer reading `git status --untracked-files=all` reports a spurious `critical` ("deliverable depends on untracked files"), while one reading only `git diff HEAD` silently OMITS new files. Staging fixes both:
 
 ```bash
-# Stage ONLY the plan's files (the paths from each task's `Files:` block) plus any
-# documented deviations — NOT unrelated dirty or untracked files.
+# Non-worktree mode ONLY — stage the plan's files (paths from each task's `Files:` block)
+# plus documented deviations — NOT unrelated dirty or untracked files.
 git add <path/from/plan/Files-block-1> <path/from/plan/Files-block-2> ...
-# Sanity check: anything still untracked must NOT be part of this change.
-git status --short --untracked-files=all | grep '^??' || true
+git status --short --untracked-files=all | grep '^??' || true   # anything still untracked must NOT be part of this change
 ```
 
-A bare `git add -N` (intent-to-add) is NOT enough — `git status` still treats the path as untracked and a later `git commit` can record empty content. Use a real `git add`. **Staging is not committing** — the commit still waits for the review, doc-sync, and (Phase B) the worktree sync; `git add` is pre-authorized, the push is not. All reviewers below scope to `git diff HEAD` (which now includes the staged additions); never narrow to a committed ref-range, which is empty pre-commit.
+A bare `git add -N` (intent-to-add) is NOT enough — `git status` still treats the path as untracked and a later `git commit` can record empty content. Use a real `git add`. **Staging is not committing** — the commit still waits for the review, doc-sync, and (Phase B) the worktree sync; `git add` is pre-authorized, the push is not. All reviewers below and all Step 2 audits scope to `DIFF_SCOPE` as resolved above.
 
 **Reviewable file preflight:** the `Files:` block must contain at least one non-ignored repository artifact for implementation plans. `docs/plans/...` is workflow state and may be gitignored in Pilot Shell itself, so it cannot be the sole review target. Do NOT use `git add -f` to force ignored plan files into review. If every planned file is ignored, outside the repo, or only the plan file itself, set `Status: PENDING`, add a fix task for a reviewable non-production artifact (for smoke/no-production specs), and return to implementation before launching any reviewer.
 
@@ -50,7 +54,7 @@ echo "$SPEC_MODE"
 **Derive plan slug** from the plan filename (strip `YYYY-MM-DD-` prefix and `.md`). Output path: `$SESS_DIR/findings-changes-review-<plan-slug>.json` (the 1a cleanup already removed any stale file).
 
 ```
-Task(
+Agent(
   subagent_type="changes-review",
   run_in_background=true,
   prompt="""
@@ -59,7 +63,7 @@ Task(
   **Runtime environment:** <plan's Runtime Environment section, if present>
   **Output path:** <absolute findings path above>
 
-  Review the diff (git diff HEAD -- <changed files>) against the plan: compliance, quality, goal achievement.
+  Review the diff (DIFF_SCOPE resolved in Step 1b — `git diff HEAD -- <changed files>` in non-worktree mode, `git diff <base_ref>..HEAD -- <changed files>` in worktree mode) against the plan: compliance, quality, goal achievement.
   Write findings JSON to output_path using the Write tool.
   IMPORTANT: Include the plan file path in your output JSON as the "plan_file" field.
   """
@@ -100,7 +104,7 @@ PROJECT_ROOT="${CLAUDE_PROJECT_ROOT:-$(pwd)}"
 2. Build the review prompt file by rendering the **template at `$HOME/.claude/agents/changes-review-codex.md`**. The template is the single source of truth for code-review semantics — do NOT re-state the prompt inline in this skill. Substitute four placeholders:
    - `{{PLAN_PATH}}` — absolute path to the plan file
    - `{{PLAN_GOAL}}` — the 1–2 sentence Goal sentence from the plan's `## Summary`
-   - `{{BASE_REF}}` — `main` (or the worktree base branch detected via `pilot worktree status --json`)
+   - `{{BASE_REF}}` — consistent with the Step 1b `DIFF_SCOPE`: **`HEAD` in non-worktree mode** (the change is uncommitted/staged, so the template's `git diff <BASE_REF>..HEAD` is empty and it falls back to `git diff HEAD` — the staged implementation; a `main` base would instead review prior branch commits on a dirty branch ahead of main), and the **worktree base branch** (`pilot worktree status --json` → `base_branch`) in worktree mode.
    - `{{CHANGED_FILES}}` — newline-separated paths to the files the plan said it would touch (extracted from each task's `Files:` block)
 
 ```bash
@@ -109,33 +113,44 @@ PROMPT_FILE="/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.
 
 PLAN_PATH="/absolute/path/to/docs/plans/YYYY-MM-DD-<slug>.md"
 PLAN_GOAL="<one or two sentences from the plan Summary>"
-BASE_REF="main"
+BASE_REF="HEAD"   # non-worktree: HEAD → template falls back to `git diff HEAD` (the staged change). Worktree: set to the base_branch from `pilot worktree status --json`.
 CHANGED_FILES=$(printf -- '- %s\n' \
   path/to/changed/file-1 \
   path/to/changed/file-2)
 
 PLAN_PATH="$PLAN_PATH" PLAN_GOAL="$PLAN_GOAL" BASE_REF="$BASE_REF" CHANGED_FILES="$CHANGED_FILES" \
 PROMPT_TEMPLATE="$PROMPT_TEMPLATE" PROMPT_FILE="$PROMPT_FILE" \
-uv run --no-project --python python3 python -c '
-import os, pathlib
-text = pathlib.Path(os.environ["PROMPT_TEMPLATE"]).read_text()
-for key in ("PLAN_PATH", "PLAN_GOAL", "BASE_REF", "CHANGED_FILES"):
-    text = text.replace("{{" + key + "}}", os.environ[key])
-pathlib.Path(os.environ["PROMPT_FILE"]).write_text(text)
+node -e '
+const fs = require("fs");
+let text = fs.readFileSync(process.env.PROMPT_TEMPLATE, "utf8");
+for (const key of ["PLAN_PATH", "PLAN_GOAL", "BASE_REF", "CHANGED_FILES"])
+  text = text.split("{{" + key + "}}").join(process.env[key] ?? "");
+fs.writeFileSync(process.env.PROMPT_FILE, text);
 '
 ```
 
+Render with `node` (guaranteed present wherever the companion runs — the companion itself is node; no `uv` dependency on this path). `split/join` instead of `replace` avoids JS `$`-pattern expansion if a substitution value contains `$&`.
+
 3. Launch the task in background. **For `task`, the companion's `--background` flag IS supported** (unlike `review`/`adversarial-review`). Use the companion's own background mode — the launch command returns the job ID immediately on stdout. Capture the job ID for collection in Step 3.
+
+   **Resolve the review effort first (fail-closed to `medium`).** A changes review is a bounded read-only audit — it does not need the user's interactive reasoning default (often `xhigh`, which runs ~2× slower for equivalent material findings on review-scale diffs; verified live). `medium` is the default; users override via `PILOT_CODEX_REVIEW_EFFORT`. ⛔ Do NOT pass `--model` — fast-model aliases (e.g. `spark`) are rejected on ChatGPT-plan auth (`400 invalid_request_error`); the user's default model always stays.
+
+   ```bash
+   CODEX_EFFORT="${PILOT_CODEX_REVIEW_EFFORT:-medium}"
+   case "$CODEX_EFFORT" in none|minimal|low|medium|high|xhigh) ;; *) CODEX_EFFORT=medium ;; esac
+   ```
 
    ⛔ **Launch the companion via Bash from the MAIN conversation — NEVER through a subagent** (`codex:codex-rescue` included): a subagent-launched job's ID is unreachable afterwards (no findings file, no `TaskOutput`, no `SendMessage`).
 
    ```
    Bash(
-     command="cd $PROJECT_ROOT && node $CODEX_COMPANION task --background --prompt-file \"$PROMPT_FILE\"",
+     command="cd $PROJECT_ROOT && node $CODEX_COMPANION task --background --effort \"$CODEX_EFFORT\" --prompt-file \"$PROMPT_FILE\"",
      run_in_background=false,
      timeout=60000
    )
    ```
+
+   If the launch itself errors on the effort value (a model that rejects the requested `reasoning.effort` fails within seconds with a `400`), re-launch once WITHOUT `--effort` — inheriting the user's Codex default — before falling back to the no-Codex path.
 
    The stdout looks like: `Codex Task started in the background as task-<id>. Check /codex:status task-<id> for progress.` Extract the `task-…` token and store as `JOB_ID`.
 

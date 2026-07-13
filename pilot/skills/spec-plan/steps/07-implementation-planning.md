@@ -73,7 +73,7 @@ The changes review and `spec-verify` Step 2 audit these rules against the actual
 
 #### Step 7.2: Goal Verification Criteria (skip step if no cross-task observable outcomes exist)
 
-After creating tasks, ask: **is there a user-facing observable outcome that NO single E2E scenario captures AND NO single task DoD captures?** If no → skip this step entirely; the `## Goal Verification` section does not appear in the plan. spec-verify Step 10 audits via E2E and task-DoD source keys in that case.
+After creating tasks — and considering the E2E scenarios you will write in Step 8 (revisit this decision after Step 8 if needed) — ask: **is there a user-facing observable outcome that NO single E2E scenario captures AND NO single task DoD captures?** If no → skip this step entirely; the `## Goal Verification` section does not appear in the plan. spec-verify then audits via the E2E and task-DoD source keys instead (spec-verify Steps 2/6/7).
 
 If yes → write **at most 3 truths** for the `## Goal Verification > ### Truths` section. Each truth must be cross-task and not reducible to a single TS-NNN or task DoD reference. If you find yourself writing `[behavior] — TS-NNN passes`, that's not a truth — it's a redirect; delete it and rely on TS-NNN itself.
 

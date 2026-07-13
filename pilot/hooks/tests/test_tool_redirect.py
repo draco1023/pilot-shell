@@ -716,7 +716,7 @@ class TestSearchNudgeBashGrep:
         assert code == 0
         assert _has_nudge(output)
         text = _nudge_text(output)
-        assert "codegraph_search" in text or "codegraph" in text
+        assert "codegraph_explore" in text or "codegraph" in text
         assert "semble search" in text or "semble" in text
 
     def test_nudges_grep_capital_R(self):
@@ -776,7 +776,7 @@ class TestSearchNudgeBashRg:
         code, output = _run_with_input("Bash", {"command": "rg --files"})
         assert code == 0
         assert _has_nudge(output)
-        assert "codegraph_files" in _nudge_text(output)
+        assert "codegraph_explore" in _nudge_text(output)
 
 
 @pytest.mark.usefixtures("fresh_throttle")
@@ -785,7 +785,7 @@ class TestSearchNudgeBashFind:
         code, output = _run_with_input("Bash", {"command": "find . -name '*.py'"})
         assert code == 0
         assert _has_nudge(output)
-        assert "codegraph_files" in _nudge_text(output)
+        assert "codegraph_explore" in _nudge_text(output)
 
     def test_nudges_find_with_iname(self):
         code, output = _run_with_input("Bash", {"command": "find . -iname '*.PY'"})
@@ -835,7 +835,7 @@ class TestSearchNudgeBuiltinTools:
         assert code == 0
         assert _has_nudge(output)
         text = _nudge_text(output)
-        assert "codegraph_search" in text
+        assert "codegraph_explore" in text
 
     def test_nudges_grep_no_path(self):
         code, output = _run_with_input("Grep", {"pattern": "foo"})
@@ -846,7 +846,7 @@ class TestSearchNudgeBuiltinTools:
         code, output = _run_with_input("Glob", {"pattern": "**/*.py"})
         assert code == 0
         assert _has_nudge(output)
-        assert "codegraph_files" in _nudge_text(output)
+        assert "codegraph_explore" in _nudge_text(output)
 
 
 @pytest.mark.usefixtures("fresh_throttle")

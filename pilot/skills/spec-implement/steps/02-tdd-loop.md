@@ -13,7 +13,7 @@ If you find yourself queuing 3+ RED tests before any GREEN, stop and complete th
 **For EVERY task (generic flow — features use this as-is; bugfixes use it via the Bugfix Lane overrides below):**
 
 1. **Read plan's implementation steps** — list files to create/modify/delete
-2. **Call chain analysis:** For each shared or non-trivial function being modified, run `codegraph_callers(symbol="function_name")` + `codegraph_callees(symbol="function_name")` (discover exact names with `codegraph_search(query="...")` first if needed). This traces the actual call graph — Semble text search is not a substitute. A self-contained local function the plan already isolated doesn't need it.
+2. **Call chain analysis:** For each shared or non-trivial function being modified, run `codegraph_explore(query="function_name callers and callees")`. This traces the actual call graph in one call — Semble text search is not a substitute. A self-contained local function the plan already isolated doesn't need it.
 <!-- CC-ONLY -->
 3. **Mark in_progress:** `TaskUpdate(taskId, status="in_progress")`
 <!-- /CC-ONLY -->
@@ -40,7 +40,7 @@ If you find yourself queuing 3+ RED tests before any GREEN, stop and complete th
 
 ### Test parsimony reminder
 
-Before writing a test, re-read `pilot/rules/testing.md` § "Test Parsimony — what NOT to do". Common mistake: a refactor that moves a method between classes produces a "natural" pull to add a test class for the new location. Don't. Tests are contra-variant with code structure (Uncle Bob, *Test Contravariance*). Move existing tests; do not duplicate them. The bugfix lane below preserves its single-RED-test rule and the `Trivial:` escape does NOT apply to bugfixes.
+Before writing a test, re-read the testing rules § "Test Parsimony — what NOT to do". Common mistake: a refactor that moves a method between classes produces a "natural" pull to add a test class for the new location. Don't. Tests are contra-variant with code structure (Uncle Bob, *Test Contravariance*). Move existing tests; do not duplicate them. The bugfix lane below preserves its single-RED-test rule and the `Trivial:` escape does NOT apply to bugfixes.
 
 ---
 
@@ -52,9 +52,9 @@ Before writing a test, re-read `pilot/rules/testing.md` § "Test Parsimony — w
 
 1. The plan has THREE tasks: `Write Reproducing Test (RED)` → `Implement Fix at Root Cause` → `Quality Gate`. Do not merge them. Do not skip Task 1 because "I already see the fix."
 2. The "Skip TDD for docs, config, IaC, formatting-only" escape hatch (step 4 above) does **NOT** apply to bugfixes. Even config-driven bugs need a reproducing test at the end-to-end boundary.
-3. Re-use the plan's `## Investigation` section instead of re-running codegraph. If the plan already documents callers/callees/impact for the root-cause function, read it from the plan — skip generic step 2. Re-run `codegraph_callers`/`codegraph_callees` only when the plan's breadcrumbs are missing or stale for a specific function you're about to modify.
+3. Re-use the plan's `## Investigation` section instead of re-running codegraph. If the plan already documents callers/callees/impact for the root-cause function, read it from the plan — skip generic step 2. Re-run `codegraph_explore(query="<fn> callers and callees")` only when the plan's breadcrumbs are missing or stale for a specific function you're about to modify.
 
-**Per-task flows — run the flow matching the current task, not the generic 13-step loop:**
+**Per-task flows — run the flow matching the current task, not the generic loop above:**
 
 #### Task 1 — Write Reproducing Test (RED)
 
@@ -71,7 +71,7 @@ Minimal flow. No production code here, so most generic steps (call-chain analysi
 
 This is the only task that modifies production code.
 
-1. Call-chain analysis: use plan's Investigation if it covers the function; otherwise run `codegraph_callers` + `codegraph_callees` on the root-cause function only.
+1. Call-chain analysis: use plan's Investigation if it covers the function; otherwise run `codegraph_explore(query="<root-cause fn> callers and callees")` on the root-cause function only.
 2. Make the minimal change at `Root Cause: file:line`. Fix at the source, not at the symptom.
 3. Forbidden: new broad `try/except` around the failing call, `if value is None: return default` at the caller when the bug is upstream, swallowed exceptions, silently normalised bad inputs. Legitimate defense-in-depth requires an explicit entry in the plan's `Defense-in-depth:` field.
 4. Re-run the reproducing test → **must PASS**. Then run the test module(s) covering the root-cause file — fast, scoped (e.g. `pytest path/to/test_module.py -q`). The full anti-regression suite runs at the Quality Gate task, not here. Running the full suite per-fix-task is the single biggest token sink in bundled bugfix plans.

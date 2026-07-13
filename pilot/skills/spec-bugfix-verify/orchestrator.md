@@ -3,9 +3,6 @@ name: spec-bugfix-verify
 description: "Bugfix verification phase - tests, quality checks, fix confirmation"
 argument-hint: "<path/to/plan.md>"
 user-invocable: false
-hooks:
-  Stop:
-    - command: uv run --no-project --python python3 python "$HOME/.claude/hooks/spec_verify_validator.py"
 ---
 
 # /spec-bugfix-verify - Bugfix Verification Phase

@@ -17,7 +17,7 @@ Pick the tool that gives the most accurate verification for the situation, not t
 | Priority | Tool | Best For | Key Advantage |
 |----------|------|----------|---------------|
 | 1st | Claude Code Chrome (`mcp__claude-in-chrome__*`) | Quick E2E, visual check | Shares user's existing browser session, natural-language `find` |
-| 2nd | Chrome DevTools MCP (`mcp__plugin_chrome-devtools-mcp_*`) | DevTools-level debugging, perf audits | Direct CDP, Lighthouse, tracing — no extension needed |
+| 2nd | Chrome DevTools MCP (`mcp__plugin_chrome-devtools-mcp_chrome-devtools__*`) | DevTools-level debugging, perf audits | Direct CDP, Lighthouse, tracing — no extension needed |
 | 3rd | `playwright-cli` | Thorough E2E, complex flows | Most reliable targeting, persistent sessions, network mocking, tracing, multi-tab |
 | 4th | `agent-browser` | Lightweight checks | Concise output (200–400 tk/page), fast startup |
 
@@ -92,7 +92,7 @@ Without session isolation, parallel agents share one browser instance and clobbe
 agent-browser --session "${PILOT_SESSION_ID:-default}" <command>
 
 # playwright-cli
-playwright-cli -s=$PILOT_SESSION_ID <command>
+playwright-cli -s="${PILOT_SESSION_ID:-default}" <command>
 ```
 
 Chrome MCP and Chrome DevTools MCP target tabs/pages directly — no session ID needed.

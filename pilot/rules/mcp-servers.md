@@ -9,17 +9,17 @@ ToolSearch(query="+server keyword")       # Require a specific server prefix
 ToolSearch(query="select:full_tool_name") # Load a specific tool by exact name
 ```
 
-All servers use the `mcp__plugin_pilot_` prefix. Tools are callable immediately after ToolSearch returns them.
+Each tool resolves as `mcp__<server>__<tool>` (e.g. `mcp__semble__search`, `mcp__codegraph__codegraph_explore`, `mcp__web-search__search`) — the exact names ToolSearch returns and the examples below use. Tools are callable immediately after ToolSearch returns them.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 MCP tools may be lazy-loaded via `tool_search` or registered at session start — check your available tools. Discover by keyword, then call directly.
 
 ```
 tool_search(query="keyword")              # Discover and load tools by keyword
-tool_search(query="codegraph context")    # Example: find CodeGraph tools
+tool_search(query="codegraph explore")     # Example: find the CodeGraph tool
 ```
 
-All Pilot servers use the `mcp__plugin_pilot_` prefix. Tools are callable immediately after discovery.
+Each tool resolves as `mcp__<server>__<tool>` (e.g. `mcp__semble__search`, `mcp__codegraph__codegraph_explore`) — check your available tools for the exact names. Tools are callable immediately after discovery.
 CODEX-END -->
 
 ---
@@ -38,34 +38,33 @@ For `$spec` and `$prd` planning in Codex, CodeGraph is an orientation tool, not 
 CODEX-END -->
 
 <!-- CC-ONLY -->
-| Tool | Purpose |
+**One tool — `codegraph_explore`.** The shipped CodeGraph exposes a single tool. It takes either a natural-language question (`"how does auth work"`) or a bag of symbol/file names (`"SymA SymB file.ts"`), and returns the verbatim line-numbered source grouped by file **plus** the call path among those symbols **plus** a blast-radius summary — so ONE call replaces a Grep/Read loop *and* gives you callers + impact in the same response.
+
+| Call | Use for |
 |------|---------|
-| `codegraph_context(task=...)` | **START HERE** — entry points + related symbols |
-| `codegraph_explore(query="SymA SymB file.ts")` | Full source from all relevant files in ONE call (replaces dozens of Read/Grep calls). Use specific symbol/file names — NOT natural language. Run `codegraph_search` first to discover names. |
-| `codegraph_search` | Find symbols by name |
-| `codegraph_callers` / `codegraph_callees` | Trace call flow before modifying. Supplement with Grep as a *completeness check* for indirect/dynamic callers. |
-| `codegraph_impact` | Blast radius before committing to a change |
-| `codegraph_node` | Details + source for one symbol |
-| `codegraph_files` | Project file tree (NOT Glob/ls) |
+| `codegraph_explore(query="<task description>")` | **START HERE** — orient on a task; entry points + related symbols + source in one call |
+| `codegraph_explore(query="SymA SymB relevant-file.ts")` | Deep-dive known symbols — full source from every relevant file at once (replaces dozens of Read/Grep calls) |
+| `codegraph_explore(query="callers and impact of processOrder")` | Call flow / blast radius — the response includes the dependency edges; no separate callers/impact tool |
+
+Grep/Glob stay for exact-text sweeps and as a completeness check only for dynamic/reflective call sites the AST can't follow — not for re-verifying codegraph's structural results.
 <!-- /CC-ONLY -->
 <!-- CODEX-START
-| Tool | Purpose |
+**One tool — `codegraph_explore`.** The shipped CodeGraph exposes a single tool that takes a natural-language question OR a bag of symbol/file names and returns verbatim source + the call path + a blast-radius summary in one call.
+
+| Call | Use for |
 |------|---------|
-| `codegraph_context(task=...)` | Structural orientation when runtime-code entry points are unknown; skip for named paths, docs/config/rules, and reviews of a known diff. |
-| `codegraph_explore(query="SymA SymB file.ts")` | Full source from relevant known symbols/files in one call. Use specific symbol/file names — NOT broad natural-language questions. |
-| `codegraph_search` | Find symbols by name. |
-| `codegraph_callers` / `codegraph_callees` | Trace call flow before modifying a runtime function with non-local effects. Supplement with exact-text verification for indirect/dynamic callers. |
-| `codegraph_impact` | Blast radius for a non-local runtime change. |
-| `codegraph_node` | Details + source for one symbol. |
-| `codegraph_files` | Project file tree when structure, not code intent, is the question. |
+| `codegraph_explore(query="<runtime task>")` | Structural orientation when runtime-code entry points are unknown |
+| `codegraph_explore(query="SymA SymB file.ts")` | Full source from relevant known symbols/files in one call |
+| `codegraph_explore(query="callers and impact of processOrder")` | Call flow / blast radius for a non-local runtime change |
+
+Codex proportionality: skip the graph for named paths, docs/config/rules, UI copy, and reviews of a known diff — read the file or use `git diff` directly. If the first result is irrelevant, pivot to Semble or direct reads instead of re-querying.
 CODEX-END -->
 
 **⛔ NEVER pass `projectPath` for the current project.** The server defaults correctly. Passing it triggers a different code path that fails if `.codegraph/` isn't at that exact path. Only use it for genuinely different codebases.
 
 ```
-codegraph_context(task="refactor authentication flow")
-codegraph_callers(symbol="processOrder")
-codegraph_impact(symbol="processOrder", depth=2)
+codegraph_explore(query="refactor authentication flow")
+codegraph_explore(query="processOrder callers and blast radius")
 ```
 
 ---
@@ -147,10 +146,7 @@ Useful options: `waitUntil` (`load`/`domcontentloaded`/`networkidle`), `returnHt
 <!-- CC-ONLY -->
 | Need | Tool |
 |------|------|
-| Task orientation (entry points + related symbols) | `codegraph_context` |
-| Symbol search by name | `codegraph_search` |
-| Call tracing / impact analysis | CodeGraph (`callers` / `callees` / `impact`) |
-| Deep code understanding (known symbols) | `codegraph_explore` |
+| Structural code — orientation, symbols, call tracing, impact, deep-dive | `codegraph_explore` (single tool; one call returns source + callers + blast radius) |
 | Concept / feature area search | Semble (`mcp__semble__search` or `semble search`) |
 | "Where is X modified / configured" | Semble — finds mutation sites across languages |
 | Cross-cutting concern discovery | Semble — surfaces full feature stack (UI, routes, logic) |
@@ -165,11 +161,8 @@ Useful options: `waitUntil` (`load`/`domcontentloaded`/`networkidle`), `returnHt
 <!-- CODEX-START
 | Need | Tool |
 |------|------|
-| Structural runtime-code orientation when entry points are unknown | `codegraph_context` |
+| Structural runtime-code — orientation, symbols, call tracing, impact, deep-dive | `codegraph_explore` (single tool; one call returns source + callers + blast radius) |
 | Known file/path, docs/rules/config/UI copy, or known diff | Direct file read, `git diff`, or Semble |
-| Symbol search by name | `codegraph_search` |
-| Call tracing / impact analysis for non-local runtime changes | CodeGraph (`callers` / `callees` / `impact`) |
-| Deep code understanding for known symbols | `codegraph_explore` |
 | Concept / feature area search | Semble (`mcp__semble__search` or `semble search`) |
 | "Where is X modified / configured" | Semble — finds mutation sites across languages |
 | Cross-cutting concern discovery | Semble — surfaces full feature stack (UI, routes, logic) |

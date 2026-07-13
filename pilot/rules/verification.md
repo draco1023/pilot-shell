@@ -14,13 +14,8 @@ Unit tests with mocks prove nothing about real-world behavior. After tests pass:
 
 Unit tests and typechecks are NOT sufficient for UI changes. After tests pass, verify with browser automation that the change works in the running app — in BOTH `/spec` and quick mode.
 
-**Procedure (quick mode):**
-
-1. **Resolve a live target FIRST — no skipping to "unit-verified"** (see "Live-target probe" below). Tests passing is not a substitute for never opening a browser against a deployed instance.
-2. Pick a browser tool (see `browser-automation.md` for tier priority and detection).
-3. Navigate to the affected page, interact with the changed UI, verify correct behavior.
-4. Report what you saw — "UI works" requires browser evidence, not "tests pass."
-5. **Design-quality pass (best-effort):** when `impeccable` is on PATH, run the deterministic design anti-pattern detector on the changed UI — `impeccable detect --json <changed-ui-or-rendered-output> || true` (see the "Design-Quality Detector" section in `browser-automation.md` for the full contract). Run-when-available, not discretionary; the findings are advisory only — suggestions, never a completion blocker — and a missing binary is a clean skip.
+1. **Resolve a live target FIRST** via the Live-Target Probe below — tests passing is not a substitute for opening a browser against a deployed instance.
+2. Then follow the browser procedure, tier priority, E2E hard rules, and the (advisory, run-when-available) `impeccable` design-quality pass in `browser-automation.md`: navigate to the affected page, interact with the changed UI, and report what you saw — "UI works" requires browser evidence, not "tests pass."
 
 **Don't skip.** "Small CSS change" or "tests cover it" is not an excuse. Common pitfalls: stale cached bundles, bundle not deployed, CSS layout invisible to tests, elements in DOM but not visible/interactive.
 
@@ -66,15 +61,11 @@ Before proceeding, ask: "Do these tests verify what matters, or only what was ea
 | "Build succeeds" | Build exit 0 | "Linter passed" |
 | "Bug fixed" | Reproducing test passes | "Code changed" |
 | "UI works" | Browser snapshot/read_page | "API returns 200" |
-| "No perf regression" | Hot paths cache/memoize, no heavy imports, no redundant repeat work | "Tests pass" |
+| "No perf regression" | Hot paths cached/memoized (per `development-practices.md` §Performance) | "Tests pass" |
 
-### ⛔ Fix ALL Errors — No Exceptions, No Asking
+### ⛔ Fix Verification Errors in /spec Without Asking
 
-In `/spec`, fix all verification errors without asking. Outside `/spec`, respect the user's mode — in plan mode, present issues and proposed fixes instead of applying them.
-
-### ⛔ Auto-Fix in /spec
-
-`must_fix` and `should_fix` → fix immediately. `suggestions` → implement if quick. Only user interaction in `/spec` is plan approval. These rules apply only within `/spec`.
+In `/spec`, fix all verification errors without asking — `must_fix` / `should_fix` immediately, `suggestions` if quick (severity → action policy: `code-review-reception.md`). The user-interaction points in `/spec` are the four listed in `task-and-workflow.md` (not just plan approval). Outside `/spec`, respect the user's mode — in plan mode, present issues and proposed fixes instead of applying them.
 
 ### Stop Signals — Verify NOW
 
@@ -101,4 +92,4 @@ Before reporting completion, pass against each of the five (2026 Agentic Coding 
 Beyond "does it work," check "is it the least that works" — run the ladder (`development-practices.md` → *Build the least that works*) over the diff before claiming done:
 
 - **Over-built?** An abstraction with one implementation, a dependency the stdlib/platform already covers, boilerplate nobody asked for, a config for a value that never changes → flag and simplify. This is the same lens as the native `/code-review` and `/simplify` skills; lean on them rather than re-deriving findings by hand.
-- **Shortcut debt harvested?** `grep -rnE '(#|//) ?SHORTCUT:' .` the change. Every `SHORTCUT:` marker introduced must name both a ceiling and an upgrade trigger; list unresolved markers in the completion report so a deferral can't quietly become permanent. A marker with no trigger is itself a finding.
+- **Shortcut debt harvested?** `grep -rnE '(#|//) ?SHORTCUT:' .` the change and list unresolved markers in the completion report so a deferral can't quietly become permanent (the ceiling+trigger contract lives in `development-practices.md` → *Mark deliberate shortcuts*).

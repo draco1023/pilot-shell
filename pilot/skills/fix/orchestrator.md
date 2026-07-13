@@ -26,7 +26,7 @@ Bugfix workflow with TDD. Investigate the bug, write the failing test, fix at th
 2. RUN THE REPRO BEFORE THEORIZING — a runnable reproduction (failing test, crashing command) is executed FIRST and its COMPLETE output read: warnings, stderr, and log lines above the failure, not just the assertion. If the environment blocks the run, ask the user to unblock it — speculation is never a substitute for a run.
 3. NO CODE WITHOUT A FAILING REPRODUCING TEST — TDD.
 4. FIX AT THE SOURCE — not where the error appears.
-5. END-TO-END VERIFICATION IS MANDATORY — Step 4 runs the actual program (UI: Claude Code Chrome / Chrome DevTools MCP / playwright-cli / agent-browser; CLI/API/library: real invocation) and captures concrete evidence. Unit tests alone are never accepted as proof.
+5. END-TO-END VERIFICATION IS MANDATORY — Step 4 runs the actual program (UI: browser automation per the tier priority in `browser-automation.md`; CLI/API/library: real invocation) and captures concrete evidence. Unit tests alone are never accepted as proof.
 6. STOP WHEN OVER YOUR HEAD — multi-component / architectural bugs need /spec.
 ```
 
@@ -48,6 +48,7 @@ Bugfix workflow with TDD. Investigate the bug, write the failing test, fix at th
 ## Critical Constraints
 
 - **No plan file.** All state lives in this conversation. If compaction happens mid-fix, re-read the conversation summary and resume.
+- **Worktree mode** is defined as: the session is already running inside a `.worktrees/spec-*` checkout (i.e. `/fix` was invoked from within an existing spec worktree). `/fix` never creates a worktree itself — the "worktree mode" branches in Steps 2/6 apply ONLY when this is already true; otherwise treat every step as non-worktree (working-tree) mode.
 - **No `Iterations:` counter.** If your fix doesn't work after one re-attempt, stop and tell the user to switch to `/spec` — don't loop.
 - **No approval mid-flow.** Single end-of-flow confirmation only when `PILOT_PLAN_APPROVAL_ENABLED` is enabled.
 - **Stopping is success, not failure.** Recognising "this is bigger than a quick fix" and bailing out is the right call. Wasting time in the quick lane on a multi-component bug is the failure.
@@ -89,4 +90,4 @@ You MUST stop and tell the user to re-invoke with `/spec` when ANY of these is t
 
 ## Workflow — Six Steps, No Ceremony
 
-See `steps/01-investigate.md` through `steps/06-finalise.md`.
+The six steps (Investigate → RED → Fix → Verify E2E → Quality → Finalise) follow below.

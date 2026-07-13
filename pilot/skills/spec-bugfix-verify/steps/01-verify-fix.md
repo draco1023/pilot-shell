@@ -52,18 +52,20 @@ Outcomes:
 
 ### 1.4 Root-cause + scope audit
 
+**Resolve the diff base once:** in non-worktree mode (the default) the fix is UNCOMMITTED in the working tree, so diff against `HEAD` (`DIFF=HEAD`); in worktree mode the fix is per-task-committed, so diff against the worktree base ref (`~/.pilot/bin/pilot worktree status --json <slug>` → `base_branch`, `DIFF=<base_ref>..HEAD`). A committed ref-range in non-worktree mode shows nothing and would falsely fire rule 1 every run.
+
 ```bash
-git diff --name-only <base>..HEAD
+git diff --name-only $DIFF
 ```
 
-1. **Root-cause file MUST be in the diff.** If not, fix is at symptom — set `Status: PENDING`, return to `spec-implement`.
+1. **Root-cause file MUST be in the diff.** If not, fix is at symptom — set `Status: PENDING`, return to `spec-implement` (via the Step 7 iteration-cap check).
 2. **Symptom-patching smells:** new broad `try/except` around the failing call, `if value is None: return default` at the caller when the bug is upstream, swallowed exceptions, silently normalised bad inputs, early returns hiding wrong state, renamed/suppressed log lines. Record + justify in Investigation, or revert.
 3. **Scope check:** diff matches plan scope (Task 1 tests + Task 2 root-cause file ± documented defense-in-depth). Unplanned changes belong elsewhere — revert or extend the plan.
 
 ### 1.5 Instrumentation cleanup
 
 ```bash
-if git diff <base>..HEAD | grep -n "SPEC-DEBUG"; then
+if git diff $DIFF | grep -n "SPEC-DEBUG"; then
     echo "Temporary debug markers present — remove before continuing"
     exit 1
 fi

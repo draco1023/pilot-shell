@@ -65,4 +65,4 @@ Use constructor injection + interfaces so dependencies can be substituted in tes
 - [ ] `dotnet test` — pass
 - [ ] `dotnet format --verify-no-changes` — formatted
 - [ ] No analyzer / nullable warnings
-- [ ] Production files ideally under 800 lines (1000+ = consider splitting)
+- [ ] File size within the limit (see `development-practices.md` → File size)

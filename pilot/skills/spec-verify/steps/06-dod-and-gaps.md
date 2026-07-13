@@ -6,7 +6,7 @@
 
 For EACH task, verify its Definition of Done criteria against the running program with evidence (command output, API response, screenshot).
 
-If any criterion unmet: fix inline if possible, or add task and loop back.
+If any criterion unmet: fix inline if possible, or add a task and route the loop-back through Step 11's iteration-cap check (which sets `Status: PENDING`, increments `Iterations`, and re-invokes spec-implement — or surfaces to the user at the cap). Never loop back without passing that check.
 
 ### 6.2 Not Verified Acknowledgment
 
