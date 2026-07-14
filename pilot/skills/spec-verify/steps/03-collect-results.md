@@ -21,7 +21,7 @@ echo "$SPEC_MODE"
 
 ```bash
 # Poll the path of the launch you are collecting (the Step 1 path, or the -rN re-launch path)
-OUTPUT_PATH="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}/findings-changes-review-<plan-slug>.json"
+OUTPUT_PATH="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}/findings-changes-review-<plan-slug>.json"
 for i in $(seq 1 150); do [ -f "$OUTPUT_PATH" ] && echo "READY" && break; sleep 2; done
 ```
 
@@ -108,10 +108,11 @@ Run this as `Bash(run_in_background=true, timeout=600000)` (the CEILING exits we
 1. **When (and ONLY when) the completion notification arrives**, fetch the findings via the companion's public interface:
 
    ```bash
-   node "$CODEX_COMPANION" result "$JOB_ID" --json > "/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json"
+   SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
+   node "$CODEX_COMPANION" result "$JOB_ID" --json > "$SESS_DIR/codex-task-result-<plan-slug>.json"
    ```
 
-   Read `/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json` with the `Read` tool. (Deterministic name, not `$$` — each Bash tool call is a new shell with a new PID, so a PID-based path cannot be reconstructed by a later step.) The relevant fields:
+   Read `$SESS_DIR/codex-task-result-<plan-slug>.json` with the `Read` tool. (Deterministic name, not `$$` — each Bash tool call is a new shell with a new PID, so a PID-based path cannot be reconstructed by a later step.) The relevant fields:
    - `storedJob.status` — must be `"completed"`. If `"failed"`, treat as a re-launch trigger; do not silently proceed.
    - `storedJob.result.rawOutput` — a string containing Codex's response. With our prompt template, this is JSON matching the `{verdict, summary, findings, next_steps}` schema.
    - `storedJob.rendered` — same content rendered for display; useful as a fallback if `rawOutput` is malformed.
@@ -127,14 +128,15 @@ Run this as `Bash(run_in_background=true, timeout=600000)` (the CEILING exits we
 
 4. **Mark Codex as ran** so re-verify iterations within the same session do not re-run it:
 ```bash
-SESS_ID="${PILOT_SESSION_ID:-default}"
+SESS_ID="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 CODEX_FLAG="$HOME/.pilot/sessions/$SESS_ID/codex-changes-review-ran-<plan-slug>.flag"
 mkdir -p "$(dirname "$CODEX_FLAG")" && touch "$CODEX_FLAG"
 ```
 
 5. **Cleanup:** delete the temp prompt file. `$PROMPT_FILE` from Step 1 is not in scope here (different bash invocation), so re-derive the path from the same template Step 1 used:
 ```bash
-rm -f "/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md" "/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
+rm -f "$SESS_DIR/codex-changes-review-<plan-slug>.md" "$SESS_DIR/codex-task-result-<plan-slug>.json"
 ```
 
 **Report:**
@@ -157,7 +159,7 @@ rm -f "/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md" "/
 **When enabled — mandatory. Never skip.** Read the `changes-review` agent id captured in Step 1 from working notes or the session file:
 
 ```bash
-AGENT_ID_FILE="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}/changes-review-agent-id-<plan-slug>.txt"
+AGENT_ID_FILE="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}/changes-review-agent-id-<plan-slug>.txt"
 ```
 
 If `CHANGES_REVIEW_AGENT_ID` is missing and the file exists, read the file and use its trimmed contents. If both are missing or empty, re-launch `changes-review` once using the Step 1 prompt, persist the new id to the file, then continue. Do not silently skip review while `PILOT_CHANGES_REVIEW_ENABLED` is enabled.

@@ -18,7 +18,7 @@ CODEX-END -->
 # playwright-cli:
 playwright-cli -s=$PILOT_SESSION_ID open <url>
 # agent-browser fallback:
-AB_SESSION="${PILOT_SESSION_ID:-default}"
+AB_SESSION="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 agent-browser --session "$AB_SESSION" open <url>
 ```
 

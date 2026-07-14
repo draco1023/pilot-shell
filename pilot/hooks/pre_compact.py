@@ -19,6 +19,7 @@ from _lib.util import (
     get_session_plan_path,
     plan_in_current_project,
     read_hook_stdin,
+    resolve_session_id,
 )
 
 
@@ -149,7 +150,7 @@ def run_pre_compact() -> int:
     Returns exit code: 0. stderr messages visible in verbose mode only.
     """
     hook_data = read_hook_stdin()
-    session_id = hook_data.get("session_id", os.environ.get("PILOT_SESSION_ID", "default"))
+    session_id = hook_data.get("session_id") or resolve_session_id()
     trigger = hook_data.get("trigger", "auto")
     custom_instructions = hook_data.get("custom_instructions", "")
 

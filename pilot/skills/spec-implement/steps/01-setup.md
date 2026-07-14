@@ -9,7 +9,7 @@
 
 ```bash
 echo "MODEL_SWITCH=${PILOT_MODEL_SWITCH_ENABLED:-true}"
-SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-default}}"
+SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 [ -f "$HOME/.pilot/sessions/$SPEC_SESS/plan-mode-skipped-fable" ] && echo "ON_FABLE=true" || echo "ON_FABLE=false"
 ```
 
@@ -26,6 +26,16 @@ ExitPlanMode(...)                          # safe to call even if already exited
 
 **Do NOT skip this step to save tokens. An extra ExitPlanMode call costs nothing; running the entire implementation leg on Opus is expensive and wrong.**
 <!-- /CC-ONLY -->
+
+### 1.0b Open the execution model window (best-effort)
+
+When the Execution Model is Opus (Console → Settings → Model Switching, requires a Fable plan model), the sonnet-slot pin must apply for the implementation + verification legs. `ExitPlanMode` above already opened this window via the plan-mode hook, but a resumed session (`/spec <plan.md>` that skips plan mode) never fires that hook, so open it explicitly here. Idempotent and no-op unless config + the registered plan call for it:
+
+```bash
+~/.pilot/bin/pilot model-pin exec-enter --session "${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}" 2>/dev/null || true
+```
+
+The window closes automatically when `spec-verify` registers the plan `VERIFIED` (or at session end / by the PID sweep) — no manual close needed here.
 
 ### 1.1 Read Plan & Gather Context
 

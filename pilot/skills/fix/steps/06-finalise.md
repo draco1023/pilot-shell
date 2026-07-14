@@ -50,10 +50,10 @@ Staging is not committing — the commit (6.2) still waits for the review and th
 For `/fix` the "plan" is the conversation, not a file. Resolve `FIX_MODE` first (the 6.1.b block below shows the exact resolution — do it here, once). Build the one-page summary temp file whenever a reviewer that anchors on a plan artifact will run: the Codex companion (enabled), or the agent-mode changes-review sub-agent (`FIX_MODE=agent` with Changes Review enabled). Skill mode without the companion needs no artifact — `/code-review` reads the diff directly.
 
 ```bash
-SESS_ID="${PILOT_SESSION_ID:-default}"
-# Deterministic path (no $$): later Bash invocations, the agent-mode reviewer prompt,
-# and the 6.1.d cleanup all need to reconstruct it outside this shell.
-FIX_PLAN_FILE="/tmp/fix-review-plan-$SESS_ID.md"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"; mkdir -p "$SESS_DIR"
+# Session-isolated (not /tmp; no $$): later Bash invocations, the agent-mode reviewer
+# prompt, and the 6.1.d cleanup all reconstruct these paths outside this shell.
+FIX_PLAN_FILE="$SESS_DIR/fix-review-plan.md"
 cat > "$FIX_PLAN_FILE" <<'PLAN_EOF'
 # /fix Bugfix Summary
 Bug: <one-line bug>
@@ -69,7 +69,7 @@ CHANGED_FILES=$(git status --short --untracked-files=all | awk '{print "- " $2}'
 Independent second opinion via the Codex plugin companion. **Codex-once rule:** Codex runs at most once per `/fix` invocation. Before launching, check the sentinel; if it exists (a prior approval-gate loop already ran it), skip the launch and the Codex part of 6.1.c.
 
 ```bash
-SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 mkdir -p "$SESS_DIR"
 CODEX_FLAG="$SESS_DIR/codex-changes-review-ran-fix.flag"
 [ -f "$CODEX_FLAG" ] && echo "Codex already reviewed this fix in this session — skipping (codex-once)."
@@ -87,7 +87,8 @@ CODEX_FLAG="$SESS_DIR/codex-changes-review-ran-fix.flag"
 
    ```bash
    PROMPT_TEMPLATE="$HOME/.claude/agents/changes-review-codex.md"
-   PROMPT_FILE="/tmp/codex-fix-review-$SESS_ID.md"
+   SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"; mkdir -p "$SESS_DIR"
+   PROMPT_FILE="$SESS_DIR/codex-fix-review.md"
 
    PLAN_GOAL="Bugfix for: <one-line bug>. Root cause at <file>:<line>. The reproducing test must reliably fail before the fix and pass after."
    # The fix + test are UNCOMMITTED at review time (staged in 6.1.pre), so review the working tree, not a committed range:
@@ -193,7 +194,7 @@ echo "$FIX_MODE"
 Build `$FIX_PLAN_FILE` per 6.1.0 (if not already built for the Codex companion), delete any stale findings file, then launch in the background:
 
 ```bash
-SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 FINDINGS_PATH="$SESS_DIR/findings-changes-review-fix.json"
 rm -f "$SESS_DIR"/findings-changes-review-fix*.json   # incl. -rN re-launch files from prior runs
 ```
@@ -241,10 +242,11 @@ Skill(skill='code-review', args='<FIX_MODE>')
 **Codex reviewer (if launched in 6.1.a):** on the completion notification, fetch via the public interface:
 
 ```bash
-node "$CODEX_COMPANION" result "$JOB_ID" --json > /tmp/codex-fix-result-$SESS_ID.json
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
+node "$CODEX_COMPANION" result "$JOB_ID" --json > "$SESS_DIR/codex-fix-result.json"
 ```
 
-Read `/tmp/codex-fix-result-$SESS_ID.json`. Verify `storedJob.status === "completed"`, then parse `storedJob.result.rawOutput` as JSON (`{verdict, summary, findings, next_steps}`). If JSON parse fails, fall back to `storedJob.rendered` and surface as a suggestion-level finding.
+Read `$SESS_DIR/codex-fix-result.json`. Verify `storedJob.status === "completed"`, then parse `storedJob.result.rawOutput` as JSON (`{verdict, summary, findings, next_steps}`). If JSON parse fails, fall back to `storedJob.rendered` and surface as a suggestion-level finding.
 
 **Act on Codex findings — same action map as the inline table above, keyed by Codex severity:** `critical`/`high` → must_fix; `medium`/`low` → should_fix (single-site, in-lineage) or summarise; `info` → mention only.
 
@@ -253,8 +255,9 @@ If a reviewer returns no blocking findings (Codex verdict `approve`, `/code-revi
 #### 6.1.d Mark + cleanup
 
 ```bash
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 [ -n "$JOB_ID" ] && touch "$CODEX_FLAG"   # codex-once
-rm -f "$PROMPT_FILE" "$FIX_PLAN_FILE" /tmp/codex-fix-result-$SESS_ID.json
+rm -f "$SESS_DIR/codex-fix-review.md" "$SESS_DIR/fix-review-plan.md" "$SESS_DIR/codex-fix-result.json"
 ```
 
 **Launch failure handling.** If the Codex job ended `failed` (genuine launch failure, not timeout): surface the captured stderr to the user, do **not** silently mark the bugfix done. Continue with the 6.1.b changes-review results.
@@ -265,7 +268,8 @@ When `PILOT_CHANGES_REVIEW_ENABLED` is not `"false"`, run the managed Codex `cha
 1. Build a one-page bugfix summary in a temp file as the review anchor:
 
 ```bash
-FIX_PLAN_FILE="/tmp/fix-review-plan-${PILOT_SESSION_ID:-default}.md"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"; mkdir -p "$SESS_DIR"
+FIX_PLAN_FILE="$SESS_DIR/fix-review-plan.md"
 cat > "$FIX_PLAN_FILE" <<'PLAN_EOF'
 # /fix Bugfix Summary
 Bug: <one-line bug>

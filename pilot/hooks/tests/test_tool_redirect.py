@@ -915,6 +915,28 @@ class TestSearchNudgeNegatives:
         assert not _has_nudge(output)
 
 
+class TestThrottleSentinelPath:
+    """_throttle_sentinel_path() session-directory resolution."""
+
+    def test_falls_back_to_agent_native_id_when_pilot_session_id_unset(self, tmp_path: Path) -> None:
+        """Issue #157: a session launched outside the shell wrapper (IDE/desktop) has no
+        PILOT_SESSION_ID but always has CLAUDE_CODE_SESSION_ID set by the harness. The
+        search-nudge throttle sentinel must follow the same agent-native chain as the rest
+        of the hook layer (_lib/util.py:resolve_session_id()), not collapse to the shared
+        'default' bucket that every other non-wrapper session also writes to.
+        """
+        import os
+
+        from tool_redirect import _throttle_sentinel_path
+
+        with (
+            patch.dict(os.environ, {"CLAUDE_CODE_SESSION_ID": "cc-uuid-9999"}, clear=True),
+            patch("tool_redirect.Path.home", return_value=tmp_path),
+        ):
+            result = _throttle_sentinel_path()
+            assert result == tmp_path / ".pilot" / "sessions" / "cc-uuid-9999" / "search_nudge_sent.json"
+
+
 class TestSearchNudgeThrottle:
     @pytest.mark.usefixtures("fresh_throttle")
     def test_throttle_grep_only_first_call_nudges(self):

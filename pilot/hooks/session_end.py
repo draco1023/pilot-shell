@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from _lib.console_settings import get_console_url
+from _lib.util import invoke_model_pin
 
 SESSIONS_DIR = Path.home() / ".pilot" / "sessions"
 SKIP_NAMES = {"default", "pipes"}
@@ -120,6 +121,12 @@ def _has_other_active_sessions() -> bool:
 
 
 def main() -> int:
+    # Release any window-scoped model pin leases this session holds so a crashed
+    # or ended session cannot leave the fable/opus pin active. Detached and
+    # best-effort -- the PID-liveness sweep in model_pin is the real post-death
+    # guarantee (the harness may cancel this hook mid-flight).
+    invoke_model_pin("release-all", detached=True)
+
     # Spawn the detached worker-stop BEFORE any network I/O so the critical
     # side effect (releasing the worker port, closing SQLite WAL handles) survives
     # even if the harness cancels this hook mid-flight.

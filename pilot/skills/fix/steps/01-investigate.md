@@ -8,7 +8,8 @@
 - **Runnable reproduction? Execute it NOW — before reading any code.** When the report names a failing test, a CI failure, or a crashing command, running it locally is the FIRST investigative action — before `git log` (1.2), before tracing (1.3), before forming any hypothesis. Capture everything:
 
   ```bash
-  set -o pipefail; <repro command> 2>&1 | tee /tmp/fix-repro.log
+  REPRO_LOG="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}/fix-repro.log"; mkdir -p "$(dirname "$REPRO_LOG")"
+  set -o pipefail; <repro command> 2>&1 | tee "$REPRO_LOG"
   ```
 
   (`pipefail` keeps the test's failing exit status visible through the pipe — without it, `tee` reports exit 0 and a failing run looks like a pass.)
@@ -16,7 +17,7 @@
 - **Read the COMPLETE output, not just the failing assertion.** Warning lines, stderr, "exception caught/swallowed/ignored" notices, and log output *above* the failure frequently name the root cause directly — one warning line read here can replace the entire tracing phase. Skim the whole capture, then sweep it as a completeness check:
 
   ```bash
-  grep -niE "warn|error|exception|traceback|ignored|swallowed" /tmp/fix-repro.log
+  grep -niE "warn|error|exception|traceback|ignored|swallowed" "$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}/fix-repro.log"
   ```
 
 - **CI-only failure?** Still run the test locally first. A local pass against a CI fail is itself a finding (environment or mocking drift), and the local output is your baseline either way.

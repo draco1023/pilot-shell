@@ -159,6 +159,49 @@ def _sessions_base() -> Path:
     return Path.home() / ".pilot" / "sessions"
 
 
+def invoke_model_pin(op: str, *, detached: bool) -> None:
+    """Invoke ``pilot model-pin <op>`` for the current session (best-effort).
+
+    Opens/closes/heartbeats the window-scoped model slot pins (hooks cannot
+    import the Cython-compiled launcher -- the same standalone-package boundary
+    as ``pilot register-plan`` -- so we shell out to the binary). Never raises:
+    a missing binary means the feature is silently off and planning proceeds on
+    the baseline model pair.
+
+    - ``detached=False`` (plan-mode transitions): a SYNCHRONOUS call, so the
+      window open/close order matches program order. A detached pair could run
+      plan-exit before plan-enter on a rapid enter/exit and strand a lease that
+      PID-liveness would keep alive all session.
+    - ``detached=True`` (heartbeats, session end): fire-and-forget; the caller
+      must not block on pin plumbing.
+    """
+    pilot_bin = Path.home() / ".pilot" / "bin" / "pilot"
+    if not pilot_bin.is_file():
+        return
+    cmd = [str(pilot_bin), "model-pin", op, "--session", resolve_session_id()]
+    try:
+        if detached:
+            subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+                close_fds=True,
+            )
+        else:
+            subprocess.run(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=8,
+                check=False,
+            )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def get_session_cache_path() -> Path:
     """Get session-scoped context cache path."""
     cache_dir = _sessions_base() / resolve_session_id()

@@ -188,6 +188,80 @@ class TestPreToolUseWarning:
         assert "Call ExitPlanMode NOW" not in context
 
 
+class TestModelPinWindow:
+    """EnterPlanMode/ExitPlanMode drive the window-scoped model slot pins."""
+
+    def _run_with_pin(self, stdin: dict, session_dir: Path) -> list:
+        calls = []
+
+        def record(op: str, *, detached: bool) -> None:
+            calls.append((op, detached))
+
+        with (
+            patch("plan_mode_tracker._sessions_base", return_value=session_dir),
+            patch("plan_mode_tracker.resolve_session_id", return_value="test-session"),
+            patch("plan_mode_tracker.read_hook_stdin", return_value=stdin),
+            patch("plan_mode_tracker.spec_plan_awaiting_approval", return_value=False),
+            patch("plan_mode_tracker.invoke_model_pin", side_effect=record),
+        ):
+            import io
+            from contextlib import redirect_stdout
+
+            with redirect_stdout(io.StringIO()):
+                main()
+        return calls
+
+    def test_pre_enter_plan_mode_opens_window_before_mode_flips(self, tmp_path):
+        # PreToolUse (no tool_response): the pin must land BEFORE plan mode
+        # engages so the first planning request already resolves to the
+        # configured Plan Model.
+        stdin = {"tool_name": "EnterPlanMode", "tool_input": {}, "permission_mode": "bypassPermissions"}
+        calls = self._run_with_pin(stdin, tmp_path)
+        assert calls == [("plan-enter", False)]
+
+    def test_enter_plan_mode_opens_window_synchronously(self, tmp_path):
+        stdin = {"tool_name": "EnterPlanMode", "tool_input": {}, "tool_response": {"result": "ok"}}
+        calls = self._run_with_pin(stdin, tmp_path)
+        assert calls == [("plan-enter", False)]
+
+    def test_enter_plan_mode_error_unwinds_pre_opened_window(self, tmp_path):
+        # Pre already opened the window; a failed EnterPlanMode must unwind it
+        # (plan-abort, NOT plan-exit -- no exec window on the abort path).
+        stdin = {"tool_name": "EnterPlanMode", "tool_input": {}, "tool_response": {"is_error": True}}
+        assert self._run_with_pin(stdin, tmp_path) == [("plan-abort", False)]
+
+    def test_exit_plan_mode_closes_window_synchronously(self, tmp_path):
+        sentinel = tmp_path / "test-session" / "plan-mode-active"
+        sentinel.parent.mkdir(parents=True)
+        sentinel.write_text("")
+        stdin = {"tool_name": "ExitPlanMode", "tool_input": {}, "tool_response": {"result": "ok"}}
+        calls = self._run_with_pin(stdin, tmp_path)
+        assert calls == [("plan-exit", False)]
+
+    def test_exit_plan_mode_error_does_not_close_window(self, tmp_path):
+        sentinel = tmp_path / "test-session" / "plan-mode-active"
+        sentinel.parent.mkdir(parents=True)
+        sentinel.write_text("")
+        stdin = {"tool_name": "ExitPlanMode", "tool_input": {}, "tool_response": {"is_error": True}}
+        assert self._run_with_pin(stdin, tmp_path) == []
+
+    def test_rapid_enter_then_exit_preserves_order(self, tmp_path):
+        # Synchronous calls => program order; a detached pair could reorder.
+        enter = {"tool_name": "EnterPlanMode", "tool_input": {}, "tool_response": {"result": "ok"}}
+        exit_ = {"tool_name": "ExitPlanMode", "tool_input": {}, "tool_response": {"result": "ok"}}
+        calls = self._run_with_pin(enter, tmp_path) + self._run_with_pin(exit_, tmp_path)
+        assert calls == [("plan-enter", False), ("plan-exit", False)]
+        assert all(detached is False for _, detached in calls)
+
+    def test_plan_doc_write_heartbeats_detached(self, tmp_path):
+        sentinel = tmp_path / "test-session" / "plan-mode-active"
+        sentinel.parent.mkdir(parents=True)
+        sentinel.write_text("")
+        stdin = {"tool_name": "Write", "tool_input": {"file_path": "docs/plans/2026-07-14-x.md"}}
+        calls = self._run_with_pin(stdin, tmp_path)
+        assert ("touch", True) in calls
+
+
 class TestPlanningLegModelCheck:
     """Observed-model verification for the /spec planning leg.
 

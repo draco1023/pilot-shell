@@ -37,6 +37,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _lib.util import (
     _sessions_base,
+    invoke_model_pin,
     pre_tool_use_context,
     read_hook_stdin,
     resolve_session_id,
@@ -77,14 +78,14 @@ PLAN_MODEL_WARNED_MARKER = "plan-model-warned"
 _MODEL_MISMATCH_WARNING = (
     "[Pilot] PLANNING-LEG MODEL CHECK: Model Switching is ON and plan mode is "
     "active, but the observed session model is '{model_id}' - planning is NOT "
-    "running on Opus. Likely causes: (1) Opus usage limit fallback on your "
-    "Claude plan - under opusplan, Claude Code silently serves Sonnet while the "
-    "Opus pool is exhausted and switches back when it frees up (this looks like "
-    "'uneven' mid-planning switching; check /usage); (2) the session is not on "
-    "the opusplan model - run /model opusplan. Tell the user in one short "
-    "paragraph which model planning is actually running on and why, then "
-    "continue planning on the current model. Do NOT re-call EnterPlanMode and "
-    "do NOT claim planning runs on Opus."
+    "running on Opus or Fable (the configured plan models). Likely causes: (1) "
+    "Opus usage limit fallback on your Claude plan - under opusplan, Claude Code "
+    "silently serves Sonnet while the Opus pool is exhausted and switches back "
+    "when it frees up (this looks like 'uneven' mid-planning switching; check "
+    "/usage); (2) the session is not on the opusplan model - run /model opusplan. "
+    "Tell the user in one short paragraph which model planning is actually "
+    "running on and why, then continue planning on the current model. Do NOT "
+    "re-call EnterPlanMode and do NOT claim planning runs on Opus."
 )
 
 
@@ -148,16 +149,26 @@ def main() -> int:
         if tool_name == "EnterPlanMode":
             response = data.get("tool_response", {})
             if isinstance(response, dict) and response.get("is_error"):
+                # PreToolUse already opened the window; a failed EnterPlanMode
+                # means plan mode never engaged -- unwind WITHOUT plan-exit's
+                # exec-window logic.
+                invoke_model_pin("plan-abort", detached=False)
                 return 0
             sentinel = sentinel_path()
             sentinel.write_text("")
             # New planning leg: allow the model check to warn again.
             (sentinel.parent / PLAN_MODEL_WARNED_MARKER).unlink(missing_ok=True)
+            # Idempotent re-assert of the window the PreToolUse hook opened
+            # (covers hooks-config skews where only PostToolUse fired).
+            invoke_model_pin("plan-enter", detached=False)
         elif tool_name == "ExitPlanMode":
             response = data.get("tool_response", {})
             if isinstance(response, dict) and response.get("is_error"):
                 return 0
             sentinel_path().unlink(missing_ok=True)
+            # Close the plan window (and open the execution window when config +
+            # a registered plan call for it -- the binary decides). Synchronous.
+            invoke_model_pin("plan-exit", detached=False)
     else:
         # PreToolUse(EnterPlanMode): the mode has not flipped to "plan" yet,
         # so permission_mode is the pre-plan mode. Record it as the bypass
@@ -172,6 +183,11 @@ def main() -> int:
                 # No field (older Claude Code): clear stale evidence so a
                 # previous leg's record cannot arm a later restore.
                 record.unlink(missing_ok=True)
+            # Open the window-scoped plan-mode pin BEFORE the mode flips: the
+            # first planning request fires immediately after EnterPlanMode
+            # returns, so a PostToolUse-only open can land too late for it.
+            # SYNCHRONOUS so open/close order equals program order.
+            invoke_model_pin("plan-enter", detached=False)
             return 0
         # PreToolUse: warn if editing a non-plan file while plan mode is active
         if not sentinel_path().exists():
@@ -180,8 +196,13 @@ def main() -> int:
         if not file_path:
             return 0
         if is_plan_file(file_path):
-            # Plan-doc write mid-planning: the statusline has re-rendered since
-            # EnterPlanMode, so the observed model is now verifiable.
+            # Plan-doc write mid-planning: heartbeat the plan-mode pin lease so a
+            # long planning leg is never falsely swept (detached -- must not
+            # block the edit; touch is order-safe, it re-checks the sentinel
+            # under the lock).
+            invoke_model_pin("touch", detached=True)
+            # The statusline has re-rendered since EnterPlanMode, so the observed
+            # planning-leg model is now verifiable.
             context = _planning_leg_model_context()
             if context:
                 print(pre_tool_use_context(context))

@@ -38,7 +38,7 @@ For 3+ task plans, OR any plan touching sensitive surfaces regardless of task co
 **Delete stale findings before launching** (a previous run of the same plan may have left a file) — assign the path and remove it in one block:
 
 ```bash
-SESS_ID="${PILOT_SESSION_ID:-default}"
+SESS_ID="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 OUTPUT_PATH="$HOME/.pilot/sessions/$SESS_ID/findings-spec-review-<plan-slug>.json"
 rm -f "$OUTPUT_PATH"
 ```
@@ -71,7 +71,7 @@ Launch Codex review NOW — it runs in parallel with the Claude reviewer above.
 **Codex-once rule.** Codex runs at most once per `/spec` invocation. Before launching, check the sentinel file. If it exists, the review already ran in this session — skip the launch and the collection sub-step below. Plan iterations (annotation feedback, plan edits, fixing prior findings) do NOT trigger another Codex run.
 
 ```bash
-SESS_ID="${PILOT_SESSION_ID:-default}"
+SESS_ID="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 CODEX_FLAG="$HOME/.pilot/sessions/$SESS_ID/codex-spec-review-ran-<plan-slug>.flag"
 if [ -f "$CODEX_FLAG" ]; then
   echo "Codex already reviewed this plan in this session — skipping (codex-once)."
@@ -94,7 +94,8 @@ PROJECT_ROOT="${CLAUDE_PROJECT_ROOT:-$(pwd)}"
 
 ```bash
 PROMPT_TEMPLATE="$HOME/.claude/agents/spec-review-codex.md"
-PROMPT_FILE="/tmp/codex-spec-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"; mkdir -p "$SESS_DIR"
+PROMPT_FILE="$SESS_DIR/codex-spec-review-<plan-slug>.md"
 
 # Set these before rendering:
 PLAN_PATH="/absolute/path/to/docs/plans/YYYY-MM-DD-<slug>.md"
@@ -231,10 +232,11 @@ Run this as `Bash(run_in_background=true, timeout=600000)` (the CEILING exits be
 1. **When (and ONLY when) the completion notification arrives**, fetch the result via the companion's public interface:
 
    ```bash
-   node "$CODEX_COMPANION" result "$JOB_ID" --json > "/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json"
+   SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
+   node "$CODEX_COMPANION" result "$JOB_ID" --json > "$SESS_DIR/codex-task-result-<plan-slug>.json"
    ```
 
-   Read `/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json` with the `Read` tool. (Deterministic name, not `$$` — each Bash tool call is a new shell with a new PID, so a PID-based path cannot be reconstructed by a later step.) The relevant fields:
+   Read `$SESS_DIR/codex-task-result-<plan-slug>.json` with the `Read` tool. (Deterministic name, not `$$` — each Bash tool call is a new shell with a new PID, so a PID-based path cannot be reconstructed by a later step.) The relevant fields:
    - `storedJob.status` — must be `"completed"`. If not, treat as a re-launch trigger; do not silently proceed.
    - `storedJob.result.rawOutput` — a string containing Codex's response. With our prompt, this is JSON matching the schema above.
    - `storedJob.rendered` — same content rendered for display; useful as a fallback if `rawOutput` is malformed.
@@ -257,7 +259,8 @@ mkdir -p "$(dirname "$CODEX_FLAG")" && touch "$CODEX_FLAG"
 
 5. **Cleanup:** delete the temp prompt and result files:
 ```bash
-rm -f "$PROMPT_FILE" "/tmp/codex-task-result-${PILOT_SESSION_ID:-default}-<plan-slug>.json"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
+rm -f "$SESS_DIR/codex-spec-review-<plan-slug>.md" "$SESS_DIR/codex-task-result-<plan-slug>.json"
 ```
 
 **If Codex was NOT launched**, proceed after all Claude reviewer must_fix/should_fix resolved.

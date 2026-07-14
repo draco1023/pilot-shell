@@ -220,6 +220,56 @@ class TestPostCompactRestoreHook:
 
     @patch("post_compact_restore.read_hook_stdin")
     @patch("post_compact_restore.get_session_plan_path")
+    @patch("post_compact_restore._sessions_base")
+    @patch("os.environ", {"CLAUDE_CODE_SESSION_ID": "cc-uuid-9999"})
+    def test_fallback_state_found_via_agent_native_id_when_no_session_id_anywhere(
+        self, mock_sessions_base, mock_plan_path, mock_stdin, capsys
+    ):
+        """Issue #157: pre_compact.py (the writer) and post_compact_restore.py (this
+        reader) must resolve the SAME session directory when hook_data carries no
+        session_id and PILOT_SESSION_ID is unset (non-wrapper launch) - both now use
+        the agent-native chain (_lib/util.py:resolve_session_id()), so a fallback file
+        written under the resolved CLAUDE_CODE_SESSION_ID dir is found here, not lost
+        to a directory mismatch against the hardcoded 'default' bucket.
+        """
+        from post_compact_restore import run_post_compact_restore
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sessions_dir = Path(tmpdir)
+            mock_sessions_base.return_value = sessions_dir
+
+            # Simulates exactly what pre_compact.py's fallback writer produces for the
+            # same unresolved-session_id scenario, at the id resolve_session_id() picks.
+            session_dir = sessions_dir / "cc-uuid-9999"
+            session_dir.mkdir()
+            fallback_file = session_dir / "pre-compact-state.json"
+            fallback_file.write_text(
+                json.dumps(
+                    {
+                        "trigger": "manual",
+                        "active_plan": {
+                            "plan_path": "docs/plans/2026-02-16-test.md",
+                            "status": "COMPLETE",
+                        },
+                    }
+                )
+            )
+
+            mock_plan_path.return_value = Path("/nonexistent")
+            mock_stdin.return_value = {}
+
+            result = run_post_compact_restore()
+
+            assert result == 0
+            captured = capsys.readouterr()
+            # Strict, not OR'd with the unconditional "Restored" header text (which
+            # prints regardless of whether the fallback file was actually found) -
+            # the plan path only appears if _read_fallback_state resolved the SAME
+            # directory pre_compact.py's writer used.
+            assert "2026-02-16-test.md" in captured.out
+
+    @patch("post_compact_restore.read_hook_stdin")
+    @patch("post_compact_restore.get_session_plan_path")
     @patch("os.environ", {"PILOT_SESSION_ID": "test123", "CLAUDE_CODE_TASK_LIST_ID": "test-tasks"})
     def test_fast_execution(self, mock_plan_path, mock_stdin):
         """Should complete in under 2 seconds."""

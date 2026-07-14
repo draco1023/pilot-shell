@@ -7,7 +7,7 @@
 **Always run this first** — regardless of whether changes-review is enabled. Spec-review findings are stale artifacts from the planning phase that were already addressed during implementation; changes-review findings files are the previous run's output (agent mode writes a fresh one below — a stale file left behind would be read as if it reviewed THIS iteration's diff). The cleanup runs strictly BEFORE any launch in this step:
 
 ```bash
-SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 FIND_BIN="/usr/bin/find"
 [ -x "$FIND_BIN" ] || FIND_BIN="$(command -v find)"
 test -d "$SESS_DIR" && "$FIND_BIN" "$SESS_DIR" -maxdepth 1 -name 'findings-spec-review-*.json' -delete
@@ -87,7 +87,7 @@ Launch Codex review NOW — it works in the background while you run the Step 2 
 **Codex-once rule.** Codex runs at most once per `/spec` invocation. Before launching, check the sentinel file. If it exists, the review already ran in this session — skip the launch and the collection sub-step in Step 3. Verify-phase iterations (re-verify after fixing findings, code-review-gate annotation fixes) do NOT trigger another Codex run.
 
 ```bash
-SESS_ID="${PILOT_SESSION_ID:-default}"
+SESS_ID="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 CODEX_FLAG="$HOME/.pilot/sessions/$SESS_ID/codex-changes-review-ran-<plan-slug>.flag"
 if [ -f "$CODEX_FLAG" ]; then
   echo "Codex already reviewed this plan in this session — skipping (codex-once)."
@@ -109,7 +109,8 @@ PROJECT_ROOT="${CLAUDE_PROJECT_ROOT:-$(pwd)}"
 
 ```bash
 PROMPT_TEMPLATE="$HOME/.claude/agents/changes-review-codex.md"
-PROMPT_FILE="/tmp/codex-changes-review-${PILOT_SESSION_ID:-default}-<plan-slug>.md"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"; mkdir -p "$SESS_DIR"
+PROMPT_FILE="$SESS_DIR/codex-changes-review-<plan-slug>.md"
 
 PLAN_PATH="/absolute/path/to/docs/plans/YYYY-MM-DD-<slug>.md"
 PLAN_GOAL="<one or two sentences from the plan Summary>"
@@ -181,7 +182,7 @@ Collect: changed files list, runtime environment info, test framework constraint
 Persist the returned agent id so Step 3 can survive long checks or compaction. Use a deterministic session file:
 
 ```bash
-SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}"
+SESS_DIR="$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 AGENT_ID_FILE="$SESS_DIR/changes-review-agent-id-<plan-slug>.txt"
 mkdir -p "$SESS_DIR"
 ```

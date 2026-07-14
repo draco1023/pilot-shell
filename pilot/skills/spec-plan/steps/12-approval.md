@@ -42,8 +42,8 @@ Pull `$PILOT_PLAN_APPROVAL_ENABLED` and `$PILOT_MODEL_SWITCH_ENABLED` from Step 
    ⛔ Codex pause: the prompt above renders as a plain-text numbered list — it is NOT an interactive blocking control, so you must yield to the user yourself. Before evaluating any answer:
 
    ```bash
-   mkdir -p "$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}" && \
-     touch "$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}/spec-approval-pending"
+   mkdir -p "$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}" && \
+     touch "$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}/spec-approval-pending"
    ```
 
    Then **end your turn**. The stop guard honors this sentinel while the plan is unapproved and will allow the stop, so the user can answer. Treat the user's NEXT message as their choice. Do NOT set `Approved: Yes` in this same turn, and do NOT proceed to implementation.
@@ -51,7 +51,7 @@ Pull `$PILOT_PLAN_APPROVAL_ENABLED` and `$PILOT_MODEL_SWITCH_ENABLED` from Step 
    On resume (user has replied), delete the sentinel first, then act on their choice in step 3:
 
    ```bash
-   rm -f "$HOME/.pilot/sessions/${PILOT_SESSION_ID:-default}/spec-approval-pending"
+   rm -f "$HOME/.pilot/sessions/${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}/spec-approval-pending"
    ```
 CODEX-END -->
 
@@ -65,7 +65,7 @@ CODEX-END -->
 **Fable exception first:** check the sentinel from Step 0.1 — sentinel presence, NOT conversation memory, decides (it survives compaction and pauses). The check is read-only: do NOT delete the sentinel here (a re-run after an interruption must see it again, and the spec-implement exit guard reads it too; Step 0.1 of the next planning run owns cleanup):
 
 ```bash
-SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-default}}"
+SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 if [ -f "$HOME/.pilot/sessions/$SPEC_SESS/plan-mode-skipped-fable" ]; then echo "SKIP_EXIT_PLAN_MODE=true"; else echo "SKIP_EXIT_PLAN_MODE=false"; fi
 ```
 

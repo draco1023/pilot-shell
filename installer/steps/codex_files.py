@@ -10,6 +10,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import tomllib
 from pathlib import Path
 from typing import Any, Callable
@@ -139,6 +140,49 @@ class CodexFilesStep(BaseStep):
         except ValueError as e:
             if ui:
                 ui.warning(f"Skipping Codex file installation: {e}")
+
+        self._heal_codex_config_env(ui)
+
+    def _heal_codex_config_env(self, ui: Any = None) -> None:
+        """Proactively heal the managed env block in ~/.codex/config.toml.
+
+        ``pilot sync-env --codex-only`` collapses any duplicated / left-over
+        ``[shell_environment_policy.set]`` managed region into one (the
+        idempotent ``_merge_env_block``), so a config corrupted by a pre-fix
+        version is repaired the moment the user updates, not lazily on the
+        next Codex session start. The reactive session-start heal
+        (``codex_skill_sync.py``) fires only on matcher ``"startup"`` and only
+        when the license is valid, so resume-only, Codex-only, or lapsed-license
+        users could otherwise keep the duplicate-key breakage that aborts Codex
+        ``skills/list``.
+
+        ``--codex-only`` keeps this scoped to the Codex config: it does NOT
+        touch Claude Code settings (a Codex-only user must not get
+        ~/.claude/settings.json as a side effect) and its exit code reflects the
+        Codex heal, so a genuine failure is surfaced here rather than swallowed.
+
+        Subprocesses the freshly-installed binary rather than importing launcher
+        logic (package boundary). Non-fatal: a sync hiccup must never break the
+        install.
+        """
+        pilot_bin = Path.home() / ".pilot" / "bin" / "pilot"
+        if not pilot_bin.is_file():
+            return
+
+        try:
+            result = subprocess.run(
+                [str(pilot_bin), "sync-env", "--codex-only"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except (subprocess.SubprocessError, OSError):
+            return
+
+        if result.returncode != 0 and ui:
+            detail = (result.stderr or result.stdout or "").strip().splitlines()
+            reason = detail[-1] if detail else f"exit {result.returncode}"
+            ui.warning(f"Could not heal ~/.codex/config.toml env block: {reason}")
 
     def _install_codex_hooks(self, ctx: InstallContext) -> int:
         """Install hooks.json for Codex CLI. Returns # of hook events configured."""

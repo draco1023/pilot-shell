@@ -29,6 +29,7 @@ from _lib.util import (
     get_session_plan_path,
     is_waiting_for_user_input,
     plan_in_current_project,
+    resolve_session_id,
     stop_block,
 )
 
@@ -42,8 +43,7 @@ SENTINEL_MAX_AGE_SECONDS = 3600
 
 def get_stop_guard_path() -> Path:
     """Get session-scoped stop guard state path."""
-    session_id = os.environ.get("PILOT_SESSION_ID", "").strip() or "default"
-    guard_dir = _sessions_base() / session_id
+    guard_dir = _sessions_base() / resolve_session_id()
     guard_dir.mkdir(parents=True, exist_ok=True)
     return guard_dir / "spec-stop-guard"
 
@@ -63,8 +63,7 @@ def get_approval_sentinel_path() -> Path:
     SENTINEL_MAX_AGE_SECONDS — e.g. PID reuse / crashed session) are
     discarded, not honored.
     """
-    session_id = os.environ.get("PILOT_SESSION_ID", "").strip() or "default"
-    guard_dir = _sessions_base() / session_id
+    guard_dir = _sessions_base() / resolve_session_id()
     guard_dir.mkdir(parents=True, exist_ok=True)
     return guard_dir / "spec-approval-pending"
 

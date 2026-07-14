@@ -174,6 +174,37 @@ class TestNonSpecPrompts:
         assert output == ""
 
 
+class TestModelPinHeartbeat:
+    """UserPromptSubmit heartbeats the plan-mode pin lease when a window is open."""
+
+    def _run(self, prompt: str, sentinel_exists: bool) -> list:
+        calls = []
+        hook_data = {"prompt": prompt, "permission_mode": "default"}
+        stdin = StringIO(json.dumps(hook_data))
+
+        class _Sentinel:
+            def exists(self) -> bool:
+                return sentinel_exists
+
+        with (
+            patch.dict(os.environ, {"CLAUDE_CONFIG_DIR": _NO_CLAUDE_DIR}),
+            patch("sys.stdin", stdin),
+            patch("sys.stdout", new_callable=StringIO),
+            patch("spec_mode_guard._read_active_model_from_cache", return_value=None),
+            patch("spec_mode_guard.plan_mode_sentinel_path", return_value=_Sentinel()),
+            patch("spec_mode_guard.invoke_model_pin", side_effect=lambda op, *, detached: calls.append((op, detached))),
+        ):
+            run_spec_mode_guard()
+        return calls
+
+    def test_heartbeats_when_plan_window_open(self):
+        # Even a non-/spec prompt heartbeats while a plan window is open.
+        assert self._run("keep working on the plan", sentinel_exists=True) == [("touch", True)]
+
+    def test_no_heartbeat_without_window(self):
+        assert self._run("explain this code", sentinel_exists=False) == []
+
+
 class TestEdgeCases:
     """Edge cases and malformed input."""
 

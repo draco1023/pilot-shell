@@ -99,6 +99,44 @@ class TestPreCompactHook:
     @patch("pre_compact.urllib.request.urlopen")
     @patch("pre_compact.read_hook_stdin")
     @patch("pre_compact.get_session_plan_path")
+    @patch("pre_compact._sessions_base")
+    @patch("os.environ", {"CLAUDE_CODE_SESSION_ID": "cc-uuid-9999"})
+    def test_fallback_file_uses_agent_native_id_when_no_session_id_anywhere(
+        self, mock_sessions_base, mock_plan_path, mock_stdin, mock_urlopen
+    ):
+        """Issue #157: when hook_data carries no session_id (unusual, but not guaranteed
+        by every caller) AND PILOT_SESSION_ID is unset (non-wrapper launch), the fallback
+        file must resolve via the same agent-native chain as the rest of the hook layer
+        (_lib/util.py:resolve_session_id()) instead of the hardcoded 'default' bucket,
+        so post_compact_restore.py (which resolves the same way) can find it back.
+        """
+        from pre_compact import run_pre_compact
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sessions_dir = Path(tmpdir)
+            mock_sessions_base.return_value = sessions_dir
+
+            mock_plan_path.return_value = Path(tmpdir) / "nonexistent.json"
+
+            mock_stdin.return_value = {
+                "trigger": "manual",
+                "custom_instructions": "",
+            }
+
+            mock_urlopen.side_effect = Exception("Connection refused")
+
+            result = run_pre_compact()
+
+            fallback_file = sessions_dir / "cc-uuid-9999" / "pre-compact-state.json"
+            assert fallback_file.exists(), (
+                f"expected fallback file under the resolved agent-native session dir, "
+                f"got: {list(sessions_dir.rglob('*.json'))}"
+            )
+            assert result == 0
+
+    @patch("pre_compact.urllib.request.urlopen")
+    @patch("pre_compact.read_hook_stdin")
+    @patch("pre_compact.get_session_plan_path")
     @patch("os.environ", {"PILOT_SESSION_ID": "test123"})
     def test_captures_trigger_type(self, mock_plan_path, mock_stdin, mock_urlopen, capsys):
         """Should capture whether compaction was manual or auto."""

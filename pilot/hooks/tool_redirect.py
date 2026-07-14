@@ -16,13 +16,12 @@ semble search. Throttled per-(category, session) so the reminder stays salient.
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _lib.util import pre_tool_use_context, pre_tool_use_deny
+from _lib.util import pre_tool_use_context, pre_tool_use_deny, resolve_session_id
 
 BLOCKS: dict[str, dict[str, str]] = {
     "WebSearch": {
@@ -213,8 +212,7 @@ def _throttle_sentinel_path() -> Path:
 
     Tests monkeypatch this to redirect to a tmp_path.
     """
-    session_id = os.environ.get("PILOT_SESSION_ID", "").strip() or "default"
-    return Path.home() / ".pilot" / "sessions" / session_id / "search_nudge_sent.json"
+    return Path.home() / ".pilot" / "sessions" / resolve_session_id() / "search_nudge_sent.json"
 
 
 def _nudge_already_sent(key: str) -> bool:

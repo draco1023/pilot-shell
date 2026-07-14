@@ -40,14 +40,14 @@ For a bugfix workflow without a plan file, users invoke `/fix` directly - that's
 <!-- CC-ONLY -->
 | Phase | Skill | Model (Switching ON) | Model (Switching OFF) |
 |-------|-------|----------------------|------------------------|
-| Feature Planning | `spec-plan` | Opus 4.8, 1M (plan mode) | active `/model` |
-| Bugfix Planning | `spec-bugfix-plan` | Opus 4.8, 1M (plan mode) | active `/model` |
-| Implementation | `spec-implement` | Sonnet 5, 1M | active `/model` |
-| Feature Verification | `spec-verify` | Sonnet 5, 1M | active `/model` |
-| Bugfix Verification | `spec-bugfix-verify` | Sonnet 5, 1M | active `/model` |
-| Bugfix (separate command, `/fix`) | `fix` | Sonnet 5, 1M | inherits `/model` |
+| Feature Planning | `spec-plan` | Plan Model, 1M (plan mode) | active `/model` |
+| Bugfix Planning | `spec-bugfix-plan` | Plan Model, 1M (plan mode) | active `/model` |
+| Implementation | `spec-implement` | Execution Model, 1M | active `/model` |
+| Feature Verification | `spec-verify` | Execution Model, 1M | active `/model` |
+| Bugfix Verification | `spec-bugfix-verify` | Execution Model, 1M | active `/model` |
+| Bugfix (separate command, `/fix`) | `fix` | Execution Model, 1M | inherits `/model` |
 
-The pair is fixed (Console → Settings → Model Switching): slot remapping would hijack the `/model` picker, so there is no per-phase choice and no `fableplan`. Switching OFF runs the whole workflow on the active `/model` (Pilot defaults to `opus[1m]`). On a **single-model Fable session** (`/model fable`), every phase runs on Fable with no plan-mode toggling.
+The **Plan Model** (Opus 4.8 default, or Fable 5) and **Execution Model** (Sonnet 5 default, or Opus 4.8) are configured in Console → Settings → Model Switching. Claude Code has no native `fableplan`; Pilot provides the equivalent with window-scoped slot pins — a Fable plan model applies only during plan-mode windows, an Opus execution model only during a running /spec, so the transient cross-family remap never permanently hijacks the `/model` picker (Opus execution requires Fable planning). Switching OFF runs the whole workflow on the active `/model` (Pilot defaults to `opus[1m]`). On a **single-model Fable session** (`/model fable`), every phase runs on Fable with no plan-mode toggling.
 
 > **Automated model switching (operational details live at point-of-use).** With **Model Switching** ON (default), `/spec` runs on `opusplan`: the skills call `EnterPlanMode` at planning start (→ Opus 4.8, 1M) and `ExitPlanMode` after approval (→ Sonnet 5, 1M) — see spec-plan Step 0.1a (enter) and Step 12.3 (exit), which hold the full mechanics, the single-model-Fable skip, and the "`ExitPlanMode` is a model switch, NOT approval" rule. Everything runs at the 1M tier; on Max, 1M is billed via usage credits (`/usage-credits` if a session errors with "Usage credits required for 1M context"). The `spec-mode-guard` hook gates the planning model (requires `opusplan` when ON, Opus when OFF; Fable-family models pass in both).
 >

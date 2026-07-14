@@ -47,7 +47,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _lib.util import resolve_session_id
+from _lib.util import invoke_model_pin, plan_mode_sentinel_path, resolve_session_id
 
 _CLAUDE_OPUS_PREFIX_RE = re.compile(r"^claude-opus(-|$)")
 _CLAUDE_SONNET_PREFIX_RE = re.compile(r"^claude-sonnet(-|$)")
@@ -232,6 +232,20 @@ def _is_resume_existing_plan(prompt: str) -> bool:
     return tokens[0].lower().endswith(".md")
 
 
+def _heartbeat_plan_pin() -> None:
+    """Detached model-pin touch when this session has an open plan-mode window.
+
+    Keeps a long planning leg's lease fresh (and self-heals a falsely swept
+    lease -- touch re-checks the sentinel under the pin lock). Best-effort; the
+    sentinel check short-circuits so ordinary prompts spawn no subprocess.
+    """
+    try:
+        if plan_mode_sentinel_path().exists():
+            invoke_model_pin("touch", detached=True)
+    except Exception:
+        pass
+
+
 def run_spec_mode_guard() -> int:
     """Check permission mode and active model before allowing /spec invocation."""
     try:
@@ -241,6 +255,11 @@ def run_spec_mode_guard() -> int:
 
     prompt = hook_data.get("prompt", "").strip()
     permission_mode = hook_data.get("permission_mode", "")
+
+    # Heartbeat the window-scoped model pin lease on every prompt while a
+    # plan-mode window is open, so a long planning leg is never falsely swept.
+    # Cheap sentinel .exists() gate first: non-planning prompts spawn nothing.
+    _heartbeat_plan_pin()
 
     if not _is_spec_invocation(prompt):
         return 0

@@ -322,7 +322,8 @@ const DeepDiveSection = () => {
                 Model Switching <span className="text-xs font-normal text-muted-foreground">(Claude Code only)</span>
               </h3>
               <p className="text-sm text-muted-foreground">
-                Opus for planning, Sonnet for implementation — the cost-saving
+                Configurable Plan and Execution models — Opus (or Fable 5) for
+                planning, Sonnet (or Opus) for implementation — the cost-saving
                 swap, fully automatic.
               </p>
             </div>
@@ -363,13 +364,16 @@ const DeepDiveSection = () => {
 
           <div className="rounded-lg p-4 border border-border/30 bg-card/20">
             <p className="text-xs text-muted-foreground text-center">
-              One pair, both legs at 1M — the opt-out <strong>Model Switching</strong>{" "}
-              automation flips Opus 4.8 → Sonnet 5 between planning and
-              implementation for you. Turn it off in Console Settings → Model
-              Switching to run the whole workflow single-model on your{" "}
-              <code>/model</code> choice instead — including{" "}
-              <strong>Claude Fable 5</strong>, whose saved selection Pilot
-              preserves while the toggle is off.
+              Both legs at 1M — the opt-out <strong>Model Switching</strong>{" "}
+              automation flips your <strong>Plan Model</strong> (Opus 4.8, or
+              Fable 5) to your <strong>Execution Model</strong> (Sonnet 5, or
+              Opus) between planning and implementation for you. Fable planning
+              applies only during plan-mode windows, so real Opus stays
+              reachable the rest of the time (and any session can still switch
+              manually via <code>/model</code>). Turn it off in Console Settings →
+              Model Switching to run single-model on your <code>/model</code>{" "}
+              choice instead — including <strong>Claude Fable 5</strong>, whose
+              saved selection Pilot preserves while the toggle is off.
             </p>
           </div>
         </div>

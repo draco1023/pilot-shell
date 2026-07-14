@@ -44,6 +44,23 @@ def test_skips_stop_when_other_sessions_active(tmp_path: Path):
     assert _find_call(mock_popen, "worker-service.cjs") is None
 
 
+def test_releases_model_pin_leases_on_session_end(tmp_path: Path):
+    """SessionEnd releases this session's window-scoped model pin leases."""
+    base = tmp_path / "sessions"
+    (base / "1001").mkdir(parents=True)
+
+    with (
+        patch.dict(os.environ, {"PILOT_SESSION_ID": "1001"}),
+        patch.object(session_end, "SESSIONS_DIR", base),
+        patch("session_end.subprocess.Popen"),
+        patch("session_end.invoke_model_pin") as mock_pin,
+    ):
+        result = session_end.main()
+
+    assert result == 0
+    mock_pin.assert_called_once_with("release-all", detached=True)
+
+
 def test_stops_worker_when_no_other_sessions(tmp_path: Path):
     """Should spawn a detached worker-stop when this is the only active session."""
     base = tmp_path / "sessions"
@@ -196,6 +213,10 @@ def test_main_invokes_worker_stop_before_complete_session(tmp_path: Path):
     def popen_side_effect(argv, *_args, **_kwargs):
         if any("worker-service.cjs" in str(token) for token in argv):
             call_order.append("worker_stop")
+        elif any("model-pin" in str(token) for token in argv):
+            # Orthogonal to the worker-stop/console-post ordering this test
+            # pins -- model-pin release-all is a separate best-effort spawn.
+            pass
         else:
             call_order.append("console_post")
         return MagicMock()

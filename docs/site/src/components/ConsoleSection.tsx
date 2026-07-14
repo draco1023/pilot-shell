@@ -62,7 +62,7 @@ const consoleSlides: ConsoleSlide[] = [
     label: "Settings",
     name: "settings",
     alt: "Settings view — spec workflow and console port",
-    desc: "Spec workflow toggles, review agents for Claude Code + Codex, Codex Companion Reviewers, and Model Switching: /spec plans on Opus 4.8 and executes on Sonnet 5, both at 1M context.",
+    desc: "Spec workflow toggles, review agents for Claude Code + Codex, Codex Companion Reviewers, and Model Switching: configurable Plan and Execution models (incl. Fable 5 planning), both at 1M context.",
   },
   {
     label: "Documentation",

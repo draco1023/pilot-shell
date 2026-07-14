@@ -1376,3 +1376,65 @@ class TestProjectDocMaxBytes:
         result = config.read_text()
         assert result.count("project_doc_max_bytes") == 1
         assert tomllib.loads(result)["project_doc_max_bytes"] == 65536
+
+
+class TestCodexConfigEnvHeal:
+    """CodexFilesStep heals ~/.codex/config.toml's managed env block at
+    install/update time, so a duplicate-key leftover from a pre-fix version is
+    repaired immediately rather than lazily via the license-gated,
+    startup-only session hook (which misses Codex-only / resume-only / lapsed
+    users)."""
+
+    def test_run_heals_codex_config_via_sync_env(self, tmp_path: Path) -> None:
+        pilot_bin = tmp_path / ".pilot" / "bin" / "pilot"
+        pilot_bin.parent.mkdir(parents=True)
+        pilot_bin.touch()
+
+        step = CodexFilesStep()
+        ctx = MagicMock()
+        ctx.ui = None
+
+        with (
+            patch("installer.steps.codex_files.is_codex_installed", return_value=True),
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+            patch("installer.steps.codex_files.subprocess.run") as mock_run,
+            patch.object(step, "_install_codex_hooks", return_value=0),
+            patch.object(step, "_install_codex_skills", return_value=0),
+            patch.object(step, "_install_codex_agents", return_value=0),
+            patch.object(step, "_install_codex_config", return_value=False),
+            patch.object(step, "_install_codex_mcp", return_value=0),
+            patch.object(step, "_install_codex_rules", return_value=0),
+        ):
+            mock_run.return_value = MagicMock(returncode=0)
+            step.run(ctx)
+
+        invoked = [call.args[0] for call in mock_run.call_args_list]
+        # Codex-scoped heal: must NOT let `pilot sync-env` touch Claude settings.
+        assert any(str(pilot_bin) in cmd and "sync-env" in cmd and "--codex-only" in cmd for cmd in invoked)
+
+    def test_heal_skips_when_pilot_binary_missing(self, tmp_path: Path) -> None:
+        step = CodexFilesStep()
+        with (
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+            patch("installer.steps.codex_files.subprocess.run") as mock_run,
+        ):
+            step._heal_codex_config_env()
+
+        mock_run.assert_not_called()
+
+    def test_heal_warns_on_nonzero_returncode(self, tmp_path: Path) -> None:
+        """A failed heal must surface a warning, not be silently swallowed."""
+        pilot_bin = tmp_path / ".pilot" / "bin" / "pilot"
+        pilot_bin.parent.mkdir(parents=True)
+        pilot_bin.touch()
+
+        step = CodexFilesStep()
+        ui = MagicMock()
+        with (
+            patch("installer.steps.codex_files.Path.home", return_value=tmp_path),
+            patch("installer.steps.codex_files.subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = MagicMock(returncode=1, stderr="permission denied", stdout="")
+            step._heal_codex_config_env(ui)
+
+        ui.warning.assert_called_once()

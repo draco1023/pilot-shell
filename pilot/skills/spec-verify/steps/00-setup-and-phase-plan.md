@@ -12,6 +12,12 @@ echo "REVIEWER=$PILOT_CHANGES_REVIEW_ENABLED CODEX_CHG=$PILOT_CODEX_CHANGES_REVI
 Codex reviewers are controlled entirely by Console Settings — the env vars are authoritative. `SPEC_MODE` is the configured changes-review mechanism for `/spec` (`agent` = single `changes-review` sub-agent; `medium`/`high`/`xhigh` = built-in `/code-review` skill at that effort; default `agent` when unset/invalid — allow-listed at the points of use in Steps 1 and 3).
 
 Reference these values in Steps 1 (agent-mode + Codex companion launch) and 3 (review collection).
+
+**Open the execution model window (best-effort).** When the Execution Model is Opus (Console → Settings → Model Switching, requires a Fable plan model), the sonnet-slot pin must apply for the verification leg. A resumed `/spec <plan.md>` that skipped plan mode never fired the window-opening hook, so open it explicitly. Idempotent, no-op unless config + the registered plan call for it; it closes when this skill later registers the plan `VERIFIED`:
+
+```bash
+~/.pilot/bin/pilot model-pin exec-enter --session "${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}" 2>/dev/null || true
+```
 <!-- /CC-ONLY -->
 <!-- CODEX-START
 ```bash

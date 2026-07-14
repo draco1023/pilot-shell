@@ -177,6 +177,33 @@ class TestGetStopGuardPath:
             result = get_stop_guard_path()
             assert result.parent.is_dir()
 
+    def test_falls_back_to_agent_native_id_when_pilot_session_id_unset(self, tmp_path: Path) -> None:
+        """Issue #157: a session launched outside the shell wrapper (IDE/desktop) has
+        no PILOT_SESSION_ID but always has CLAUDE_CODE_SESSION_ID set by the harness.
+        The stop-guard state must follow the same agent-native chain as
+        get_session_plan_path() (_lib/util.py:resolve_session_id()), not collapse to
+        the shared 'default' bucket that every other non-wrapper session also writes to.
+        """
+        from spec_stop_guard import get_stop_guard_path
+
+        with (
+            patch.dict(os.environ, {"CLAUDE_CODE_SESSION_ID": "cc-uuid-9999"}, clear=True),
+            patch("spec_stop_guard._sessions_base", return_value=tmp_path / "sessions"),
+        ):
+            result = get_stop_guard_path()
+            assert result == tmp_path / "sessions" / "cc-uuid-9999" / "spec-stop-guard"
+
+    def test_approval_sentinel_falls_back_to_agent_native_id(self, tmp_path: Path) -> None:
+        """Same issue #157 chain-fallback requirement for get_approval_sentinel_path()."""
+        from spec_stop_guard import get_approval_sentinel_path
+
+        with (
+            patch.dict(os.environ, {"CLAUDE_CODE_SESSION_ID": "cc-uuid-9999"}, clear=True),
+            patch("spec_stop_guard._sessions_base", return_value=tmp_path / "sessions"),
+        ):
+            result = get_approval_sentinel_path()
+            assert result == tmp_path / "sessions" / "cc-uuid-9999" / "spec-approval-pending"
+
 
 class TestSubprocessIntegration:
     """Subprocess-level tests with real file I/O."""

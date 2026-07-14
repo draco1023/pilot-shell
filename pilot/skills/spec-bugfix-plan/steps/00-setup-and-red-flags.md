@@ -5,7 +5,7 @@
 **Run first, before any other step.** Read all toggle env vars in a single Bash call:
 
 ```bash
-echo "QUESTIONS=$PILOT_PLAN_QUESTIONS_ENABLED APPROVAL=$PILOT_PLAN_APPROVAL_ENABLED MODEL_SWITCH=$PILOT_MODEL_SWITCH_ENABLED"
+echo "QUESTIONS=$PILOT_PLAN_QUESTIONS_ENABLED APPROVAL=$PILOT_PLAN_APPROVAL_ENABLED MODEL_SWITCH=$PILOT_MODEL_SWITCH_ENABLED PLAN_MODEL=${PILOT_PLAN_MODEL:-opus} EXEC_MODEL=${PILOT_EXEC_MODEL:-sonnet}"
 ```
 
 Reference these values throughout: Steps 2.1/2.5 (questions) and 6 (approval + automated model switching). Bugfix planning does not run Codex — adversarial review only runs once per `/spec` invocation, on the implementation in `spec-verify`.
@@ -16,7 +16,7 @@ Reference these values throughout: Steps 2.1/2.5 (questions) and 6 (approval + a
 **Fable check first** (pairs with the Step 0.1 toggle read above — kept as a separate CC-ONLY block because the 0.1 fence is shared with Codex; classifies with the SAME predicate the `spec_mode_guard` hook uses, imported from `~/.pilot/hooks` — one source of truth; missing cache or older hooks print `ON_FABLE=false`, fail-safe):
 
 ```bash
-SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-default}}"
+SPEC_SESS="${PILOT_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-${CODEX_THREAD_ID:-default}}}"
 ON_FABLE=$(uv run --no-project --python python3 python -c "
 import sys,pathlib;h=pathlib.Path.home()/'.pilot'/'hooks';sys.path.insert(0,str(h))
 import spec_mode_guard as g

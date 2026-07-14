@@ -76,14 +76,33 @@ ANNOUNCEMENTS: list[dict[str, str]] = [
             "  - The opusplan planning leg (Opus 4.8) now runs at 1M instead of 200K: Pilot pins\n"
             "    ANTHROPIC_DEFAULT_OPUS_MODEL to the opus [1m] ID. The Sonnet 5 execution leg\n"
             "    was already natively 1M.\n"
-            "  - Console -> Settings -> Model Switching shows the fixed pair (Opus 4.8 planning,\n"
-            "    Sonnet 5 execution). The pair is not configurable: remapping the model slots to\n"
-            "    other families would hijack the /model picker.\n\n"
+            "  - Console -> Settings -> Model Switching shows the Plan and Execution models\n"
+            "    (Opus 4.8 planning, Sonnet 5 execution by default).\n\n"
             "Behavior change:\n"
             "  - While Model Switching is ON, it now also overrides a manually saved /model choice\n"
             "    (including a saved Fable model) on the next settings sync or restart. Turn Model\n"
             "    Switching OFF to control the model entirely via /model.\n\n"
             "On Max, 1M context draws usage credits (enable via /usage-credits if prompted).\n\n"
+            "Docs: https://pilot-shell.com/docs/features/model-routing"
+        ),
+    },
+    {
+        "id": "configurable-plan-exec-models",
+        "message": (
+            "Pilot Shell -- Model Switching now has configurable Plan and Execution models.\n\n"
+            "What is new (Console -> Settings -> Model Switching, two dropdowns):\n"
+            "  - Plan Model:      Opus 4.8 (1M)  or  Fable 5 (1M)\n"
+            "  - Execution Model: Sonnet 5 (1M)  or  Opus 4.8 (1M)  (requires a Fable plan model)\n\n"
+            "Claude Code has no native `fableplan`, so Pilot applies these as WINDOW-SCOPED pins:\n"
+            "  - A Fable plan model pins the opus slot to Fable ONLY between EnterPlanMode and\n"
+            "    ExitPlanMode. Outside a planning window, /model opus and fast mode mean real Opus\n"
+            "    again. Need real Opus in another session meanwhile? /model claude-opus-4-8[1m]\n"
+            "  - An Opus execution model pins the sonnet slot to Opus ONLY while a /spec runs\n"
+            "    (implementation start until the plan is verified); it reverts to Sonnet 5 when\n"
+            "    the spec is verified. Want Sonnet in another session meanwhile? /model claude-sonnet-5\n\n"
+            "Parallel sessions are safe (refcounted leases; a crashed session's pin reclaims\n"
+            "automatically). Defaults are unchanged (Opus planning / Sonnet execution) -- opt in\n"
+            "only if you want Fable-quality planning or Opus-quality implementation.\n\n"
             "Docs: https://pilot-shell.com/docs/features/model-routing"
         ),
     },

@@ -7,15 +7,17 @@
 
 Do not stop or wait for the user to switch. The user's mode choice is respected — bypass permissions is recommended, not required.
 
-**0b. Automated model switching info (show this verbatim to the user).** Read the toggle, then show the matching message:
+**0b. Automated model switching info (show this verbatim to the user).** Read the toggle and the configured model pair, then show the matching message:
 
 ```bash
-echo "MODEL_SWITCH=${PILOT_MODEL_SWITCH_ENABLED:-true}"
+echo "MODEL_SWITCH=${PILOT_MODEL_SWITCH_ENABLED:-true} PLAN_MODEL=${PILOT_PLAN_MODEL:-opus} EXEC_MODEL=${PILOT_EXEC_MODEL:-sonnet}"
 ```
+
+Render the model names from those values: `PLAN_MODEL` `opus` → **Opus 4.8 (1M)**, `fable` → **Fable 5 (1M)**; `EXEC_MODEL` `sonnet` → **Sonnet 5 (1M)**, `opus` → **Opus 4.8 (1M)**.
 
 - **If `MODEL_SWITCH` is `true` (default):**
 
-  > ℹ️ Automated model switching is ON — planning runs on **Opus 4.8 (1M)**, implementation & verification on **Sonnet 5 (1M)**, automatically. This requires the **Opus Plan** model: if your status bar isn't already on it, run `/model opusplan` now (future sessions set this automatically). On a single-model **Fable 5** session (`/model fable`), `/spec` runs the whole workflow on Fable instead — model switching does not apply (there is no `fableplan`). Prefer one model for everything? Disable **Model Switching** in the Pilot Console → Settings → Model Switching.
+  > ℹ️ Automated model switching is ON — planning runs on **{Plan Model}**, implementation & verification on **{Execution Model}**, automatically. This requires the **Opus Plan** model: if your status bar isn't already on it, run `/model opusplan` now (future sessions set this automatically). A **Fable 5** plan model is applied only during plan-mode windows, and an **Opus 4.8** execution model only during a running /spec — configure both in Pilot Console → Settings → Model Switching. On a single-model **Fable 5** session (`/model fable`), `/spec` runs the whole workflow on Fable instead. Prefer one model for everything? Disable **Model Switching** in the Console.
 
 - **If `MODEL_SWITCH` is `false`:**
 

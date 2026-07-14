@@ -127,13 +127,55 @@ def test_task_cleanup_skips_missing_dir(tmp_path: Path):
     assert result == 0
 
 
-def test_noop_when_no_session_id():
-    """Should return 0 when PILOT_SESSION_ID is not set."""
-    with patch.dict(os.environ, {}, clear=True):
-        os.environ.pop("PILOT_SESSION_ID", None)
+def test_stale_files_still_cleaned_when_pilot_session_id_unset(tmp_path: Path):
+    """Issue #157: with EVERY session-id env var unset, resolve_session_id() falls all
+    the way through to 'default' (same as the pre-fix narrow fallback) - so stale-file
+    cleanup must still run against sessions/default/, not bail out of the whole hook.
+    Task-list cleanup has no real PID to build 'pilot-<PID>' from, so it must be
+    skipped without crashing - proven by not raising, since there's no task dir to
+    assert against here.
+    """
+    session_dir = tmp_path / "sessions" / "default"
+    session_dir.mkdir(parents=True)
+    (session_dir / "active_plan.json").write_text("{}")
+
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        patch.object(session_clear, "SESSIONS_DIR", tmp_path / "sessions"),
+    ):
         result = session_clear.main()
 
     assert result == 0
+    assert not (session_dir / "active_plan.json").exists(), (
+        "stale-file cleanup must run against the resolve_session_id() result even "
+        "when PILOT_SESSION_ID is unset, not no-op the entire hook"
+    )
+
+
+def test_stale_files_cleaned_via_agent_native_id_when_pilot_session_id_unset(tmp_path: Path):
+    """Issue #157: a session launched outside the shell wrapper (IDE/desktop) has no
+    PILOT_SESSION_ID but always has CLAUDE_CODE_SESSION_ID set by the harness. /clear
+    must find and remove THIS session's stale active_plan.json / plan-mode-active /
+    findings files - which live under the resolve_session_id()-based directory, per
+    _lib/util.py - not silently skip cleanup because the narrow PILOT_SESSION_ID-only
+    lookup found nothing.
+    """
+    session_dir = tmp_path / "sessions" / "cc-uuid-9999"
+    session_dir.mkdir(parents=True)
+    (session_dir / "active_plan.json").write_text("{}")
+    (session_dir / "plan-mode-active").write_text("1")
+    (session_dir / "findings-spec-review-some-plan.json").write_text("{}")
+
+    with (
+        patch.dict(os.environ, {"CLAUDE_CODE_SESSION_ID": "cc-uuid-9999"}, clear=True),
+        patch.object(session_clear, "SESSIONS_DIR", tmp_path / "sessions"),
+    ):
+        result = session_clear.main()
+
+    assert result == 0
+    assert not (session_dir / "active_plan.json").exists()
+    assert not (session_dir / "plan-mode-active").exists()
+    assert not (session_dir / "findings-spec-review-some-plan.json").exists()
 
 
 def test_noop_when_session_dir_missing(tmp_path: Path):

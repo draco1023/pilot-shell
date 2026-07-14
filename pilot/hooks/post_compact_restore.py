@@ -17,6 +17,7 @@ from _lib.util import (
     get_session_plan_path,
     plan_in_current_project,
     read_hook_stdin,
+    resolve_session_id,
 )
 
 
@@ -109,7 +110,7 @@ def run_post_compact_restore() -> int:
     Returns exit code: 0 with a SessionStart JSON payload on stdout.
     """
     hook_data = read_hook_stdin()
-    session_id = hook_data.get("session_id", os.environ.get("PILOT_SESSION_ID", "default"))
+    session_id = hook_data.get("session_id") or resolve_session_id()
 
     plan_data = _read_active_plan()
     if not _plan_belongs_to_project(plan_data):

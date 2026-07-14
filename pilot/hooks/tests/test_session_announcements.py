@@ -26,6 +26,20 @@ class TestRegistry:
         ids = [a["id"] for a in ANNOUNCEMENTS]
         assert "fable-5-support" in ids
 
+    def test_has_configurable_plan_exec_models_announcement(self) -> None:
+        entry = next((a for a in ANNOUNCEMENTS if a["id"] == "configurable-plan-exec-models"), None)
+        assert entry is not None
+        # Names both dropdowns and the window-scoped caveat.
+        assert "Plan Model" in entry["message"]
+        assert "Execution Model" in entry["message"]
+        assert "WINDOW-SCOPED" in entry["message"]
+
+    def test_no_stale_fixed_pair_claim_in_announcements(self) -> None:
+        # The configurable pair supersedes the old "not configurable" wording.
+        for a in ANNOUNCEMENTS:
+            assert "not configurable" not in a["message"]
+            assert "fixed pair" not in a["message"]
+
     def test_every_announcement_has_id_and_message(self) -> None:
         for a in ANNOUNCEMENTS:
             assert a["id"] and isinstance(a["id"], str)
